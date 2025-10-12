@@ -1,0 +1,136 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -------------------- ENUMS --------------------
+enum UserRole {
+  USER
+  ADMIN
+  SUPERADMIN
+  AGENT
+  
+}
+
+enum UserStatus {
+  BLOCKED
+  PENDING
+  ACTIVE
+}
+
+// -------------------- MODELS --------------------
+model User {
+  id        Int       @id @default(autoincrement())
+  name      String
+  email     String    @unique
+  password  String
+  mobile    String?
+  role      UserRole  @default(USER)
+  status    UserStatus @default(PENDING)
+  addresses Address[]
+  shops     Shop[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Address {
+  id           Int     @id @default(autoincrement())
+  type         String? // Home, Work, etc.
+  pincode      String?
+  landmark     String?
+  apartmentNo  String?
+  state        String?
+  country      String?
+  locality     String?
+  phone        String?
+  altPhone     String?
+  user         User    @relation(fields: [userId], references: [id])
+  userId       Int
+  agency       Agency? @relation(fields: [agencyId], references: [id])
+  agencyId     Int?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Shop {
+  id        Int       @id @default(autoincrement())
+  name      String
+  address   String?
+  user      User      @relation(fields: [userId], references: [id]) // shop owner/admin
+  userId    Int
+  products  Product[]
+  orders    Order[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Product {
+  id              Int              @id @default(autoincrement())
+  name            String
+  company         String
+  type            String
+  color           String?
+  price           Float
+  discountedPrice Float?
+  discountPercent Float?
+  offer           String?
+  warrantyPeriod  String?
+  shop            Shop             @relation(fields: [shopId], references: [id])
+  shopId          Int
+  orders          Order[]
+  repairs         Repair[]
+  warrantyDetails WarrantyDetails[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model WarrantyDetails {
+  id          Int      @id @default(autoincrement())
+  product     Product  @relation(fields: [productId], references: [id])
+  productId   Int
+  details     String?
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Order {
+  id           Int       @id @default(autoincrement())
+  product      Product   @relation(fields: [productId], references: [id])
+  productId    Int
+  shop         Shop      @relation(fields: [shopId], references: [id])
+  shopId       Int
+  customerName String
+  customerEmail String?
+  customerPhone String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Repair {
+  id          Int       @id @default(autoincrement())
+  product     Product   @relation(fields: [productId], references: [id])
+  productId   Int
+  remarks     String?
+  feedback    String?
+  description String?
+  parts       String?
+  user        String?   // Could be customer or staff
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Agency {
+  id        Int       @id @default(autoincrement())
+  name      String
+  addresses Address[]
+  type      String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}

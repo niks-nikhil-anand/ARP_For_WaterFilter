@@ -1,6 +1,5 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import 'tw-animate-css'; /* <- likely the problem line */
 
 
 @custom-variant dark (&:is(.dark *));

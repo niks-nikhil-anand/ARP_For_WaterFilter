@@ -387,52 +387,53 @@ const OrderManagementPage = () => {
     }
   }
 
-  const saveEdit = () => {
-    if (selectedOrder) {
-      setOrders(
-        orders.map((o) =>
-          o.id === selectedOrder.id
-            ? {
-                ...o,
-                customerName: editForm.customerName,
-                customerEmail: editForm.customerEmail || null,
-                customerPhone: editForm.customerPhone || null,
-                orderStatus: editForm.orderStatus,
-                updatedAt: new Date(),
-              }
-            : o
-        )
+ const saveEdit = () => {
+  if (selectedOrder) {
+    setOrders(
+      orders.map((o) =>
+        o.id === selectedOrder.id
+          ? {
+              ...o,
+              customerName: editForm.customerName,
+              customerEmail: editForm.customerEmail || "",
+              customerPhone: editForm.customerPhone || "",
+              orderStatus: editForm.orderStatus,
+              updatedAt: new Date(),
+            }
+          : o
       )
-      setEditDialogOpen(false)
-      setSelectedOrder(null)
-    }
+    )
+    setEditDialogOpen(false)
+    setSelectedOrder(null)
+  }
+}
+
+const handleAddOrder = () => {
+  const newOrder: Order = {
+    id: Math.max(...orders.map((o) => o.id)) + 1,
+    productId: Math.floor(Math.random() * 14) + 1,
+    productName: addForm.productName,
+    shopId: Math.floor(Math.random() * 3) + 1,
+    shopName: addForm.shopName,
+    customerName: addForm.customerName,
+    customerEmail: addForm.customerEmail || "",
+    customerPhone: addForm.customerPhone || "",
+    orderStatus: addForm.orderStatus,
+    createdAt: new Date(),
+    updatedAt: new Date(),
   }
 
-  const handleAddOrder = () => {
-    const newOrder: Order = {
-      id: Math.max(...orders.map((o) => o.id)) + 1,
-      productId: Math.floor(Math.random() * 14) + 1,
-      productName: addForm.productName,
-      shopId: Math.floor(Math.random() * 3) + 1,
-      shopName: addForm.shopName,
-      customerName: addForm.customerName,
-      customerEmail: addForm.customerEmail || null,
-      customerPhone: addForm.customerPhone || null,
-      orderStatus: addForm.orderStatus,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }
-    setOrders([newOrder, ...orders])
-    setAddDialogOpen(false)
-    setAddForm({
-      productName: '',
-      shopName: '',
-      customerName: '',
-      customerEmail: '',
-      customerPhone: '',
-      orderStatus: 'Processing',
-    })
-  }
+  setOrders([newOrder, ...orders])
+  setAddDialogOpen(false)
+  setAddForm({
+    productName: "",
+    shopName: "",
+    customerName: "",
+    customerEmail: "",
+    customerPhone: "",
+    orderStatus: "Processing",
+  })
+}
 
   const getSortIcon = (field: keyof Order) => {
     if (sortField !== field) {

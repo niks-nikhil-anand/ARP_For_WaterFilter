@@ -491,41 +491,38 @@ const AgencyManagementPage = () => {
   }
 
   const saveEdit = () => {
-    if (selectedAgency) {
-      setAgencies(
-        agencies.map((a) =>
-          a.id === selectedAgency.id
-            ? {
-                ...a,
-                name: editForm.name,
-                type: editForm.type || null,
-                updatedAt: new Date(),
-              }
-            : a
-        )
+  if (selectedAgency) {
+    setAgencies(
+      agencies.map((a) =>
+        a.id === selectedAgency.id
+          ? {
+              ...a,
+              name: editForm.name,
+              type: editForm.type || "",
+              updatedAt: new Date(),
+            }
+          : a
       )
-      setEditDialogOpen(false)
-      setSelectedAgency(null)
-    }
+    )
+    setEditDialogOpen(false)
+    setSelectedAgency(null)
+  }
+}
+
+const handleAddAgency = () => {
+  const newAgency: Agency = {
+    id: Math.max(...agencies.map((a) => a.id)) + 1,
+    name: addForm.name,
+    type: addForm.type || "", // 👈 changed null → ""
+    addressCount: 0,
+    addresses: [],
+    createdAt: new Date(),
+    updatedAt: new Date(),
   }
 
-  const handleAddAgency = () => {
-    const newAgency: Agency = {
-      id: Math.max(...agencies.map((a) => a.id)) + 1,
-      name: addForm.name,
-      type: addForm.type || null,
-      addressCount: 0,
-      addresses: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }
-    setAgencies([newAgency, ...agencies])
-    setAddDialogOpen(false)
-    setAddForm({
-      name: '',
-      type: '',
-    })
-  }
+  setAgencies([...agencies, newAgency])
+}
+
 
   const getSortIcon = (field: keyof Agency) => {
     if (sortField !== field) {

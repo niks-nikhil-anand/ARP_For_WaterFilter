@@ -313,7 +313,7 @@ const ProductManagementPage = () => {
 
   // Filtering and sorting logic
   const filteredAndSortedProducts = useMemo(() => {
-    let filtered = products.filter((product) => {
+    const filtered = products.filter((product) => {
       const matchesSearch =
         product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -414,39 +414,40 @@ const ProductManagementPage = () => {
   }
 
   const saveEdit = () => {
-    if (selectedProduct) {
-      const price = parseFloat(editForm.price)
-      const discountedPrice = editForm.discountedPrice
-        ? parseFloat(editForm.discountedPrice)
-        : null
-      const discountPercent =
-        discountedPrice && price
-          ? parseFloat((((price - discountedPrice) / price) * 100).toFixed(1))
-          : null
+  if (selectedProduct) {
+    const price = parseFloat(editForm.price)
+    const discountedPrice = editForm.discountedPrice
+      ? parseFloat(editForm.discountedPrice)
+      : price
+    const discountPercent =
+      discountedPrice && price
+        ? parseFloat((((price - discountedPrice) / price) * 100).toFixed(1))
+        : 0
 
-      setProducts(
-        products.map((p) =>
-          p.id === selectedProduct.id
-            ? {
-                ...p,
-                name: editForm.name,
-                company: editForm.company,
-                type: editForm.type,
-                color: editForm.color || null,
-                price,
-                discountedPrice,
-                discountPercent,
-                offer: editForm.offer || null,
-                warrantyPeriod: editForm.warrantyPeriod || null,
-                updatedAt: new Date(),
-              }
-            : p
-        )
+    setProducts(
+      products.map((p) =>
+        p.id === selectedProduct.id
+          ? {
+              ...p,
+              name: editForm.name,
+              company: editForm.company,
+              type: editForm.type,
+              color: editForm.color || "",
+              price,
+              discountedPrice,
+              discountPercent,
+              offer: editForm.offer || "",
+              warrantyPeriod: editForm.warrantyPeriod || "",
+              updatedAt: new Date(),
+            }
+          : p
       )
-      setEditDialogOpen(false)
-      setSelectedProduct(null)
-    }
+    )
+    setEditDialogOpen(false)
+    setSelectedProduct(null)
   }
+}
+
 
   const getSortIcon = (field: keyof Product) => {
     if (sortField !== field) {

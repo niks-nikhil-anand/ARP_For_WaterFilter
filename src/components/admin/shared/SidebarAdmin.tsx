@@ -31,22 +31,19 @@ const SidebarAdmin: React.FC<SidebarAdminProps> = ({ className }) => {
   const menuSections = [
     {
       items: [
-        { icon: Layout, label: "Dashboard", href: "/admin/dashboard" },
-        { icon: User, label: "User", href: "/admin/users" },
-        { icon: Users, label: "Customer", href: "/admin/customers" },
-        { icon: Package, label: "Product", href: "/admin/products" },
-        { icon: Store, label: "Shop", href: "/admin/shops" },
-        { icon: ShoppingCart, label: "Order", href: "/admin/orders" },
-        { icon: BadgeCheck, label: "Warranty", href: "/admin/warranty" },
+        { icon: Layout, label: "Dashboard", href: "/admin" },
+        { icon: User, label: "User", href: "/admin/user_details" },
+        { icon: User, label: "Agent", href: "/admin/user_details" },
+        { icon: Package, label: "Product", href: "/admin/product_details" },
+        { icon: Store, label: "Shop", href: "/admin/shop_details" },
+        { icon: ShoppingCart, label: "Order", href: "/admin/order_details" },
       ]
     },
     {
-      title: "Management",
+      title: "Services",
       items: [
-        { icon: FolderOpen, label: "Projects", href: "/admin/project" },
-        { icon: FileText, label: "Blogs", href: "/blogs" },
-        { icon: TrendingUp, label: "Traffics", href: "/traffics" },
-        { icon: BarChart3, label: "Analytics", href: "/admin/analytics" },
+        { icon: FolderOpen, label: "Warranty", href: "/admin/warranty_details" },
+        { icon: FileText, label: "Repair Requests", href: "/repair_requests" },
       ]
     },
     {

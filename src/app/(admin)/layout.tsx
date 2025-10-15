@@ -49,8 +49,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
           />
           
-          <main className="flex-1 p-6 overflow-auto bg-white dark:bg-gray-900">
-            <div className="max-w-7xl mx-auto">
+          <main className="flex-1 overflow-auto bg-white dark:bg-gray-900">
+            <div className=" px-5 mx-auto">
               {children}
             </div>
           </main>

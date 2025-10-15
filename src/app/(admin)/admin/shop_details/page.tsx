@@ -240,7 +240,7 @@ const ShopManagementPage = () => {
 
   // Filtering and sorting logic
   const filteredAndSortedShops = useMemo(() => {
-    let filtered = shops.filter((shop) => {
+    const filtered = shops.filter((shop) => {
       const matchesSearch =
         shop.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         shop.address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -314,48 +314,50 @@ const ShopManagementPage = () => {
   }
 
   const saveEdit = () => {
-    if (selectedShop) {
-      setShops(
-        shops.map((s) =>
-          s.id === selectedShop.id
-            ? {
-                ...s,
-                name: editForm.name,
-                address: editForm.address || null,
-                userName: editForm.userName,
-                userEmail: editForm.userEmail,
-                updatedAt: new Date(),
-              }
-            : s
-        )
+  if (selectedShop) {
+    setShops(
+      shops.map((s) =>
+        s.id === selectedShop.id
+          ? {
+              ...s,
+              name: editForm.name,
+              address: editForm.address || "",
+              userName: editForm.userName,
+              userEmail: editForm.userEmail,
+              updatedAt: new Date(),
+            }
+          : s
       )
-      setEditDialogOpen(false)
-      setSelectedShop(null)
-    }
+    )
+    setEditDialogOpen(false)
+    setSelectedShop(null)
+  }
+}
+
+const handleAddShop = () => {
+  const newShop: Shop = {
+    id: Math.max(...shops.map((s) => s.id)) + 1,
+    name: addForm.name,
+    address: addForm.address || "",
+    userId: Math.floor(Math.random() * 1000) + 1,
+    userName: addForm.userName,
+    userEmail: addForm.userEmail,
+    productCount: 0,
+    orderCount: 0,
+    createdAt: new Date(),
+    updatedAt: new Date(),
   }
 
-  const handleAddShop = () => {
-    const newShop: Shop = {
-      id: Math.max(...shops.map((s) => s.id)) + 1,
-      name: addForm.name,
-      address: addForm.address || null,
-      userId: Math.floor(Math.random() * 1000) + 1,
-      userName: addForm.userName,
-      userEmail: addForm.userEmail,
-      productCount: 0,
-      orderCount: 0,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }
-    setShops([...shops, newShop])
-    setAddDialogOpen(false)
-    setAddForm({
-      name: '',
-      address: '',
-      userName: '',
-      userEmail: '',
-    })
-  }
+  setShops([...shops, newShop])
+  setAddDialogOpen(false)
+  setAddForm({
+    name: "",
+    address: "",
+    userName: "",
+    userEmail: "",
+  })
+}
+
 
   const getSortIcon = (field: keyof Shop) => {
     if (sortField !== field) {

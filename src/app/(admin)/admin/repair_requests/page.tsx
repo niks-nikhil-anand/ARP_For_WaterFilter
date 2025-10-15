@@ -408,64 +408,69 @@ const RepairManagementPage = () => {
       setSelectedRepair(null)
     }
   }
-
-  const saveEdit = () => {
-    if (selectedRepair) {
-      setRepairs(
-        repairs.map((r) =>
-          r.id === selectedRepair.id
-            ? {
-                ...r,
-                remarks: editForm.remarks || null,
-                feedback: editForm.feedback || null,
-                description: editForm.description || null,
-                parts: editForm.parts || null,
-                user: editForm.user || null,
-                technician: editForm.technician || null,
-                status: editForm.status,
-                priority: editForm.priority,
-                estimatedCost: editForm.estimatedCost ? parseFloat(editForm.estimatedCost) : null,
-                updatedAt: new Date(),
-              }
-            : r
-        )
+const saveEdit = () => {
+  if (selectedRepair) {
+    setRepairs(
+      repairs.map((r) =>
+        r.id === selectedRepair.id
+          ? {
+              ...r,
+              remarks: editForm.remarks || "",
+              feedback: editForm.feedback || "",
+              description: editForm.description || "",
+              parts: editForm.parts || "",
+              user: editForm.user || "",
+              technician: editForm.technician || "",
+              status: editForm.status,
+              priority: editForm.priority,
+              estimatedCost: editForm.estimatedCost
+                ? parseFloat(editForm.estimatedCost)
+                : 0,
+              updatedAt: new Date(),
+            }
+          : r
       )
-      setEditDialogOpen(false)
-      setSelectedRepair(null)
-    }
+    )
+    setEditDialogOpen(false)
+    setSelectedRepair(null)
+  }
+}
+
+const handleAddRepair = () => {
+  const newRepair: Repair = {
+    id: Math.max(...repairs.map((r) => r.id)) + 1,
+    productId: Math.floor(Math.random() * 14) + 1,
+    productName: addForm.productName,
+    remarks: addForm.remarks || "",
+    feedback: "",
+    description: addForm.description || "",
+    parts: addForm.parts || "",
+    user: addForm.user || "",
+    technician: addForm.technician || "",
+    status: addForm.status,
+    priority: addForm.priority,
+    estimatedCost: addForm.estimatedCost
+      ? parseFloat(addForm.estimatedCost)
+      : 0,
+    createdAt: new Date(),
+    updatedAt: new Date(),
   }
 
-  const handleAddRepair = () => {
-    const newRepair: Repair = {
-      id: Math.max(...repairs.map((r) => r.id)) + 1,
-      productId: Math.floor(Math.random() * 14) + 1,
-      productName: addForm.productName,
-      remarks: addForm.remarks || null,
-      feedback: null,
-      description: addForm.description || null,
-      parts: addForm.parts || null,
-      user: addForm.user || null,
-      technician: addForm.technician || null,
-      status: addForm.status,
-      priority: addForm.priority,
-      estimatedCost: addForm.estimatedCost ? parseFloat(addForm.estimatedCost) : null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }
-    setRepairs([newRepair, ...repairs])
-    setAddDialogOpen(false)
-    setAddForm({
-      productName: '',
-      remarks: '',
-      description: '',
-      parts: '',
-      user: '',
-      technician: '',
-      status: 'Pending',
-      priority: 'Medium',
-      estimatedCost: '',
-    })
-  }
+  setRepairs([newRepair, ...repairs])
+  setAddDialogOpen(false)
+  setAddForm({
+    productName: "",
+    remarks: "",
+    description: "",
+    parts: "",
+    user: "",
+    technician: "",
+    status: "Pending",
+    priority: "Medium",
+    estimatedCost: "",
+  })
+}
+
 
   const getSortIcon = (field: keyof Repair) => {
     if (sortField !== field) {

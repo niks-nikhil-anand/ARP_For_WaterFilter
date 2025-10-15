@@ -422,66 +422,75 @@ const WarrantyManagementPage = () => {
   };
 
   const saveEdit = () => {
-    if (selectedWarranty) {
-      const startDate = editForm.startDate
-        ? new Date(editForm.startDate)
-        : null;
-      const endDate = editForm.endDate ? new Date(editForm.endDate) : null;
-      const { status, daysRemaining } = calculateWarrantyStatus(
-        startDate,
-        endDate
-      );
-
-      setWarranties(
-        warranties.map((w) =>
-          w.id === selectedWarranty.id
-            ? {
-                ...w,
-                productName: editForm.productName,
-                details: editForm.details || null,
-                startDate,
-                endDate,
-                status,
-                daysRemaining,
-                updatedAt: new Date(),
-              }
-            : w
-        )
-      );
-      setEditDialogOpen(false);
-      setSelectedWarranty(null);
-    }
-  };
-
-  const handleAddWarranty = () => {
-    const startDate = addForm.startDate ? new Date(addForm.startDate) : null;
-    const endDate = addForm.endDate ? new Date(addForm.endDate) : null;
+  if (selectedWarranty) {
+    const startDate = editForm.startDate
+      ? new Date(editForm.startDate)
+      : new Date(); // default to today
+    const endDate = editForm.endDate
+      ? new Date(editForm.endDate)
+      : new Date(); // default to today
     const { status, daysRemaining } = calculateWarrantyStatus(
       startDate,
       endDate
     );
 
-    const newWarranty: Warranty = {
-      id: Math.max(...warranties.map((w) => w.id)) + 1,
-      productId: Math.floor(Math.random() * 14) + 1,
-      productName: addForm.productName,
-      details: addForm.details || null,
-      startDate,
-      endDate,
-      status,
-      daysRemaining,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    setWarranties([newWarranty, ...warranties]);
-    setAddDialogOpen(false);
-    setAddForm({
-      productName: "",
-      details: "",
-      startDate: "",
-      endDate: "",
-    });
+    setWarranties(
+      warranties.map((w) =>
+        w.id === selectedWarranty.id
+          ? {
+              ...w,
+              productName: editForm.productName,
+              details: editForm.details || "",
+              startDate,
+              endDate,
+              status,
+              daysRemaining,
+              updatedAt: new Date(),
+            }
+          : w
+      )
+    );
+    setEditDialogOpen(false);
+    setSelectedWarranty(null);
+  }
+};
+
+
+  const handleAddWarranty = () => {
+  const startDate = addForm.startDate
+    ? new Date(addForm.startDate)
+    : new Date(); // default today
+  const endDate = addForm.endDate
+    ? new Date(addForm.endDate)
+    : new Date(); // default today
+  const { status, daysRemaining } = calculateWarrantyStatus(
+    startDate,
+    endDate
+  );
+
+  const newWarranty: Warranty = {
+    id: Math.max(...warranties.map((w) => w.id)) + 1,
+    productId: Math.floor(Math.random() * 14) + 1,
+    productName: addForm.productName,
+    details: addForm.details || "", // empty string instead of null
+    startDate,
+    endDate,
+    status,
+    daysRemaining,
+    createdAt: new Date(),
+    updatedAt: new Date(),
   };
+
+  setWarranties([newWarranty, ...warranties]);
+  setAddDialogOpen(false);
+  setAddForm({
+    productName: "",
+    details: "",
+    startDate: "",
+    endDate: "",
+  });
+};
+
 
   const getSortIcon = (field: keyof Warranty) => {
     if (sortField !== field) {

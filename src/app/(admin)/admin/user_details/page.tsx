@@ -372,49 +372,50 @@ const RoleManagementPage = () => {
   }
 
   const saveEdit = () => {
-    if (selectedUser) {
-      setUsers(
-        users.map((u) =>
-          u.id === selectedUser.id
-            ? {
-                ...u,
-                name: editForm.name,
-                email: editForm.email,
-                mobile: editForm.mobile || null,
-                role: editForm.role,
-                status: editForm.status,
-                updatedAt: new Date(),
-              }
-            : u
-        )
+  if (selectedUser) {
+    setUsers(
+      users.map((u) =>
+        u.id === selectedUser.id
+          ? {
+              ...u,
+              name: editForm.name,
+              email: editForm.email,
+              mobile: editForm.mobile || "",
+              role: editForm.role,
+              status: editForm.status,
+              updatedAt: new Date(),
+            }
+          : u
       )
-      setEditDialogOpen(false)
-      setSelectedUser(null)
-    }
+    )
+    setEditDialogOpen(false)
+    setSelectedUser(null)
+  }
+}
+
+const handleAddUser = () => {
+  const newUser: User = {
+    id: Math.max(...users.map((u) => u.id)) + 1,
+    name: addForm.name,
+    email: addForm.email,
+    password: "hashed_password",
+    mobile: addForm.mobile || "",
+    role: addForm.role,
+    status: addForm.status,
+    createdAt: new Date(),
+    updatedAt: new Date(),
   }
 
-  const handleAddUser = () => {
-    const newUser: User = {
-      id: Math.max(...users.map((u) => u.id)) + 1,
-      name: addForm.name,
-      email: addForm.email,
-      password: 'hashed_password',
-      mobile: addForm.mobile || null,
-      role: addForm.role,
-      status: addForm.status,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }
-    setUsers([newUser, ...users])
-    setAddUserDialogOpen(false)
-    setAddForm({
-      name: '',
-      email: '',
-      mobile: '',
-      role: UserRole.USER,
-      status: UserStatus.ACTIVE,
-    })
-  }
+  setUsers([newUser, ...users])
+  setAddUserDialogOpen(false)
+  setAddForm({
+    name: "",
+    email: "",
+    mobile: "",
+    role: UserRole.USER,
+    status: UserStatus.ACTIVE,
+  })
+}
 
   const handleViewPermissions = (role: UserRole) => {
     setSelectedRole(role)

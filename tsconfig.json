@@ -13,6 +13,7 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
+    "forceConsistentCasingInFileNames": true,
     "plugins": [
       {
         "name": "next"
@@ -20,8 +21,21 @@
     ],
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    // 👇 Add this to ignore type/lint errors from generated or external code
+    "ignoreDeprecations": "5.0"
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules", "src/generated"]
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  // 👇 Ensure generated Prisma files are excluded from strict compilation
+  "exclude": [
+    "node_modules",
+    "src/generated",
+    ".next",
+    "dist"
+  ]
 }

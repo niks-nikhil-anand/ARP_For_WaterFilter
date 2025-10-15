@@ -82,7 +82,7 @@ const NavbarAdmin: React.FC<NavbarAdminProps> = ({
             🏢 Samarth Enterprise
           </h1>
           <p className="text-xs text-gray-600 dark:text-gray-400 hidden md:block">
-            Portfolio Management System
+            WaterFilter Management System
           </p>
         </div>
       </div>

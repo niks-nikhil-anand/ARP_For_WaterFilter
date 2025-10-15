@@ -262,6 +262,13 @@ const demoRepairs = [
 
 type Repair = typeof demoRepairs[0]
 
+// Helper function to truncate text
+const truncateText = (text: string, wordLimit: number = 5): string => {
+  const words = text.split(' ')
+  if (words.length <= wordLimit) return text
+  return words.slice(0, wordLimit).join(' ') + '...'
+}
+
 const RepairManagementPage = () => {
   const [repairs, setRepairs] = useState<Repair[]>(demoRepairs)
   const [searchTerm, setSearchTerm] = useState('')
@@ -309,7 +316,7 @@ const RepairManagementPage = () => {
 
   // Filtering and sorting logic
   const filteredAndSortedRepairs = useMemo(() => {
-    let filtered = repairs.filter((repair) => {
+    const filtered = repairs.filter((repair) => {
       const matchesSearch =
         repair.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         repair.remarks?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -717,11 +724,11 @@ const RepairManagementPage = () => {
                       <div className="flex items-start gap-2 max-w-xs">
                         <Package className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                         <div>
-                          <div className="font-medium text-sm line-clamp-2">
-                            {repair.productName}
+                          <div className="font-medium text-sm" title={repair.productName}>
+                            {truncateText(repair.productName, 6)}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            Product ID: {repair.productId}
+                            ID: {repair.productId}
                           </div>
                         </div>
                       </div>
@@ -729,8 +736,8 @@ const RepairManagementPage = () => {
                     <TableCell>
                       <div className="flex items-start gap-2 max-w-md">
                         <AlertCircle className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                        <span className="text-sm line-clamp-2">
-                          {repair.remarks || 'No remarks provided'}
+                        <span className="text-sm" title={repair.remarks || 'No remarks'}>
+                          {truncateText(repair.remarks || 'No remarks', 6)}
                         </span>
                       </div>
                     </TableCell>
@@ -847,6 +854,7 @@ const RepairManagementPage = () => {
         </div>
       </div>
 
+      {/* Dialogs remain the same - Add, View, Edit, Delete... */}
       {/* Add Repair Dialog */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">

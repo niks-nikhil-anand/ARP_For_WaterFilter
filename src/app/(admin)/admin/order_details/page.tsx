@@ -299,7 +299,7 @@ const OrderManagementPage = () => {
 
   // Filtering and sorting logic
   const filteredAndSortedOrders = useMemo(() => {
-    let filtered = orders.filter((order) => {
+    const filtered = orders.filter((order) => {
       const matchesSearch =
         order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.customerEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||

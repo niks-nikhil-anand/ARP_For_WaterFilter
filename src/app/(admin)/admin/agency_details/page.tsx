@@ -72,6 +72,8 @@ const demoAgencies = [
         state: 'Karnataka',
         country: 'India',
         pincode: '560038',
+        landmark: 'Near Metro Station',
+        apartmentNo: 'Building 12A',
         phone: '+91 98765 43210',
         altPhone: '+91 98765 43211',
       },
@@ -82,7 +84,10 @@ const demoAgencies = [
         state: 'Karnataka',
         country: 'India',
         pincode: '560095',
+        landmark: 'Forum Mall Road',
+        apartmentNo: 'Shop No. 45',
         phone: '+91 98765 43212',
+        altPhone: null,
       },
       {
         id: 3,
@@ -91,7 +96,10 @@ const demoAgencies = [
         state: 'Karnataka',
         country: 'India',
         pincode: '560066',
+        landmark: 'Phoenix Marketcity',
+        apartmentNo: 'Unit 789',
         phone: '+91 98765 43213',
+        altPhone: null,
       },
     ],
     createdAt: new Date('2023-01-15'),
@@ -110,6 +118,8 @@ const demoAgencies = [
         state: 'Karnataka',
         country: 'India',
         pincode: '560102',
+        landmark: 'Sector 2',
+        apartmentNo: 'Floor 3, Suite 301',
         phone: '+91 98765 43214',
         altPhone: '+91 98765 43215',
       },
@@ -120,7 +130,10 @@ const demoAgencies = [
         state: 'Karnataka',
         country: 'India',
         pincode: '560100',
+        landmark: 'Tech Park Gate 4',
+        apartmentNo: 'Warehouse B-12',
         phone: '+91 98765 43216',
+        altPhone: null,
       },
     ],
     createdAt: new Date('2023-03-20'),
@@ -139,7 +152,10 @@ const demoAgencies = [
         state: 'Karnataka',
         country: 'India',
         pincode: '560001',
+        landmark: 'Trinity Circle',
+        apartmentNo: 'Commercial Complex',
         phone: '+91 98765 43217',
+        altPhone: null,
       },
       {
         id: 7,
@@ -148,7 +164,10 @@ const demoAgencies = [
         state: 'Karnataka',
         country: 'India',
         pincode: '560076',
+        landmark: '2nd Stage',
+        apartmentNo: 'Shop 23',
         phone: '+91 98765 43218',
+        altPhone: null,
       },
       {
         id: 8,
@@ -157,7 +176,10 @@ const demoAgencies = [
         state: 'Karnataka',
         country: 'India',
         pincode: '560011',
+        landmark: '4th Block',
+        apartmentNo: 'Ground Floor',
         phone: '+91 98765 43219',
+        altPhone: null,
       },
       {
         id: 9,
@@ -166,7 +188,10 @@ const demoAgencies = [
         state: 'Karnataka',
         country: 'India',
         pincode: '560058',
+        landmark: 'Industrial Area',
+        apartmentNo: 'Godown 45',
         phone: '+91 98765 43220',
+        altPhone: null,
       },
     ],
     createdAt: new Date('2023-05-10'),
@@ -185,7 +210,10 @@ const demoAgencies = [
         state: 'Karnataka',
         country: 'India',
         pincode: '560003',
+        landmark: '8th Cross',
+        apartmentNo: 'Building 67',
         phone: '+91 98765 43221',
+        altPhone: null,
       },
       {
         id: 11,
@@ -194,7 +222,10 @@ const demoAgencies = [
         state: 'Karnataka',
         country: 'India',
         pincode: '560010',
+        landmark: '1st Block',
+        apartmentNo: 'Shop 56',
         phone: '+91 98765 43222',
+        altPhone: null,
       },
     ],
     createdAt: new Date('2023-07-05'),
@@ -213,6 +244,8 @@ const demoAgencies = [
         state: 'Karnataka',
         country: 'India',
         pincode: '560103',
+        landmark: 'Marathahalli Bridge',
+        apartmentNo: 'Corporate Tower',
         phone: '+91 98765 43223',
         altPhone: '+91 98765 43224',
       },
@@ -223,7 +256,10 @@ const demoAgencies = [
         state: 'Karnataka',
         country: 'India',
         pincode: '560037',
+        landmark: 'Outer Ring Road',
+        apartmentNo: 'Service Bay 12',
         phone: '+91 98765 43225',
+        altPhone: null,
       },
       {
         id: 14,
@@ -232,7 +268,10 @@ const demoAgencies = [
         state: 'Karnataka',
         country: 'India',
         pincode: '560103',
+        landmark: 'Ecospace',
+        apartmentNo: 'Office 401',
         phone: '+91 98765 43226',
+        altPhone: null,
       },
     ],
     createdAt: new Date('2023-08-18'),
@@ -251,7 +290,10 @@ const demoAgencies = [
         state: 'Karnataka',
         country: 'India',
         pincode: '560064',
+        landmark: 'New Town',
+        apartmentNo: 'Commercial Street 89',
         phone: '+91 98765 43227',
+        altPhone: null,
       },
     ],
     createdAt: new Date('2023-09-25'),
@@ -270,7 +312,10 @@ const demoAgencies = [
         state: 'Karnataka',
         country: 'India',
         pincode: '560078',
+        landmark: '5th Phase',
+        apartmentNo: 'Showroom 234',
         phone: '+91 98765 43228',
+        altPhone: null,
       },
       {
         id: 17,
@@ -279,7 +324,10 @@ const demoAgencies = [
         state: 'Karnataka',
         country: 'India',
         pincode: '560070',
+        landmark: '3rd Stage',
+        apartmentNo: 'Service Hub',
         phone: '+91 98765 43229',
+        altPhone: null,
       },
     ],
     createdAt: new Date('2023-11-12'),
@@ -298,6 +346,8 @@ const demoAgencies = [
         state: 'Karnataka',
         country: 'India',
         pincode: '560024',
+        landmark: 'Outer Ring Road',
+        apartmentNo: 'Hub Building',
         phone: '+91 98765 43230',
         altPhone: '+91 98765 43231',
       },
@@ -308,7 +358,10 @@ const demoAgencies = [
         state: 'Karnataka',
         country: 'India',
         pincode: '560032',
+        landmark: 'Main Road',
+        apartmentNo: 'Service Point 67',
         phone: '+91 98765 43232',
+        altPhone: null,
       },
       {
         id: 20,
@@ -317,7 +370,10 @@ const demoAgencies = [
         state: 'Karnataka',
         country: 'India',
         pincode: '560022',
+        landmark: 'Industrial Estate',
+        apartmentNo: 'Parts Depot',
         phone: '+91 98765 43233',
+        altPhone: null,
       },
     ],
     createdAt: new Date('2024-01-08'),
@@ -336,7 +392,10 @@ const demoAgencies = [
         state: 'Karnataka',
         country: 'India',
         pincode: '560043',
+        landmark: 'HRBR Layout',
+        apartmentNo: 'Office Complex',
         phone: '+91 98765 43234',
+        altPhone: null,
       },
       {
         id: 22,
@@ -345,7 +404,10 @@ const demoAgencies = [
         state: 'Karnataka',
         country: 'India',
         pincode: '560043',
+        landmark: 'Main Road',
+        apartmentNo: 'Service Bay',
         phone: '+91 98765 43235',
+        altPhone: null,
       },
     ],
     createdAt: new Date('2024-02-14'),
@@ -364,7 +426,10 @@ const demoAgencies = [
         state: 'Karnataka',
         country: 'India',
         pincode: '560060',
+        landmark: 'Satellite Town',
+        apartmentNo: 'Office 123',
         phone: '+91 98765 43236',
+        altPhone: null,
       },
     ],
     createdAt: new Date('2024-03-22'),
@@ -406,7 +471,7 @@ const AgencyManagementPage = () => {
 
   // Filtering and sorting logic
   const filteredAndSortedAgencies = useMemo(() => {
-    const filtered = agencies.filter((agency) => {
+    let filtered = agencies.filter((agency) => {
       const matchesSearch =
         agency.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         agency.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -980,6 +1045,18 @@ const AgencyManagementPage = () => {
                             <span className="text-muted-foreground">Country:</span>
                             <p className="font-medium">{address.country || '-'}</p>
                           </div>
+                          {address.landmark && (
+                            <div>
+                              <span className="text-muted-foreground">Landmark:</span>
+                              <p className="font-medium">{address.landmark}</p>
+                            </div>
+                          )}
+                          {address.apartmentNo && (
+                            <div>
+                              <span className="text-muted-foreground">Building:</span>
+                              <p className="font-medium">{address.apartmentNo}</p>
+                            </div>
+                          )}
                           {address.phone && (
                             <div>
                               <span className="text-muted-foreground">Phone:</span>

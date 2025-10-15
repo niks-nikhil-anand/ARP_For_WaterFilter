@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   LineChart,
   Line,
@@ -27,15 +26,12 @@ import {
   Wrench,
   ShieldCheck,
   TrendingUp,
-  TrendingDown,
   DollarSign,
-  Users,
-  Activity,
+ 
   Clock,
   CheckCircle,
   AlertCircle,
 } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 
 // Sample data for charts
 const monthlyOrdersData = [
@@ -133,7 +129,6 @@ const recentActivities = [
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6']
 
 const DashboardPage = () => {
-  const [timeRange, setTimeRange] = useState('monthly')
 
   // Calculate statistics
   const stats = {
@@ -154,7 +149,7 @@ const DashboardPage = () => {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground mt-2">
-            Welcome back! Here's an overview of your business
+            Welcome back! Here&apos;s an overview of your business
           </p>
         </div>
 

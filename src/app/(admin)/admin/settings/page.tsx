@@ -1,17 +1,29 @@
-'use client'
+"use client";
 
-import React, { useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Switch } from '@/components/ui/switch'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Separator } from '@/components/ui/separator'
-import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import React, { useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -19,55 +31,52 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
+} from "@/components/ui/dialog";
 import {
   User,
   Mail,
   Phone,
   Lock,
   Bell,
-  Globe,
   Palette,
   Shield,
   CreditCard,
-  Database,
   AlertCircle,
   CheckCircle,
   Save,
   Upload,
   Trash2,
-  Settings,
   Building2,
   MapPin,
   Calendar,
-} from 'lucide-react'
+} from "lucide-react";
 
 const SettingsPage = () => {
-  const [activeTab, setActiveTab] = useState('profile')
-  const [changePasswordDialog, setChangePasswordDialog] = useState(false)
-  const [deleteAccountDialog, setDeleteAccountDialog] = useState(false)
+  const [activeTab, setActiveTab] = useState("profile");
+  const [changePasswordDialog, setChangePasswordDialog] = useState(false);
+  const [deleteAccountDialog, setDeleteAccountDialog] = useState(false);
 
   // Profile Settings State
   const [profileForm, setProfileForm] = useState({
-    name: 'Rajesh Kumar',
-    email: 'rajesh.kumar@email.com',
-    phone: '+91 98765 43210',
-    role: 'Admin',
-    bio: 'Water purifier business owner with 10+ years of experience in providing quality water solutions.',
+    name: "Rajesh Kumar",
+    email: "rajesh.kumar@email.com",
+    phone: "+91 98765 43210",
+    role: "Admin",
+    bio: "Water purifier business owner with 10+ years of experience in providing quality water solutions.",
     avatar: null,
-  })
+  });
 
   // Company Settings State
   const [companyForm, setCompanyForm] = useState({
-    companyName: 'AquaPure Solutions',
-    businessType: 'Water Purifier Sales & Service',
-    gst: 'GST123456789',
-    address: '123, MG Road, Bangalore',
-    city: 'Bangalore',
-    state: 'Karnataka',
-    pincode: '560001',
-    country: 'India',
-  })
+    companyName: "AquaPure Solutions",
+    businessType: "Water Purifier Sales & Service",
+    gst: "GST123456789",
+    address: "123, MG Road, Bangalore",
+    city: "Bangalore",
+    state: "Karnataka",
+    pincode: "560001",
+    country: "India",
+  });
 
   // Notification Settings State
   const [notifications, setNotifications] = useState({
@@ -79,67 +88,71 @@ const SettingsPage = () => {
     promotionalEmails: false,
     weeklyReports: true,
     systemUpdates: true,
-  })
+  });
 
   // Security Settings State
   const [security, setSecurity] = useState({
     twoFactorAuth: false,
-    sessionTimeout: '30',
+    sessionTimeout: "30",
     loginAlerts: true,
     deviceManagement: true,
-  })
+  });
 
   // Appearance Settings State
   const [appearance, setAppearance] = useState({
-    theme: 'system',
-    language: 'en',
-    dateFormat: 'DD/MM/YYYY',
-    currency: 'INR',
-    timezone: 'Asia/Kolkata',
-  })
+    theme: "system",
+    language: "en",
+    dateFormat: "DD/MM/YYYY",
+    currency: "INR",
+    timezone: "Asia/Kolkata",
+  });
 
   // Password Change State
   const [passwordForm, setPasswordForm] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-  })
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
 
   const handleSaveProfile = () => {
-    console.log('Saving profile...', profileForm)
+    console.log("Saving profile...", profileForm);
     // Add save logic here
-  }
+  };
 
   const handleSaveCompany = () => {
-    console.log('Saving company...', companyForm)
+    console.log("Saving company...", companyForm);
     // Add save logic here
-  }
+  };
 
   const handleSaveNotifications = () => {
-    console.log('Saving notifications...', notifications)
+    console.log("Saving notifications...", notifications);
     // Add save logic here
-  }
+  };
 
   const handleSaveSecurity = () => {
-    console.log('Saving security...', security)
+    console.log("Saving security...", security);
     // Add save logic here
-  }
+  };
 
   const handleSaveAppearance = () => {
-    console.log('Saving appearance...', appearance)
+    console.log("Saving appearance...", appearance);
     // Add save logic here
-  }
+  };
 
   const handleChangePassword = () => {
-    console.log('Changing password...', passwordForm)
-    setChangePasswordDialog(false)
-    setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
-  }
+    console.log("Changing password...", passwordForm);
+    setChangePasswordDialog(false);
+    setPasswordForm({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
+  };
 
   const handleDeleteAccount = () => {
-    console.log('Deleting account...')
-    setDeleteAccountDialog(false)
-  }
+    console.log("Deleting account...");
+    setDeleteAccountDialog(false);
+  };
 
   return (
     <div className="container mx-auto py-10 px-4">
@@ -153,7 +166,11 @@ const SettingsPage = () => {
         </div>
 
         {/* Settings Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="space-y-6"
+        >
           <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6">
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="h-4 w-4" />
@@ -163,7 +180,10 @@ const SettingsPage = () => {
               <Building2 className="h-4 w-4" />
               <span className="hidden sm:inline">Company</span>
             </TabsTrigger>
-            <TabsTrigger value="notifications" className="flex items-center gap-2">
+            <TabsTrigger
+              value="notifications"
+              className="flex items-center gap-2"
+            >
               <Bell className="h-4 w-4" />
               <span className="hidden sm:inline">Notifications</span>
             </TabsTrigger>
@@ -194,9 +214,12 @@ const SettingsPage = () => {
                 {/* Avatar Section */}
                 <div className="flex items-center gap-6">
                   <Avatar className="h-24 w-24">
-                    <AvatarImage src={profileForm?.avatar} />
+                    <AvatarImage src={profileForm?.avatar ?? undefined} />
                     <AvatarFallback className="text-2xl">
-                      {profileForm.name.split(' ').map((n) => n[0]).join('')}
+                      {profileForm.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col gap-2">
@@ -223,7 +246,10 @@ const SettingsPage = () => {
                         id="name"
                         value={profileForm.name}
                         onChange={(e) =>
-                          setProfileForm({ ...profileForm, name: e.target.value })
+                          setProfileForm({
+                            ...profileForm,
+                            name: e.target.value,
+                          })
                         }
                         className="pl-10"
                       />
@@ -239,7 +265,10 @@ const SettingsPage = () => {
                         type="email"
                         value={profileForm.email}
                         onChange={(e) =>
-                          setProfileForm({ ...profileForm, email: e.target.value })
+                          setProfileForm({
+                            ...profileForm,
+                            email: e.target.value,
+                          })
                         }
                         className="pl-10"
                       />
@@ -254,7 +283,10 @@ const SettingsPage = () => {
                         id="phone"
                         value={profileForm.phone}
                         onChange={(e) =>
-                          setProfileForm({ ...profileForm, phone: e.target.value })
+                          setProfileForm({
+                            ...profileForm,
+                            phone: e.target.value,
+                          })
                         }
                         className="pl-10"
                       />
@@ -263,9 +295,12 @@ const SettingsPage = () => {
 
                   <div className="space-y-2">
                     <Label htmlFor="role">Role</Label>
-                    <Select value={profileForm.role} onValueChange={(value) =>
-                      setProfileForm({ ...profileForm, role: value })
-                    }>
+                    <Select
+                      value={profileForm.role}
+                      onValueChange={(value) =>
+                        setProfileForm({ ...profileForm, role: value })
+                      }
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -322,7 +357,10 @@ const SettingsPage = () => {
                         id="companyName"
                         value={companyForm.companyName}
                         onChange={(e) =>
-                          setCompanyForm({ ...companyForm, companyName: e.target.value })
+                          setCompanyForm({
+                            ...companyForm,
+                            companyName: e.target.value,
+                          })
                         }
                         className="pl-10"
                       />
@@ -335,7 +373,10 @@ const SettingsPage = () => {
                       id="businessType"
                       value={companyForm.businessType}
                       onChange={(e) =>
-                        setCompanyForm({ ...companyForm, businessType: e.target.value })
+                        setCompanyForm({
+                          ...companyForm,
+                          businessType: e.target.value,
+                        })
                       }
                     />
                   </div>
@@ -359,7 +400,10 @@ const SettingsPage = () => {
                         id="address"
                         value={companyForm.address}
                         onChange={(e) =>
-                          setCompanyForm({ ...companyForm, address: e.target.value })
+                          setCompanyForm({
+                            ...companyForm,
+                            address: e.target.value,
+                          })
                         }
                         className="pl-10"
                         rows={3}
@@ -384,7 +428,10 @@ const SettingsPage = () => {
                       id="state"
                       value={companyForm.state}
                       onChange={(e) =>
-                        setCompanyForm({ ...companyForm, state: e.target.value })
+                        setCompanyForm({
+                          ...companyForm,
+                          state: e.target.value,
+                        })
                       }
                     />
                   </div>
@@ -395,7 +442,10 @@ const SettingsPage = () => {
                       id="pincode"
                       value={companyForm.pincode}
                       onChange={(e) =>
-                        setCompanyForm({ ...companyForm, pincode: e.target.value })
+                        setCompanyForm({
+                          ...companyForm,
+                          pincode: e.target.value,
+                        })
                       }
                     />
                   </div>
@@ -406,7 +456,10 @@ const SettingsPage = () => {
                       id="country"
                       value={companyForm.country}
                       onChange={(e) =>
-                        setCompanyForm({ ...companyForm, country: e.target.value })
+                        setCompanyForm({
+                          ...companyForm,
+                          country: e.target.value,
+                        })
                       }
                     />
                   </div>
@@ -444,7 +497,10 @@ const SettingsPage = () => {
                     <Switch
                       checked={notifications.emailNotifications}
                       onCheckedChange={(checked) =>
-                        setNotifications({ ...notifications, emailNotifications: checked })
+                        setNotifications({
+                          ...notifications,
+                          emailNotifications: checked,
+                        })
                       }
                     />
                   </div>
@@ -461,7 +517,10 @@ const SettingsPage = () => {
                     <Switch
                       checked={notifications.smsNotifications}
                       onCheckedChange={(checked) =>
-                        setNotifications({ ...notifications, smsNotifications: checked })
+                        setNotifications({
+                          ...notifications,
+                          smsNotifications: checked,
+                        })
                       }
                     />
                   </div>
@@ -478,7 +537,10 @@ const SettingsPage = () => {
                     <Switch
                       checked={notifications.orderUpdates}
                       onCheckedChange={(checked) =>
-                        setNotifications({ ...notifications, orderUpdates: checked })
+                        setNotifications({
+                          ...notifications,
+                          orderUpdates: checked,
+                        })
                       }
                     />
                   </div>
@@ -495,7 +557,10 @@ const SettingsPage = () => {
                     <Switch
                       checked={notifications.repairAlerts}
                       onCheckedChange={(checked) =>
-                        setNotifications({ ...notifications, repairAlerts: checked })
+                        setNotifications({
+                          ...notifications,
+                          repairAlerts: checked,
+                        })
                       }
                     />
                   </div>
@@ -512,7 +577,10 @@ const SettingsPage = () => {
                     <Switch
                       checked={notifications.warrantyExpiry}
                       onCheckedChange={(checked) =>
-                        setNotifications({ ...notifications, warrantyExpiry: checked })
+                        setNotifications({
+                          ...notifications,
+                          warrantyExpiry: checked,
+                        })
                       }
                     />
                   </div>
@@ -529,7 +597,10 @@ const SettingsPage = () => {
                     <Switch
                       checked={notifications.promotionalEmails}
                       onCheckedChange={(checked) =>
-                        setNotifications({ ...notifications, promotionalEmails: checked })
+                        setNotifications({
+                          ...notifications,
+                          promotionalEmails: checked,
+                        })
                       }
                     />
                   </div>
@@ -546,7 +617,10 @@ const SettingsPage = () => {
                     <Switch
                       checked={notifications.weeklyReports}
                       onCheckedChange={(checked) =>
-                        setNotifications({ ...notifications, weeklyReports: checked })
+                        setNotifications({
+                          ...notifications,
+                          weeklyReports: checked,
+                        })
                       }
                     />
                   </div>
@@ -557,13 +631,17 @@ const SettingsPage = () => {
                     <div className="space-y-0.5">
                       <Label>System Updates</Label>
                       <p className="text-sm text-muted-foreground">
-                        Receive notifications about system updates and maintenance
+                        Receive notifications about system updates and
+                        maintenance
                       </p>
                     </div>
                     <Switch
                       checked={notifications.systemUpdates}
                       onCheckedChange={(checked) =>
-                        setNotifications({ ...notifications, systemUpdates: checked })
+                        setNotifications({
+                          ...notifications,
+                          systemUpdates: checked,
+                        })
                       }
                     />
                   </div>
@@ -670,21 +748,27 @@ const SettingsPage = () => {
                   <div className="space-y-3">
                     <Label>Active Sessions</Label>
                     <p className="text-sm text-muted-foreground">
-                      You're currently logged in on 2 devices
+                      You&apos;re currently logged in on 2 devices
                     </p>
                     <div className="space-y-2">
                       <div className="flex items-center justify-between p-3 border rounded-lg">
                         <div>
-                          <p className="text-sm font-medium">Chrome on Windows</p>
+                          <p className="text-sm font-medium">
+                            Chrome on Windows
+                          </p>
                           <p className="text-xs text-muted-foreground">
                             Bangalore, India • Active now
                           </p>
                         </div>
-                        <Badge className="bg-green-100 text-green-800">Current</Badge>
+                        <Badge className="bg-green-100 text-green-800">
+                          Current
+                        </Badge>
                       </div>
                       <div className="flex items-center justify-between p-3 border rounded-lg">
                         <div>
-                          <p className="text-sm font-medium">Safari on iPhone</p>
+                          <p className="text-sm font-medium">
+                            Safari on iPhone
+                          </p>
                           <p className="text-xs text-muted-foreground">
                             Bangalore, India • 2 hours ago
                           </p>
@@ -870,7 +954,9 @@ const SettingsPage = () => {
                 <div className="border rounded-lg p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h3 className="text-lg font-semibold">Professional Plan</h3>
+                      <h3 className="text-lg font-semibold">
+                        Professional Plan
+                      </h3>
                       <p className="text-sm text-muted-foreground">
                         Billed monthly
                       </p>
@@ -931,9 +1017,9 @@ const SettingsPage = () => {
                   <Label>Billing History</Label>
                   <div className="space-y-2">
                     {[
-                      { date: 'Oct 1, 2025', amount: '₹2,999', status: 'Paid' },
-                      { date: 'Sep 1, 2025', amount: '₹2,999', status: 'Paid' },
-                      { date: 'Aug 1, 2025', amount: '₹2,999', status: 'Paid' },
+                      { date: "Oct 1, 2025", amount: "₹2,999", status: "Paid" },
+                      { date: "Sep 1, 2025", amount: "₹2,999", status: "Paid" },
+                      { date: "Aug 1, 2025", amount: "₹2,999", status: "Paid" },
                     ].map((invoice, index) => (
                       <div
                         key={index}
@@ -942,7 +1028,9 @@ const SettingsPage = () => {
                         <div className="flex items-center gap-3">
                           <Calendar className="h-4 w-4 text-muted-foreground" />
                           <div>
-                            <p className="text-sm font-medium">{invoice.date}</p>
+                            <p className="text-sm font-medium">
+                              {invoice.date}
+                            </p>
                             <p className="text-xs text-muted-foreground">
                               {invoice.amount}
                             </p>
@@ -996,7 +1084,10 @@ const SettingsPage = () => {
       </div>
 
       {/* Change Password Dialog */}
-      <Dialog open={changePasswordDialog} onOpenChange={setChangePasswordDialog}>
+      <Dialog
+        open={changePasswordDialog}
+        onOpenChange={setChangePasswordDialog}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Change Password</DialogTitle>
@@ -1012,7 +1103,10 @@ const SettingsPage = () => {
                 type="password"
                 value={passwordForm.currentPassword}
                 onChange={(e) =>
-                  setPasswordForm({ ...passwordForm, currentPassword: e.target.value })
+                  setPasswordForm({
+                    ...passwordForm,
+                    currentPassword: e.target.value,
+                  })
                 }
               />
             </div>
@@ -1023,7 +1117,10 @@ const SettingsPage = () => {
                 type="password"
                 value={passwordForm.newPassword}
                 onChange={(e) =>
-                  setPasswordForm({ ...passwordForm, newPassword: e.target.value })
+                  setPasswordForm({
+                    ...passwordForm,
+                    newPassword: e.target.value,
+                  })
                 }
               />
             </div>
@@ -1034,13 +1131,19 @@ const SettingsPage = () => {
                 type="password"
                 value={passwordForm.confirmPassword}
                 onChange={(e) =>
-                  setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })
+                  setPasswordForm({
+                    ...passwordForm,
+                    confirmPassword: e.target.value,
+                  })
                 }
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setChangePasswordDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setChangePasswordDialog(false)}
+            >
               Cancel
             </Button>
             <Button onClick={handleChangePassword}>Change Password</Button>
@@ -1054,8 +1157,8 @@ const SettingsPage = () => {
           <DialogHeader>
             <DialogTitle className="text-red-600">Delete Account</DialogTitle>
             <DialogDescription>
-              This action cannot be undone. This will permanently delete your account and
-              remove all data from our servers.
+              This action cannot be undone. This will permanently delete your
+              account and remove all data from our servers.
             </DialogDescription>
           </DialogHeader>
           <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-lg p-4">
@@ -1066,14 +1169,17 @@ const SettingsPage = () => {
                   Warning
                 </p>
                 <p className="text-sm text-red-700 dark:text-red-500">
-                  All your shops, products, orders, and other data will be permanently
-                  deleted. This action cannot be reversed.
+                  All your shops, products, orders, and other data will be
+                  permanently deleted. This action cannot be reversed.
                 </p>
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteAccountDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteAccountDialog(false)}
+            >
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleDeleteAccount}>
@@ -1083,7 +1189,7 @@ const SettingsPage = () => {
         </DialogContent>
       </Dialog>
     </div>
-  )
-}
+  );
+};
 
-export default SettingsPage
+export default SettingsPage;

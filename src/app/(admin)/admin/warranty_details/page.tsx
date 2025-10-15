@@ -264,6 +264,14 @@ const demoWarranties = [
 
 type Warranty = (typeof demoWarranties)[0];
 
+// Helper function to truncate text
+const truncateText = (text: string, wordLimit: number = 5): string => {
+  if (!text) return '';
+  const words = text.split(' ');
+  if (words.length <= wordLimit) return text;
+  return words.slice(0, wordLimit).join(' ') + '...';
+};
+
 const WarrantyManagementPage = () => {
   const [warranties, setWarranties] = useState<Warranty[]>(demoWarranties);
   const [searchTerm, setSearchTerm] = useState("");
@@ -307,7 +315,6 @@ const WarrantyManagementPage = () => {
     if (!startDate || !endDate) return { status: "Unknown", daysRemaining: 0 };
 
     const today = new Date();
-    const start = new Date(startDate);
     const end = new Date(endDate);
     const daysRemaining = Math.ceil(
       (end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
@@ -320,7 +327,7 @@ const WarrantyManagementPage = () => {
 
   // Filtering and sorting logic
   const filteredAndSortedWarranties = useMemo(() => {
-    let filtered = warranties.filter((warranty) => {
+    const filtered = warranties.filter((warranty) => {
       const matchesSearch =
         warranty.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         warranty.details?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -711,11 +718,11 @@ const WarrantyManagementPage = () => {
                       <div className="flex items-start gap-2 max-w-xs">
                         <Package className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                         <div>
-                          <div className="font-medium text-sm line-clamp-2">
-                            {warranty.productName}
+                          <div className="font-medium text-sm" title={warranty.productName}>
+                            {truncateText(warranty.productName, 6)}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            Product ID: {warranty.productId}
+                            ID: {warranty.productId}
                           </div>
                         </div>
                       </div>
@@ -723,8 +730,8 @@ const WarrantyManagementPage = () => {
                     <TableCell>
                       <div className="flex items-start gap-2 max-w-md">
                         <FileText className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                        <span className="text-sm line-clamp-2">
-                          {warranty.details || "No details provided"}
+                        <span className="text-sm" title={warranty.details || "No details"}>
+                          {truncateText(warranty.details || "No details", 6)}
                         </span>
                       </div>
                     </TableCell>
@@ -840,6 +847,7 @@ const WarrantyManagementPage = () => {
         </div>
       </div>
 
+      {/* Dialogs remain the same as before */}
       {/* Add Warranty Dialog */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
@@ -948,9 +956,7 @@ const WarrantyManagementPage = () => {
                     <span className="font-medium">Product Name</span>
                   </div>
                   <p className="text-sm font-medium">
-                    {selectedWarranty.productName.length > 15
-                      ? `${selectedWarranty.productName.slice(0, 2)}...`
-                      : selectedWarranty.productName}
+                    {selectedWarranty.productName}
                   </p>
                 </div>
                 <div className="col-span-2 space-y-2">

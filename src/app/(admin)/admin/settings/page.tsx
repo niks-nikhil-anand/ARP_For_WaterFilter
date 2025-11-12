@@ -155,8 +155,9 @@ const SettingsPage = () => {
   };
 
   return (
-    <div className="container mx-auto py-10 px-4">
-      <div className="space-y-6">
+    <div className="h-[90vh] max-h-[92vh] overflow-y-auto">
+      <div className="container mx-auto py-10 px-4 pb-20">
+        <div className="space-y-6">
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
@@ -1188,7 +1189,8 @@ const SettingsPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+      </div>
   );
 };
 

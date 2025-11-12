@@ -15,6 +15,7 @@ import {
   Shield,
   Settings,
   LogOut,
+  Bell,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -27,7 +28,10 @@ const SidebarAdmin: React.FC<SidebarAdminProps> = ({ className }) => {
   const menuSections = [
     {
       title: "Overview",
-      items: [{ icon: LayoutDashboard, label: "Dashboard", href: "/admin" }],
+      items: [
+        { icon: LayoutDashboard, label: "Dashboard", href: "/admin" },
+        { icon: Bell, label: "Notifications", href: "/admin/notification" },
+      ],
     },
     {
       title: "Management",

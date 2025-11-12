@@ -387,8 +387,9 @@ const handleAddShop = () => {
   }
 
   return (
-    <div className="container mx-auto py-10 px-4">
-      <div className="space-y-6">
+    <div className="h-[90vh] max-h-[92vh] overflow-y-auto">
+      <div className="container mx-auto py-10 px-4 pb-20">
+        <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
@@ -900,7 +901,9 @@ const handleAddShop = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </div>
+      </div>
+  
   )
 }
 

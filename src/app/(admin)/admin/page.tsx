@@ -143,8 +143,9 @@ const DashboardPage = () => {
   }
 
   return (
-    <div className="container mx-auto py-10 px-4">
-      <div className="space-y-8">
+    <div className="h-[90vh] max-h-[92vh] overflow-y-auto">
+      <div className="container mx-auto py-10 px-4 pb-20">
+        <div className="space-y-8">
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
@@ -578,6 +579,7 @@ const DashboardPage = () => {
               </div>
             </CardContent>
           </Card>
+        </div>
         </div>
       </div>
     </div>

@@ -14,13 +14,30 @@ enum UserRole {
   ADMIN
   SUPERADMIN
   AGENT
-  
+
 }
 
 enum UserStatus {
   BLOCKED
   PENDING
   ACTIVE
+}
+
+enum NotificationCategory {
+  ORDER
+  PRODUCT
+  INVENTORY
+  USER
+  REPAIR
+  WARRANTY
+  SYSTEM
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
 }
 
 // -------------------- MODELS --------------------
@@ -134,4 +151,17 @@ model Agency {
   type      String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+}
+
+model Notification {
+  id        Int                   @id @default(autoincrement())
+  title     String
+  message   String
+  category  NotificationCategory
+  priority  NotificationPriority  @default(MEDIUM)
+  isRead    Boolean               @default(false)
+  link      String?
+  metadata  Json?
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
 }

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Moon, Sun, Menu, User, Settings, LogOut, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
+import NotificationDropdown from "./NotificationDropdown";
 
 interface NavbarAdminProps {
   className?: string;
@@ -88,6 +89,9 @@ const NavbarAdmin: React.FC<NavbarAdminProps> = ({
       </div>
 
       <div className="flex items-center space-x-3">
+        {/* Notification Dropdown */}
+        <NotificationDropdown />
+
         {/* Theme Toggle Button */}
         <Button
           variant="ghost"

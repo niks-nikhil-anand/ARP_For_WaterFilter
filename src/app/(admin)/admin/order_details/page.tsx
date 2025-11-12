@@ -56,7 +56,12 @@ import {
   Mail,
   Phone,
   Calendar,
+  FileText,
+  Download,
+  Printer,
 } from 'lucide-react'
+import OrderReceipt from '@/components/admin/orders/OrderReceipt'
+import { useOrderReceipt } from '@/hooks/useOrderReceipt'
 
 // Demo data based on Prisma Order model
 const demoOrders = [
@@ -274,7 +279,11 @@ const OrderManagementPage = () => {
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [receiptDialogOpen, setReceiptDialogOpen] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+
+  // Receipt hook
+  const { receiptRef, handlePrint, handleDownloadPDF } = useOrderReceipt()
 
   // Form states
   const [editForm, setEditForm] = useState({
@@ -377,6 +386,11 @@ const OrderManagementPage = () => {
   const handleDelete = (order: Order) => {
     setSelectedOrder(order)
     setDeleteDialogOpen(true)
+  }
+
+  const handleViewReceipt = (order: Order) => {
+    setSelectedOrder(order)
+    setReceiptDialogOpen(true)
   }
 
   const confirmDelete = () => {
@@ -682,6 +696,15 @@ const handleAddOrder = () => {
                           title="View details"
                         >
                           <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleViewReceipt(order)}
+                          title="View receipt"
+                          className="text-green-600 hover:text-green-700"
+                        >
+                          <FileText className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
@@ -1062,6 +1085,62 @@ const handleAddOrder = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Receipt Dialog */}
+      <Dialog open={receiptDialogOpen} onOpenChange={setReceiptDialogOpen}>
+        <DialogContent className="!max-w-[65vw] w-full max-h-[90vh] overflow-y-auto sm:!max-w-[65vw]">
+          <DialogHeader>
+            <DialogTitle>Order Receipt - #{selectedOrder?.id}</DialogTitle>
+            <DialogDescription>
+              View and download the order receipt
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedOrder && (
+            <div className="space-y-4">
+              <OrderReceipt
+                ref={receiptRef}
+                order={selectedOrder}
+                productDetails={{
+                  company: 'Kent',
+                  type: 'RO + UV + UF',
+                  price: 15999,
+                  warrantyPeriod: '1 Year',
+                }}
+                shopDetails={{
+                  address: 'Shop No. 12, Indiranagar, Bangalore - 560038',
+                  phone: '+91 98765 43210',
+                  email: 'contact@aquapure.com',
+                }}
+              />
+            </div>
+          )}
+
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setReceiptDialogOpen(false)}
+            >
+              Close
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handlePrint}
+              className="flex items-center gap-2"
+            >
+              <Printer className="h-4 w-4" />
+              Print
+            </Button>
+            <Button
+              onClick={() => selectedOrder && handleDownloadPDF(selectedOrder.id)}
+              className="flex items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Download PDF
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       </div>
       </div>
   )

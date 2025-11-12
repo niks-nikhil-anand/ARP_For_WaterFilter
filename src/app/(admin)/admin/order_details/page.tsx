@@ -62,6 +62,7 @@ import {
 } from 'lucide-react'
 import OrderReceipt from '@/components/admin/orders/OrderReceipt'
 import { useOrderReceipt } from '@/hooks/useOrderReceipt'
+import { generateInvoiceNumber } from '@/lib/invoice'
 
 // Demo data based on Prisma Order model
 const demoOrders = [
@@ -77,6 +78,7 @@ const demoOrders = [
     orderStatus: 'Delivered',
     createdAt: new Date('2024-10-01'),
     updatedAt: new Date('2024-10-05'),
+    invoiceNumber: generateInvoiceNumber(1, new Date('2024-10-01')),
   },
   {
     id: 2,
@@ -90,6 +92,7 @@ const demoOrders = [
     orderStatus: 'Processing',
     createdAt: new Date('2024-10-03'),
     updatedAt: new Date('2024-10-03'),
+    invoiceNumber: generateInvoiceNumber(2, new Date('2024-10-03')),
   },
   {
     id: 3,
@@ -103,6 +106,7 @@ const demoOrders = [
     orderStatus: 'Delivered',
     createdAt: new Date('2024-09-28'),
     updatedAt: new Date('2024-10-02'),
+    invoiceNumber: generateInvoiceNumber(3, new Date('2024-09-28')),
   },
   {
     id: 4,
@@ -116,6 +120,7 @@ const demoOrders = [
     orderStatus: 'Shipped',
     createdAt: new Date('2024-10-05'),
     updatedAt: new Date('2024-10-08'),
+    invoiceNumber: generateInvoiceNumber(4, new Date('2024-10-05')),
   },
   {
     id: 5,
@@ -129,6 +134,7 @@ const demoOrders = [
     orderStatus: 'Cancelled',
     createdAt: new Date('2024-09-25'),
     updatedAt: new Date('2024-09-26'),
+    invoiceNumber: generateInvoiceNumber(5, new Date('2024-09-25')),
   },
   {
     id: 6,
@@ -142,6 +148,7 @@ const demoOrders = [
     orderStatus: 'Delivered',
     createdAt: new Date('2024-09-20'),
     updatedAt: new Date('2024-09-25'),
+    invoiceNumber: generateInvoiceNumber(6, new Date('2024-09-20')),
   },
   {
     id: 7,
@@ -155,6 +162,7 @@ const demoOrders = [
     orderStatus: 'Processing',
     createdAt: new Date('2024-10-10'),
     updatedAt: new Date('2024-10-10'),
+    invoiceNumber: generateInvoiceNumber(7, new Date('2024-10-10')),
   },
   {
     id: 8,
@@ -168,6 +176,7 @@ const demoOrders = [
     orderStatus: 'Shipped',
     createdAt: new Date('2024-10-07'),
     updatedAt: new Date('2024-10-09'),
+    invoiceNumber: generateInvoiceNumber(8, new Date('2024-10-07')),
   },
   {
     id: 9,
@@ -181,6 +190,7 @@ const demoOrders = [
     orderStatus: 'Delivered',
     createdAt: new Date('2024-09-15'),
     updatedAt: new Date('2024-09-20'),
+    invoiceNumber: generateInvoiceNumber(9, new Date('2024-09-15')),
   },
   {
     id: 10,
@@ -194,6 +204,7 @@ const demoOrders = [
     orderStatus: 'Processing',
     createdAt: new Date('2024-10-12'),
     updatedAt: new Date('2024-10-12'),
+    invoiceNumber: generateInvoiceNumber(10, new Date('2024-10-12')),
   },
   {
     id: 11,
@@ -207,6 +218,7 @@ const demoOrders = [
     orderStatus: 'Delivered',
     createdAt: new Date('2024-09-10'),
     updatedAt: new Date('2024-09-15'),
+    invoiceNumber: generateInvoiceNumber(11, new Date('2024-09-10')),
   },
   {
     id: 12,
@@ -220,6 +232,7 @@ const demoOrders = [
     orderStatus: 'Shipped',
     createdAt: new Date('2024-10-11'),
     updatedAt: new Date('2024-10-13'),
+    invoiceNumber: generateInvoiceNumber(12, new Date('2024-10-11')),
   },
   {
     id: 13,
@@ -233,6 +246,7 @@ const demoOrders = [
     orderStatus: 'Processing',
     createdAt: new Date('2024-10-14'),
     updatedAt: new Date('2024-10-14'),
+    invoiceNumber: generateInvoiceNumber(13, new Date('2024-10-14')),
   },
   {
     id: 14,
@@ -246,6 +260,7 @@ const demoOrders = [
     orderStatus: 'Delivered',
     createdAt: new Date('2024-09-05'),
     updatedAt: new Date('2024-09-10'),
+    invoiceNumber: generateInvoiceNumber(14, new Date('2024-09-05')),
   },
   {
     id: 15,
@@ -259,6 +274,7 @@ const demoOrders = [
     orderStatus: 'Cancelled',
     createdAt: new Date('2024-10-08'),
     updatedAt: new Date('2024-10-09'),
+    invoiceNumber: generateInvoiceNumber(15, new Date('2024-10-08')),
   },
 ]
 
@@ -603,6 +619,7 @@ const handleAddOrder = () => {
                     {getSortIcon('id')}
                   </div>
                 </TableHead>
+                <TableHead>Invoice No.</TableHead>
                 <TableHead
                   className="cursor-pointer select-none"
                   onClick={() => handleSort('customerName')}
@@ -649,6 +666,7 @@ const handleAddOrder = () => {
                 currentOrders.map((order) => (
                   <TableRow key={order.id}>
                     <TableCell className="font-medium">#{order.id}</TableCell>
+                    <TableCell className="font-mono text-xs">{order.invoiceNumber}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4 text-muted-foreground" />
@@ -897,6 +915,13 @@ const handleAddOrder = () => {
                     <span className="font-medium">Order ID</span>
                   </div>
                   <p className="text-lg font-semibold">#{selectedOrder.id}</p>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <FileText className="h-4 w-4" />
+                    <span className="font-medium">Invoice Number</span>
+                  </div>
+                  <p className="text-sm font-mono font-semibold">{selectedOrder.invoiceNumber}</p>
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">

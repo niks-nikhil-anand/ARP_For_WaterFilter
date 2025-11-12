@@ -28,40 +28,79 @@ export const useOrderReceipt = () => {
 
   // Handle PDF download
   const handleDownloadPDF = useCallback(async (orderId: number) => {
-    if (!receiptRef.current) return;
+    if (!receiptRef.current) {
+      alert('Receipt not found. Please try again.');
+      return;
+    }
 
     try {
-      // Show loading state if needed
       const element = receiptRef.current;
 
-      // Convert HTML to canvas
+      // Wait a bit to ensure content is fully rendered
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Convert HTML to canvas with better options
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
+        allowTaint: true,
         logging: false,
         backgroundColor: '#ffffff',
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight,
+        ignoreElements: (element) => {
+          // Ignore elements that might have problematic styles
+          return element.tagName === 'SCRIPT' || element.tagName === 'STYLE';
+        },
+        onclone: (clonedDoc) => {
+          // Clean up the cloned document to avoid lab() color issues
+          const clonedElement = clonedDoc.querySelector('[data-receipt]');
+          if (clonedElement) {
+            // Force standard colors
+            clonedElement.querySelectorAll('*').forEach((el) => {
+              if (el instanceof HTMLElement) {
+                const computed = window.getComputedStyle(el);
+                // Replace any lab/oklch colors with standard colors
+                if (computed.color && (computed.color.includes('lab') || computed.color.includes('oklch'))) {
+                  el.style.color = '#000000';
+                }
+                if (computed.backgroundColor && (computed.backgroundColor.includes('lab') || computed.backgroundColor.includes('oklch'))) {
+                  el.style.backgroundColor = '#ffffff';
+                }
+              }
+            });
+          }
+        },
       });
 
       // Calculate PDF dimensions
       const imgWidth = 210; // A4 width in mm
       const pageHeight = 297; // A4 height in mm
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
 
       // Create PDF
-      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: true,
+      });
+
+      let heightLeft = imgHeight;
       let position = 0;
 
-      // Add image to PDF
-      const imgData = canvas.toDataURL('image/png');
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      // Convert canvas to image data
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+      // Add first page
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
       heightLeft -= pageHeight;
 
       // Add new pages if content is longer than one page
-      while (heightLeft >= 0) {
+      while (heightLeft > 0) {
         position = heightLeft - imgHeight;
         pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
         heightLeft -= pageHeight;
       }
 
@@ -69,7 +108,7 @@ export const useOrderReceipt = () => {
       pdf.save(`Order_Receipt_${orderId}.pdf`);
     } catch (error) {
       console.error('Error generating PDF:', error);
-      alert('Failed to generate PDF. Please try again.');
+      alert(`Failed to generate PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }, []);
 

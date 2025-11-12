@@ -16,6 +16,7 @@ interface OrderReceiptProps {
     orderStatus: string;
     createdAt: Date;
     updatedAt: Date;
+    invoiceNumber: string;
   };
   // Additional details that would come from your database
   productDetails?: {
@@ -45,6 +46,7 @@ const OrderReceipt = React.forwardRef<HTMLDivElement, OrderReceiptProps>(
     return (
       <div
         ref={ref}
+        data-receipt="true"
         className="bg-white p-8 w-full max-w-4xl mx-auto"
         style={{ fontFamily: 'Arial, sans-serif', minWidth: '800px' }}
       >
@@ -62,12 +64,16 @@ const OrderReceipt = React.forwardRef<HTMLDivElement, OrderReceiptProps>(
             </div>
             <div className="text-right">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">ORDER RECEIPT</h2>
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-gray-600 space-y-1">
                 <p className="flex items-center justify-end gap-1">
                   <Hash className="h-3 w-3" />
                   Order ID: #{order.id}
                 </p>
-                <p className="flex items-center justify-end gap-1 mt-1">
+                <p className="flex items-center justify-end gap-1">
+                  <Hash className="h-3 w-3" />
+                  Invoice: <span className="font-mono font-semibold">{order.invoiceNumber}</span>
+                </p>
+                <p className="flex items-center justify-end gap-1">
                   <Calendar className="h-3 w-3" />
                   Date: {order.createdAt.toLocaleDateString('en-IN', {
                     year: 'numeric',

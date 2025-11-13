@@ -4,7 +4,6 @@ import React, { useState, useMemo } from 'react';
 import {
   Bell,
   CheckCheck,
-  Filter,
   Search,
   Trash2,
   Eye,

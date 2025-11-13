@@ -439,8 +439,9 @@ const OrderManagementPage = () => {
 }
 
 const handleAddOrder = () => {
+  const newOrderId = Math.max(...orders.map((o) => o.id)) + 1
   const newOrder: Order = {
-    id: Math.max(...orders.map((o) => o.id)) + 1,
+    id: newOrderId,
     productId: Math.floor(Math.random() * 14) + 1,
     productName: addForm.productName,
     shopId: Math.floor(Math.random() * 3) + 1,
@@ -451,6 +452,7 @@ const handleAddOrder = () => {
     orderStatus: addForm.orderStatus,
     createdAt: new Date(),
     updatedAt: new Date(),
+    invoiceNumber: generateInvoiceNumber(newOrderId, new Date()),
   }
 
   setOrders([newOrder, ...orders])

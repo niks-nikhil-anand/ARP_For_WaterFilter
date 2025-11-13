@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
-import { Notification, NotificationCategory } from "@/types/notification";
+import { Notification } from "@/types/notification";
 import {
   demoNotifications,
   getUnreadCount,

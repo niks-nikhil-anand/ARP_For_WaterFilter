@@ -10,7 +10,7 @@ export const useOrderReceipt = () => {
 
   // Handle printing
   const handlePrint = useReactToPrint({
-    content: () => receiptRef.current,
+    contentRef: receiptRef,
     documentTitle: `Order_Receipt`,
     pageStyle: `
       @page {

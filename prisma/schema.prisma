@@ -11,10 +11,9 @@ datasource db {
 // -------------------- ENUMS --------------------
 enum UserRole {
   USER
-  ADMIN
   SUPERADMIN
+  ADMIN
   AGENT
-
 }
 
 enum UserStatus {
@@ -28,8 +27,7 @@ enum NotificationCategory {
   PRODUCT
   INVENTORY
   USER
-  REPAIR
-  WARRANTY
+  SERVICE
   SYSTEM
 }
 
@@ -40,7 +38,20 @@ enum NotificationPriority {
   URGENT
 }
 
+enum DiscountType {
+  PERCENTAGE
+  FLAT_RATE
+}
+
+enum ServiceEventType {
+  WARRANTY     
+  AMC          
+  REPAIR       
+}
+
 // -------------------- MODELS --------------------
+
+// User model is the core model for all roles
 model User {
   id        Int       @id @default(autoincrement())
   name      String
@@ -51,13 +62,16 @@ model User {
   status    UserStatus @default(PENDING)
   addresses Address[]
   shops     Shop[]
+  agents    Agent[]       
+  receivedNotifications Notification[]
+  serviceEvents ServiceEvent[] 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
 
 model Address {
   id           Int     @id @default(autoincrement())
-  type         String? // Home, Work, etc.
+  type         String? 
   pincode      String?
   landmark     String?
   apartmentNo  String?
@@ -68,54 +82,134 @@ model Address {
   altPhone     String?
   user         User    @relation(fields: [userId], references: [id])
   userId       Int
-  agency       Agency? @relation(fields: [agencyId], references: [id])
-  agencyId     Int?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
 
+// Represents the shop/store owner or admin
 model Shop {
   id        Int       @id @default(autoincrement())
   name      String
   address   String?
-  user      User      @relation(fields: [userId], references: [id]) // shop owner/admin
-  userId    Int
+  user      User      @relation(fields: [userId], references: [id]) 
+  userId    Int       @unique 
   products  Product[]
   orders    Order[]
+  agents    Agent[]
+  amcContracts AMCContract[] 
+  
+  // 💡 FIX: Added the opposite relation field
+  notifications Notification[] 
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   
 }
 
+// Dedicated model for Service Agents
+model Agent {
+  id        Int       @id @default(autoincrement())
+  user      User      @relation(fields: [userId], references: [id]) 
+  userId    Int       @unique
+  shop      Shop      @relation(fields: [shopId], references: [id])
+  shopId    Int
+  tasks     ServiceEvent[]  
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+// Core Product definition
 model Product {
   id              Int              @id @default(autoincrement())
   name            String
   company         String
   type            String
   color           String?
-  price           Float
-  discountedPrice Float?
-  discountPercent Float?
   offer           String?
-  warrantyPeriod  String?
+  warrantyPeriod  String?          
   shop            Shop             @relation(fields: [shopId], references: [id])
   shopId          Int
+  productDetail   ProductDetail?   
   orders          Order[]
-  repairs         Repair[]
-  warrantyDetails WarrantyDetails[]
+  serviceEvents   ServiceEvent[]   
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 }
 
-model WarrantyDetails {
-  id          Int      @id @default(autoincrement())
-  product     Product  @relation(fields: [productId], references: [id])
-  productId   Int
-  details     String?
-  startDate   DateTime?
-  endDate     DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+// Detailed product pricing, unique code, and discount structure
+model ProductDetail {
+  id              Int             @id @default(autoincrement())
+  product         Product         @relation(fields: [productId], references: [id])
+  productId       Int             @unique 
+  uniqueCode      String          @unique 
+  basePrice       Float
+  discountedPrice Float?
+  discountValue   Float?          
+  discountType    DiscountType?   
+  amcContract     AMCContract?    @relation(fields: [amcContractId], references: [id]) 
+  amcContractId   Int?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+// Defines a type of AMC contract/plan
+model AMCContract {
+  id            Int             @id @default(autoincrement())
+  name          String
+  duration      String          
+  price         Float
+  shop          Shop            @relation(fields: [shopId], references: [id])
+  shopId        Int
+  services      AMCService[]    
+  productDetails ProductDetail[] 
+  serviceEvents ServiceEvent[] 
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+// Specific service included in an AMCContract
+model AMCService {
+  id            Int             @id @default(autoincrement())
+  name          String          
+  description   String?
+  amcContract   AMCContract     @relation(fields: [amcContractId], references: [id])
+  amcContractId Int
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+// 🎯 UNIFIED MODEL FOR WARRANTY, AMC, AND REPAIR
+model ServiceEvent {
+  id            Int                 @id @default(autoincrement())
+  type          ServiceEventType    
+
+  // General Details
+  product       Product             @relation(fields: [productId], references: [id])
+  productId     Int
+  customer      User?               @relation(fields: [customerId], references: [id])
+  customerId    Int?
+  order         Order?              @relation(fields: [orderId], references: [id])
+  orderId       Int?                
+
+  // Contract Details 
+  startDate     DateTime?           
+  endDate       DateTime?           
+  pricePaid     Float?              
+  amcContract   AMCContract?        @relation(fields: [amcContractId], references: [id]) 
+  amcContractId Int?
+
+  // Repair/Service Details 
+  remarks       String?             
+  description   String?             
+  parts         String?             
+  feedback      String?             
+  assignedTo    Agent?              @relation(fields: [agentId], references: [id])
+  agentId       Int?
+  
+  // Internal Notes/Data
+  details       String?             
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
 }
 
 model Order {
@@ -127,30 +221,9 @@ model Order {
   customerName String
   customerEmail String?
   customerPhone String?
+  serviceEvents ServiceEvent[] 
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
-}
-
-model Repair {
-  id          Int       @id @default(autoincrement())
-  product     Product   @relation(fields: [productId], references: [id])
-  productId   Int
-  remarks     String?
-  feedback    String?
-  description String?
-  parts       String?
-  user        String?   // Could be customer or staff
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-}
-
-model Agency {
-  id        Int       @id @default(autoincrement())
-  name      String
-  addresses Address[]
-  type      String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
 }
 
 model Notification {
@@ -162,6 +235,10 @@ model Notification {
   isRead    Boolean               @default(false)
   link      String?
   metadata  Json?
+  recipient User                  @relation(fields: [recipientId], references: [id])
+  recipientId Int
+  shop      Shop?                 @relation(fields: [shopId], references: [id])
+  shopId    Int?                  
   createdAt DateTime              @default(now())
   updatedAt DateTime              @updatedAt
 }

@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { successResponse, errorResponse, unauthorizedResponse, notFoundResponse, serverErrorResponse, forbiddenResponse } from '@/lib/api-response';
-import { UserRole } from '@prisma/client';
+import { UserRole } from '@/generated/prisma';
 
 // GET single shop by ID
 export async function GET(

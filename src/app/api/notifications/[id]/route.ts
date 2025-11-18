@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { successResponse, errorResponse, unauthorizedResponse, notFoundResponse, serverErrorResponse, forbiddenResponse } from '@/lib/api-response';
-import { UserRole, NotificationPriority } from '@prisma/client';
+import { UserRole, NotificationPriority } from '@/generated/prisma';
 
 // GET single notification
 export async function GET(

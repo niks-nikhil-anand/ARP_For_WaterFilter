@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { hashPassword } from '@/lib/password';
 import { successResponse, errorResponse, unauthorizedResponse, serverErrorResponse, forbiddenResponse } from '@/lib/api-response';
-import { UserRole, UserStatus } from '@prisma/client';
+import { UserRole, UserStatus } from '@/generated/prisma';
 
 // GET all users
 export async function GET(request: NextRequest) {

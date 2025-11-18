@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { hashPassword } from '@/lib/password';
 import { generateToken, setAuthCookie } from '@/lib/auth';
 import { successResponse, errorResponse, serverErrorResponse } from '@/lib/api-response';
-import { UserRole, UserStatus } from '@prisma/client';
+import { UserRole, UserStatus } from '@/generated/prisma';
 
 export async function POST(request: NextRequest) {
   try {

@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { successResponse, errorResponse, unauthorizedResponse, serverErrorResponse, forbiddenResponse } from '@/lib/api-response';
-import { UserRole, ServiceEventType } from '@prisma/client';
+import { UserRole, ServiceEventType } from '@/generated/prisma';
 
 // GET all service events
 export async function GET(request: NextRequest) {

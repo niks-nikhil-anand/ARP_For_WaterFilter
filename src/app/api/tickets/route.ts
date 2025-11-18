@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { successResponse, errorResponse, unauthorizedResponse, serverErrorResponse, forbiddenResponse } from '@/lib/api-response';
-import { UserRole, TicketStatus, TicketPriority } from '@prisma/client';
+import { UserRole, TicketStatus, TicketPriority } from '@/generated/prisma';
 
 // GET all tickets
 export async function GET(request: NextRequest) {

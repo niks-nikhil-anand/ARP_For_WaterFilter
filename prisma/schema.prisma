@@ -44,9 +44,24 @@ enum DiscountType {
 }
 
 enum ServiceEventType {
-  WARRANTY     
-  AMC          
-  REPAIR       
+  WARRANTY
+  AMC
+  REPAIR
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+  CANCELLED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
 }
 
 // -------------------- MODELS --------------------
@@ -91,29 +106,28 @@ model Shop {
   id        Int       @id @default(autoincrement())
   name      String
   address   String?
-  user      User      @relation(fields: [userId], references: [id]) 
-  userId    Int       @unique 
+  user      User      @relation(fields: [userId], references: [id])
+  userId    Int       @unique
   products  Product[]
   orders    Order[]
   agents    Agent[]
-  amcContracts AMCContract[] 
-  
-  // 💡 FIX: Added the opposite relation field
-  notifications Notification[] 
+  amcContracts AMCContract[]
+  notifications Notification[]
+  tickets   Ticket[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-  
 }
 
 // Dedicated model for Service Agents
 model Agent {
   id        Int       @id @default(autoincrement())
-  user      User      @relation(fields: [userId], references: [id]) 
+  user      User      @relation(fields: [userId], references: [id])
   userId    Int       @unique
   shop      Shop      @relation(fields: [shopId], references: [id])
   shopId    Int
-  tasks     ServiceEvent[]  
+  tasks     ServiceEvent[]
+  tickets   Ticket[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
@@ -238,7 +252,46 @@ model Notification {
   recipient User                  @relation(fields: [recipientId], references: [id])
   recipientId Int
   shop      Shop?                 @relation(fields: [shopId], references: [id])
-  shopId    Int?                  
+  shopId    Int?
   createdAt DateTime              @default(now())
   updatedAt DateTime              @updatedAt
+}
+
+// Service Booking Ticket Model
+model Ticket {
+  id              Int              @id @default(autoincrement())
+
+  // Customer Information
+  customerName    String
+  customerEmail   String
+  customerPhone   String
+  customerAddress String?
+
+  // Service Details
+  serviceType     String           // e.g., "Installation", "Repair", "AMC", "Maintenance"
+  productType     String?          // e.g., "RO", "UV", "Water Purifier"
+  description     String?          // Customer's description of the issue/requirement
+  preferredDate   DateTime?        // Customer's preferred service date
+  preferredTime   String?          // Customer's preferred time slot
+
+  // Status & Priority
+  status          TicketStatus     @default(OPEN)
+  priority        TicketPriority   @default(MEDIUM)
+
+  // Assignment
+  assignedToAgent Agent?           @relation(fields: [agentId], references: [id])
+  agentId         Int?
+  shop            Shop?            @relation(fields: [shopId], references: [id])
+  shopId          Int?
+
+  // Internal Notes
+  internalNotes   String?          // Notes for internal team
+  resolutionNotes String?          // Notes about how it was resolved
+
+  // Metadata
+  source          String?          @default("WEBSITE") // WEBSITE, PHONE, EMAIL, etc.
+  metadata        Json?            // Additional flexible data
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 }

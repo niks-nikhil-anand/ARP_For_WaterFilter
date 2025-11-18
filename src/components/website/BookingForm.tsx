@@ -6,8 +6,9 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Calendar, Clock, User, Phone, Mail, MapPin, Send } from 'lucide-react'
+import { Calendar, Clock, User, Phone, Mail, MapPin, Send, Loader2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { commonActions } from '@/actions'
 
 const BookingForm = () => {
   const [formData, setFormData] = useState({
@@ -16,10 +17,17 @@ const BookingForm = () => {
     phone: '',
     address: '',
     serviceType: '',
+    productType: '',
     preferredDate: '',
     preferredTime: '',
     message: ''
   })
+
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitStatus, setSubmitStatus] = useState<{
+    type: 'success' | 'error' | null;
+    message: string;
+  }>({ type: null, message: '' })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
@@ -35,23 +43,64 @@ const BookingForm = () => {
     })
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Handle form submission here
-    console.log('Booking submitted:', formData)
-    // Reset form
-    setFormData({
-      name: '',
-      email: '',
-      phone: '',
-      address: '',
-      serviceType: '',
-      preferredDate: '',
-      preferredTime: '',
-      message: ''
-    })
-    // Show success message (you can add a toast notification here)
-    alert('Booking request submitted successfully! We will contact you soon.')
+    setIsSubmitting(true)
+    setSubmitStatus({ type: null, message: '' })
+
+    try {
+      // Create ticket using the server action
+      const result = await commonActions.createTicket({
+        customerName: formData.name,
+        customerEmail: formData.email,
+        customerPhone: formData.phone,
+        customerAddress: formData.address,
+        serviceType: formData.serviceType,
+        productType: formData.productType || undefined,
+        description: formData.message || undefined,
+        preferredDate: formData.preferredDate || undefined,
+        preferredTime: formData.preferredTime || undefined,
+        priority: 'MEDIUM',
+      })
+
+      if (result.success) {
+        // Success - reset form
+        setFormData({
+          name: '',
+          email: '',
+          phone: '',
+          address: '',
+          serviceType: '',
+          productType: '',
+          preferredDate: '',
+          preferredTime: '',
+          message: ''
+        })
+
+        setSubmitStatus({
+          type: 'success',
+          message: result.message || 'Booking request submitted successfully! We will contact you soon.'
+        })
+
+        // Auto-hide success message after 5 seconds
+        setTimeout(() => {
+          setSubmitStatus({ type: null, message: '' })
+        }, 5000)
+      } else {
+        // Error
+        setSubmitStatus({
+          type: 'error',
+          message: result.error || 'Failed to submit booking. Please try again.'
+        })
+      }
+    } catch (error: any) {
+      setSubmitStatus({
+        type: 'error',
+        message: 'An unexpected error occurred. Please try again.'
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -215,6 +264,22 @@ const BookingForm = () => {
                     />
                   </div>
 
+                  {/* Product Type */}
+                  <div>
+                    <Label htmlFor="productType" className="text-gray-900 dark:text-white">
+                      Product Type (Optional)
+                    </Label>
+                    <Input
+                      id="productType"
+                      name="productType"
+                      type="text"
+                      value={formData.productType}
+                      onChange={handleChange}
+                      className="mt-2 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+                      placeholder="e.g., RO, UV, UF Water Purifier"
+                    />
+                  </div>
+
                   {/* Message */}
                   <div>
                     <Label htmlFor="message" className="text-gray-900 dark:text-white">
@@ -231,13 +296,34 @@ const BookingForm = () => {
                     />
                   </div>
 
+                  {/* Success/Error Messages */}
+                  {submitStatus.type && (
+                    <div className={`p-4 rounded-lg border ${
+                      submitStatus.type === 'success'
+                        ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800'
+                        : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800'
+                    }`}>
+                      <p className="font-medium">{submitStatus.message}</p>
+                    </div>
+                  )}
+
                   <Button
                     type="submit"
                     size="lg"
                     className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+                    disabled={isSubmitting}
                   >
-                    <Send className="mr-2 h-5 w-5" />
-                    Submit Booking Request
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Submitting Request...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="mr-2 h-5 w-5" />
+                        Submit Booking Request
+                      </>
+                    )}
                   </Button>
                 </form>
               </CardContent>

@@ -1,16 +1,10 @@
 "use client"
 
 import React, { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import {
   Card,
   CardContent,
@@ -18,11 +12,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react"
+import { authActions } from '@/actions'
 
 const SignUp = () => {
-  const [currentStep, setCurrentStep] = useState(1)
-  const totalSteps = 2
+  const router = useRouter()
 
   // User Information
   const [name, setName] = useState("")
@@ -30,334 +25,174 @@ const SignUp = () => {
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [mobile, setMobile] = useState("")
-  const [role, setRole] = useState("")
 
-  // Address Information
-  const [addressType, setAddressType] = useState("")
-  const [pincode, setPincode] = useState("")
-  const [landmark, setLandmark] = useState("")
-  const [apartmentNo, setApartmentNo] = useState("")
-  const [state, setState] = useState("")
-  const [country, setCountry] = useState("")
-  const [locality, setLocality] = useState("")
-  const [phone, setPhone] = useState("")
-  const [altPhone, setAltPhone] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
 
-  const handleNext = () => {
-    // Validate Step 1
-    if (currentStep === 1) {
-      if (!name || !email || !password || !confirmPassword || !role) {
-        alert("Please fill in all required fields!")
-        return
-      }
-      if (password !== confirmPassword) {
-        alert("Passwords do not match!")
-        return
-      }
-    }
-    setCurrentStep(currentStep + 1)
-  }
-
-  const handlePrevious = () => {
-    setCurrentStep(currentStep - 1)
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError("")
+    setSuccess("")
 
-    const userData = {
-      name,
-      email,
-      password,
-      mobile,
-      role,
-      address: {
-        type: addressType,
-        pincode,
-        landmark,
-        apartmentNo,
-        state,
-        country,
-        locality,
-        phone,
-        altPhone
-      }
+    // Validation
+    if (!name || !email || !password || !confirmPassword) {
+      setError("Please fill in all required fields!")
+      return
     }
-    
-    console.log(userData)
-    // Add your registration logic here
+    if (password !== confirmPassword) {
+      setError("Passwords do not match!")
+      return
+    }
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters long!")
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      // Call signup API with SUPERADMIN role
+      const result = await authActions.signup({
+        name,
+        email,
+        password,
+        mobile: mobile || undefined,
+        role: 'SUPERADMIN'
+      })
+
+      if (result.success) {
+        setSuccess("Account created successfully! Redirecting to sign in...")
+
+        // Reset form
+        setName("")
+        setEmail("")
+        setPassword("")
+        setConfirmPassword("")
+        setMobile("")
+
+        // Redirect to sign-in page after 2 seconds
+        setTimeout(() => {
+          router.push('/auth/sign-in')
+        }, 2000)
+      } else {
+        setError(result.error || "Failed to create account. Please try again.")
+      }
+    } catch (error: any) {
+      setError(error.message || "An unexpected error occurred")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
     <div className='min-h-screen w-full flex items-center justify-center p-4 sm:p-6 md:p-8'>
-      <Card className="w-full max-w-2xl">
+      <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">
-            Create Account
+            Create Super Admin Account
           </CardTitle>
           <CardDescription className="text-center">
-            Step {currentStep} of {totalSteps}: {currentStep === 1 ? 'Personal Information' : 'Address Details'}
+            Sign up for a Super Admin account to manage the entire system
           </CardDescription>
         </CardHeader>
 
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Step 1: Personal Information */}
-            {currentStep === 1 && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold">Personal Information</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Please provide your basic details to create your account. This information will be used to identify you and secure your account.
-                  </p>
-                </div>
-                
-                {/* Name */}
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name *</Label>
-                  <Input
-                    id="name"
-                    type="text"
-                    placeholder="Enter your full name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                  />
-                </div>
-
-                {/* Email */}
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-
-                {/* Mobile */}
-                <div className="space-y-2">
-                  <Label htmlFor="mobile">Mobile Number</Label>
-                  <Input
-                    id="mobile"
-                    type="tel"
-                    placeholder="Enter mobile number"
-                    value={mobile}
-                    onChange={(e) => setMobile(e.target.value)}
-                  />
-                </div>
-
-                {/* Role Selection */}
-                <div className="space-y-2">
-                  <Label>Select Role *</Label>
-                  <RadioGroup value={role} onValueChange={setRole} required>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="admin" id="admin" />
-                      <Label htmlFor="admin" className="cursor-pointer font-normal">
-                        Admin
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="shop-owner" id="shop-owner" />
-                      <Label htmlFor="shop-owner" className="cursor-pointer font-normal">
-                        Shop Owner
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="agent" id="agent" />
-                      <Label htmlFor="agent" className="cursor-pointer font-normal">
-                        Agent
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                {/* Password */}
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password *</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Create a password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-
-                {/* Confirm Password */}
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirm Password *</Label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    placeholder="Re-enter your password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Error/Success Messages */}
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            {success && (
+              <Alert className="bg-green-50 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800">
+                <CheckCircle2 className="h-4 w-4" />
+                <AlertDescription>{success}</AlertDescription>
+              </Alert>
             )}
 
-            {/* Step 2: Address Information */}
-            {currentStep === 2 && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold">Address Information</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Add your address details to help us serve you better. This information is optional but recommended for a complete profile.
-                  </p>
-                </div>
-
-                {/* Address Type */}
-                <div className="space-y-2">
-                  <Label htmlFor="addressType">Address Type</Label>
-                  <Select value={addressType} onValueChange={setAddressType}>
-                    <SelectTrigger id="addressType">
-                      <SelectValue placeholder="Select address type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="home">Home</SelectItem>
-                      <SelectItem value="work">Work</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Apartment/Flat No */}
-                <div className="space-y-2">
-                  <Label htmlFor="apartmentNo">Apartment/Flat No</Label>
-                  <Input
-                    id="apartmentNo"
-                    type="text"
-                    placeholder="Enter apartment or flat number"
-                    value={apartmentNo}
-                    onChange={(e) => setApartmentNo(e.target.value)}
-                  />
-                </div>
-
-                {/* Locality */}
-                <div className="space-y-2">
-                  <Label htmlFor="locality">Locality/Area</Label>
-                  <Input
-                    id="locality"
-                    type="text"
-                    placeholder="Enter locality or area"
-                    value={locality}
-                    onChange={(e) => setLocality(e.target.value)}
-                  />
-                </div>
-
-                {/* Landmark */}
-                <div className="space-y-2">
-                  <Label htmlFor="landmark">Landmark</Label>
-                  <Input
-                    id="landmark"
-                    type="text"
-                    placeholder="Enter nearby landmark"
-                    value={landmark}
-                    onChange={(e) => setLandmark(e.target.value)}
-                  />
-                </div>
-
-                {/* Pincode and State in Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="pincode">Pincode</Label>
-                    <Input
-                      id="pincode"
-                      type="text"
-                      placeholder="Enter pincode"
-                      value={pincode}
-                      onChange={(e) => setPincode(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="state">State</Label>
-                    <Input
-                      id="state"
-                      type="text"
-                      placeholder="Enter state"
-                      value={state}
-                      onChange={(e) => setState(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {/* Country */}
-                <div className="space-y-2">
-                  <Label htmlFor="country">Country</Label>
-                  <Input
-                    id="country"
-                    type="text"
-                    placeholder="Enter country"
-                    value={country}
-                    onChange={(e) => setCountry(e.target.value)}
-                  />
-                </div>
-
-                {/* Phone Numbers in Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone</Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      placeholder="Phone number"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="altPhone">Alternate Phone</Label>
-                    <Input
-                      id="altPhone"
-                      type="tel"
-                      placeholder="Alternate phone"
-                      value={altPhone}
-                      onChange={(e) => setAltPhone(e.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Navigation Buttons */}
-            <div className="flex justify-between pt-4">
-              {currentStep > 1 && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handlePrevious}
-                  className="w-full sm:w-auto"
-                >
-                  Previous
-                </Button>
-              )}
-              
-              {currentStep < totalSteps ? (
-                <Button
-                  type="button"
-                  onClick={handleNext}
-                  className="w-full sm:w-auto ml-auto"
-                >
-                  Next Step
-                </Button>
-              ) : (
-                <Button
-                  type="submit"
-                  className="w-full sm:w-auto ml-auto"
-                >
-                  Create Account
-                </Button>
-              )}
+            {/* Name */}
+            <div className="space-y-2">
+              <Label htmlFor="name">Full Name *</Label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="Enter your full name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={isSubmitting}
+                required
+              />
             </div>
+
+            {/* Email */}
+            <div className="space-y-2">
+              <Label htmlFor="email">Email *</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isSubmitting}
+                required
+              />
+            </div>
+
+            {/* Mobile */}
+            <div className="space-y-2">
+              <Label htmlFor="mobile">Mobile Number</Label>
+              <Input
+                id="mobile"
+                type="tel"
+                placeholder="Enter mobile number (optional)"
+                value={mobile}
+                onChange={(e) => setMobile(e.target.value)}
+                disabled={isSubmitting}
+              />
+            </div>
+
+            {/* Password */}
+            <div className="space-y-2">
+              <Label htmlFor="password">Password *</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Create a password (min 6 characters)"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isSubmitting}
+                required
+              />
+            </div>
+
+            {/* Confirm Password */}
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password *</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                placeholder="Re-enter your password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                disabled={isSubmitting}
+                required
+              />
+            </div>
+
+            {/* Submit Button */}
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating Account...
+                </>
+              ) : (
+                "Create Super Admin Account"
+              )}
+            </Button>
           </form>
 
           {/* Sign In Link */}

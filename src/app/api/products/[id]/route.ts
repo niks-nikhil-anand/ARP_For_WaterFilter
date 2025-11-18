@@ -10,17 +10,43 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const currentUser = await getCurrentUser();
-
-    if (!currentUser) {
-      return unauthorizedResponse('Not authenticated');
-    }
-
     const { id } = await params;
     const productId = parseInt(id);
 
     if (isNaN(productId)) {
       return errorResponse('Invalid product ID');
+    }
+
+    const { searchParams } = new URL(request.url);
+    const publicView = searchParams.get('public') === 'true';
+
+    // Public endpoint for homepage - no authentication required
+    if (publicView) {
+      const product = await prisma.product.findUnique({
+        where: { id: productId },
+        include: {
+          shop: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          productDetail: true,
+        },
+      });
+
+      if (!product) {
+        return notFoundResponse('Product not found');
+      }
+
+      return successResponse(product);
+    }
+
+    // For authenticated routes, check user
+    const currentUser = await getCurrentUser();
+
+    if (!currentUser) {
+      return unauthorizedResponse('Not authenticated');
     }
 
     const product = await prisma.product.findUnique({
@@ -53,9 +79,21 @@ export async function GET(
     // Check permission
     if (
       product.shop.userId !== currentUser.id &&
-      currentUser.role !== UserRole.SUPERADMIN
+      currentUser.role !== UserRole.SUPERADMIN &&
+      currentUser.role !== UserRole.ADMIN
     ) {
-      return forbiddenResponse('You do not have permission to access this resource');
+      // If user is an agent, check if product belongs to their shop
+      if (currentUser.role === UserRole.AGENT) {
+        const agent = await prisma.agent.findUnique({
+          where: { userId: currentUser.id },
+        });
+
+        if (!agent || agent.shopId !== product.shopId) {
+          return forbiddenResponse('You do not have permission to access this resource');
+        }
+      } else {
+        return forbiddenResponse('You do not have permission to access this resource');
+      }
     }
 
     return successResponse(product);

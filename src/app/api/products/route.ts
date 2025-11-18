@@ -7,18 +7,80 @@ import { UserRole } from '@prisma/client';
 // GET all products
 export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const shopId = searchParams.get('shopId');
+    const publicView = searchParams.get('public') === 'true';
+    const agentId = searchParams.get('agentId');
+
+    // Public endpoint for homepage - no authentication required
+    if (publicView) {
+      const products = await prisma.product.findMany({
+        include: {
+          shop: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          productDetail: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: 50, // Limit public view to 50 products
+      });
+
+      return successResponse(products);
+    }
+
+    // For authenticated routes, check user
     const currentUser = await getCurrentUser();
 
     if (!currentUser) {
       return unauthorizedResponse('Not authenticated');
     }
 
-    const { searchParams } = new URL(request.url);
-    const shopId = searchParams.get('shopId');
-
     let products;
 
-    if (shopId) {
+    // Agent-specific products (products from agent's shop)
+    if (agentId) {
+      const agentIdNum = parseInt(agentId);
+
+      // Verify user is the agent or admin
+      const agent = await prisma.agent.findUnique({
+        where: { id: agentIdNum },
+        include: { shop: true },
+      });
+
+      if (!agent) {
+        return errorResponse('Agent not found', 404);
+      }
+
+      // Check permission - agent must be current user or user must be admin
+      if (agent.userId !== currentUser.id &&
+          currentUser.role !== UserRole.ADMIN &&
+          currentUser.role !== UserRole.SUPERADMIN) {
+        return forbiddenResponse('You do not have permission to view this agent\'s products');
+      }
+
+      products = await prisma.product.findMany({
+        where: {
+          shopId: agent.shopId,
+        },
+        include: {
+          shop: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          productDetail: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+    } else if (shopId) {
       // Get products for specific shop
       const shopIdNum = parseInt(shopId);
       products = await prisma.product.findMany({
@@ -38,8 +100,8 @@ export async function GET(request: NextRequest) {
           createdAt: 'desc',
         },
       });
-    } else if (currentUser.role === UserRole.SUPERADMIN) {
-      // SUPERADMIN can see all products
+    } else if (currentUser.role === UserRole.SUPERADMIN || currentUser.role === UserRole.ADMIN) {
+      // SUPERADMIN/ADMIN can see all products
       products = await prisma.product.findMany({
         include: {
           shop: {
@@ -54,8 +116,36 @@ export async function GET(request: NextRequest) {
           createdAt: 'desc',
         },
       });
+    } else if (currentUser.role === UserRole.AGENT) {
+      // Agents see products from their shop
+      const agent = await prisma.agent.findUnique({
+        where: { userId: currentUser.id },
+        include: { shop: true },
+      });
+
+      if (!agent) {
+        return forbiddenResponse('Agent profile not found');
+      }
+
+      products = await prisma.product.findMany({
+        where: {
+          shopId: agent.shopId,
+        },
+        include: {
+          shop: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          productDetail: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
     } else {
-      // Get products for user's shop
+      // Get products for user's shop (shop owners)
       const userShop = await prisma.shop.findUnique({
         where: { userId: currentUser.id },
       });

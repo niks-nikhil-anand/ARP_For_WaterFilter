@@ -5,3 +5,4 @@
 
 export * from './notifications';
 export * from './tickets';
+export * from './products';

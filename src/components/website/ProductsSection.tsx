@@ -4,47 +4,54 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ArrowRight, Droplet, Shield, Star } from 'lucide-react'
+import { commonActions } from '@/actions'
 
-const ProductsSection = () => {
-  // Sample featured products
-  const featuredProducts = [
-    {
-      id: 1,
-      name: 'Aquaguard Delight RO+UV+MTDS',
-      company: 'Aquaguard',
-      type: 'RO+UV',
-      price: 15999,
-      discountedPrice: 12999,
-      discountPercent: 18.75,
-      color: 'White',
-      warrantyPeriod: '1 Year',
-      offer: 'Free Installation'
-    },
-    {
-      id: 2,
-      name: 'Aquaguard Enhance RO+UV+UF+TDS',
-      company: 'Aquaguard',
-      type: 'RO+UV+UF',
-      price: 18999,
-      discountedPrice: 15499,
-      discountPercent: 18.42,
-      color: 'Black',
-      warrantyPeriod: '1 Year',
-      offer: 'Free Service for 6 Months'
-    },
-    {
-      id: 3,
-      name: 'Aquaguard Marvel RO+UV',
-      company: 'Aquaguard',
-      type: 'RO+UV',
-      price: 13499,
-      discountedPrice: 10999,
-      discountPercent: 18.52,
-      color: 'White',
-      warrantyPeriod: '1 Year',
-      offer: 'Best Seller'
+const ProductsSection = async () => {
+  // Fetch products from API
+  let featuredProducts: any[] = []
+
+  try {
+    const result = await commonActions.getPublicProducts()
+    if (result.success && result.data) {
+      // Get first 3 products for featured section
+      featuredProducts = result.data.slice(0, 3)
     }
-  ]
+  } catch (error) {
+    console.error('Error fetching products:', error)
+  }
+
+  // Fallback to sample products if API fails
+  if (featuredProducts.length === 0) {
+    featuredProducts = [
+      {
+        id: 1,
+        name: 'Aquaguard Delight RO+UV+MTDS',
+        company: 'Aquaguard',
+        type: 'RO+UV',
+        color: 'White',
+        warrantyPeriod: 1,
+        offer: 'Free Installation'
+      },
+      {
+        id: 2,
+        name: 'Aquaguard Enhance RO+UV+UF+TDS',
+        company: 'Aquaguard',
+        type: 'RO+UV+UF',
+        color: 'Black',
+        warrantyPeriod: 1,
+        offer: 'Free Service for 6 Months'
+      },
+      {
+        id: 3,
+        name: 'Aquaguard Marvel RO+UV',
+        company: 'Aquaguard',
+        type: 'RO+UV',
+        color: 'White',
+        warrantyPeriod: 1,
+        offer: 'Best Seller'
+      }
+    ]
+  }
 
   return (
     <section className="py-20 bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
@@ -85,11 +92,6 @@ const ProductsSection = () => {
                       {product.offer}
                     </Badge>
                   )}
-                  {product.discountPercent && (
-                    <Badge className="bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300">
-                      {product.discountPercent.toFixed(0)}% OFF
-                    </Badge>
-                  )}
                 </div>
 
                 <CardTitle className="text-xl dark:text-white mb-2">
@@ -107,31 +109,24 @@ const ProductsSection = () => {
               <CardContent>
                 {/* Features */}
                 <div className="space-y-2 mb-4">
-                  <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
-                    <Shield className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    <span>Warranty: {product.warrantyPeriod}</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
-                    <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                    <span>Color: {product.color}</span>
-                  </div>
-                </div>
-
-                {/* Price */}
-                <div className="mb-4">
-                  <div className="flex items-baseline space-x-2">
-                    <span className="text-3xl font-bold text-gray-900 dark:text-white">
-                      ₹{product.discountedPrice?.toLocaleString()}
-                    </span>
-                    {product.discountedPrice && (
-                      <span className="text-lg text-gray-500 dark:text-gray-400 line-through">
-                        ₹{product.price.toLocaleString()}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm text-green-600 dark:text-green-400 font-medium mt-1">
-                    Save ₹{(product.price - (product.discountedPrice || product.price)).toLocaleString()}
-                  </p>
+                  {product.warrantyPeriod && (
+                    <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+                      <Shield className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <span>Warranty: {product.warrantyPeriod} {typeof product.warrantyPeriod === 'number' ? 'Year' : ''}</span>
+                    </div>
+                  )}
+                  {product.color && (
+                    <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+                      <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                      <span>Color: {product.color}</span>
+                    </div>
+                  )}
+                  {product.shop && (
+                    <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+                      <Droplet className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <span>Sold by: {product.shop.name}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* CTA Button */}

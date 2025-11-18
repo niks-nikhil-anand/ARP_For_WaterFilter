@@ -1,6 +1,7 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
+import { adminActions } from '@/actions'
 import {
   Table,
   TableBody,
@@ -279,6 +280,7 @@ type Product = typeof demoProducts[0]
 
 const ProductManagementPage = () => {
   const [products, setProducts] = useState<Product[]>(demoProducts)
+  const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [companyFilter, setCompanyFilter] = useState('ALL')
   const [typeFilter, setTypeFilter] = useState('ALL')
@@ -287,6 +289,35 @@ const ProductManagementPage = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(6)
+
+  // Fetch products from API
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setIsLoading(true)
+        const result = await adminActions.getAllProducts()
+        if (result.success && result.data) {
+          // Transform API data to match demo data structure
+          const transformedProducts = result.data.map((p: any) => ({
+            ...p,
+            createdAt: new Date(p.createdAt),
+            updatedAt: new Date(p.updatedAt),
+            price: 0, // These fields might not exist in current schema
+            discountedPrice: null,
+            discountPercent: null,
+          }))
+          setProducts(transformedProducts)
+        }
+      } catch (error) {
+        console.error('Error fetching products:', error)
+        // Keep demo data as fallback
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchProducts()
+  }, [])
 
   // Modal states
   const [viewDialogOpen, setViewDialogOpen] = useState(false)

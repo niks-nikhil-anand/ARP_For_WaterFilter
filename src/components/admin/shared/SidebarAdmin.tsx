@@ -16,6 +16,7 @@ import {
   Settings,
   LogOut,
   Bell,
+  Ticket,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -46,6 +47,11 @@ const SidebarAdmin: React.FC<SidebarAdminProps> = ({ className }) => {
     {
       title: "Services",
       items: [
+        {
+          icon: Ticket,
+          label: "Tickets",
+          href: "/admin/tickets",
+        },
         {
           icon: ShieldCheck,
           label: "Warranties",

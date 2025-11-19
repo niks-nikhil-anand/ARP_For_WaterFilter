@@ -240,7 +240,11 @@ const AdminSignup = () => {
                   disabled={isSubmitting}
                   autoComplete="new-password"
                   required
-                  className="h-11 pr-10"
+                  className={`h-11 pr-10 ${
+                    password && password.length < 6
+                      ? 'border-red-500 focus-visible:ring-red-500'
+                      : ''
+                  }`}
                 />
                 <button
                   type="button"
@@ -256,9 +260,16 @@ const AdminSignup = () => {
                   )}
                 </button>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Password must be at least 6 characters long
-              </p>
+              {password && password.length < 6 ? (
+                <p className="text-xs text-red-500 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  Password must be at least 6 characters long
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Password must be at least 6 characters long
+                </p>
+              )}
             </div>
 
             {/* Confirm Password */}
@@ -274,7 +285,13 @@ const AdminSignup = () => {
                   disabled={isSubmitting}
                   autoComplete="new-password"
                   required
-                  className="h-11 pr-10"
+                  className={`h-11 pr-10 ${
+                    confirmPassword && password !== confirmPassword
+                      ? 'border-red-500 focus-visible:ring-red-500'
+                      : confirmPassword && password === confirmPassword && password.length >= 6
+                      ? 'border-green-500 focus-visible:ring-green-500'
+                      : ''
+                  }`}
                 />
                 <button
                   type="button"
@@ -290,6 +307,17 @@ const AdminSignup = () => {
                   )}
                 </button>
               </div>
+              {confirmPassword && password !== confirmPassword ? (
+                <p className="text-xs text-red-500 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  Passwords do not match
+                </p>
+              ) : confirmPassword && password === confirmPassword && password.length >= 6 ? (
+                <p className="text-xs text-green-600 flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Passwords match
+                </p>
+              ) : null}
             </div>
 
             {/* Sign Up Button */}

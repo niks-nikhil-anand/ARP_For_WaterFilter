@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { signup } from '@/actions/auth'
 import {
   Select,
   SelectContent,
@@ -21,7 +22,6 @@ import {
 } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, AlertCircle, CheckCircle2, Crown, Store, Eye, EyeOff, UserPlus } from 'lucide-react'
-import { authActions } from '@/actions'
 
 const AdminSignup = () => {
   const router = useRouter()
@@ -95,8 +95,8 @@ const AdminSignup = () => {
         'admin': 'ADMIN'
       }
 
-      // Call signup API through server action
-      const result = await authActions.signup({
+      // Call signup server action
+      const result = await signup({
         name: name.trim(),
         email: email.trim(),
         password: password,
@@ -105,12 +105,20 @@ const AdminSignup = () => {
       })
 
       if (result.success) {
-        setSuccess('Account created successfully! Redirecting to login...')
+        setSuccess('Account created successfully! Redirecting...')
 
-        // Redirect to login page
+        // User is auto-logged in by the API, redirect to appropriate dashboard based on role
+        // Wait a bit longer to ensure cookie is properly set
         setTimeout(() => {
-          router.push('/auth/admin')
-        }, 2000)
+          // Redirect based on role
+          if (role === 'superadmin') {
+            window.location.href = '/admin'
+          } else if (role === 'admin') {
+            window.location.href = '/shop'
+          } else {
+            window.location.href = '/auth/admin'
+          }
+        }, 1000)
       } else {
         setError(result.error || 'Signup failed. Please try again.')
       }

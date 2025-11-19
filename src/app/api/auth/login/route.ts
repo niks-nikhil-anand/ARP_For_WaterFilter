@@ -1,7 +1,7 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyPassword } from '@/lib/password';
-import { generateToken, setAuthCookie } from '@/lib/auth';
+import { generateToken } from '@/lib/auth';
 import { successResponse, errorResponse, serverErrorResponse } from '@/lib/api-response';
 
 export async function POST(request: NextRequest) {
@@ -42,19 +42,34 @@ export async function POST(request: NextRequest) {
       role: user.role,
     });
 
-    // Set cookie
-    await setAuthCookie(token);
-
     // Return user data (excluding password)
     const { password: _, ...userWithoutPassword } = user;
 
-    return successResponse(
+    // Create response with user data and token
+    const response = NextResponse.json(
       {
-        user: userWithoutPassword,
-        token,
+        success: true,
+        data: {
+          user: userWithoutPassword,
+          token,
+        },
+        message: 'Login successful',
       },
-      'Login successful'
+      { status: 200 }
     );
+
+    // Set cookie using NextResponse API
+    response.cookies.set({
+      name: 'auth-token',
+      value: token,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: '/',
+    });
+
+    return response;
   } catch (error: any) {
     console.error('Login error:', error);
     return serverErrorResponse(error.message || 'Failed to login');

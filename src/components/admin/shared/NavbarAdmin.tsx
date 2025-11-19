@@ -6,20 +6,74 @@ import { cn } from "@/lib/utils";
 import { Moon, Sun, Menu, User, Settings, LogOut, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
+import { useRouter } from "next/navigation";
 import NotificationDropdown from "./NotificationDropdown";
+import { authActions } from "@/actions";
 
 interface NavbarAdminProps {
   className?: string;
   onToggleSidebar?: () => void;
 }
 
+interface UserData {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+}
+
 const NavbarAdmin: React.FC<NavbarAdminProps> = ({
   className,
   onToggleSidebar,
 }) => {
+  const router = useRouter();
   const { theme, setTheme } = useTheme();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [loading, setLoading] = useState(true);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Fetch current user data
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        // Add a small delay to ensure cookie is set after signup/login
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        const result = await authActions.getCurrentUser();
+        console.log("NavbarAdmin - getCurrentUser result:", result);
+
+        if (result.success && result.data) {
+          setUserData(result.data);
+        } else {
+          // Retry once after a delay before redirecting
+          console.log("First auth check failed, retrying...");
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
+          const retryResult = await authActions.getCurrentUser();
+          console.log("NavbarAdmin - Retry result:", retryResult);
+
+          if (retryResult.success && retryResult.data) {
+            setUserData(retryResult.data);
+          } else {
+            // Only redirect if retry also fails
+            console.log("Auth failed, redirecting to login");
+            setTimeout(() => {
+              router.push("/auth/admin");
+            }, 500);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        // Don't redirect on error, just log it
+        setLoading(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, [router]);
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
@@ -36,15 +90,27 @@ const NavbarAdmin: React.FC<NavbarAdminProps> = ({
   };
 
   const handleSettings = () => {
-    // Implement navigation to settings page
-    console.log("Navigate to settings");
+    // Navigate to settings page
+    router.push("/admin/settings");
     setIsDropdownOpen(false);
   };
 
-  const handleLogout = () => {
-    // Implement logout functionality
-    console.log("Handle logout");
-    setIsDropdownOpen(false);
+  const handleLogout = async () => {
+    try {
+      setIsDropdownOpen(false);
+      // Call logout API
+      await authActions.logout();
+      // Clear local storage
+      localStorage.clear();
+      sessionStorage.clear();
+      // Redirect to home page
+      router.push("/");
+      router.refresh();
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Even if logout fails, redirect to home
+      router.push("/");
+    }
   };
 
   // Close dropdown when clicking outside
@@ -116,8 +182,12 @@ const NavbarAdmin: React.FC<NavbarAdminProps> = ({
               <User className="h-4 w-4" />
             </div>
             <div className="hidden md:flex flex-col items-start">
-              <span className="text-sm font-medium">Nikhil Anand</span>
-              <span className="text-xs text-gray-500 dark:text-gray-400">Administrator</span>
+              <span className="text-sm font-medium">
+                {loading ? "Loading..." : userData?.name || "User"}
+              </span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {loading ? "" : userData?.role || "Administrator"}
+              </span>
             </div>
             <ChevronDown className={cn(
               "h-4 w-4 transition-transform duration-200",
@@ -129,8 +199,12 @@ const NavbarAdmin: React.FC<NavbarAdminProps> = ({
           {isDropdownOpen && (
             <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
               <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
-                <p className="text-sm font-medium text-gray-900 dark:text-white">Nikhil Anand</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">nikhil@samarthenterprise.com</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  {userData?.name || "User"}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {userData?.email || ""}
+                </p>
               </div>
               
               <div className="py-1">

@@ -1,8 +1,8 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { hashPassword } from '@/lib/password';
-import { generateToken, setAuthCookie } from '@/lib/auth';
-import { successResponse, errorResponse, serverErrorResponse } from '@/lib/api-response';
+import { generateToken } from '@/lib/auth';
+import { errorResponse, serverErrorResponse } from '@/lib/api-response';
 import { UserRole, UserStatus } from '@/generated/prisma';
 
 export async function POST(request: NextRequest) {
@@ -55,17 +55,31 @@ export async function POST(request: NextRequest) {
       role: user.role,
     });
 
-    // Set cookie
-    await setAuthCookie(token);
-
-    return successResponse(
+    // Create response with user data and token
+    const response = NextResponse.json(
       {
-        user,
-        token,
+        success: true,
+        data: {
+          user,
+          token,
+        },
+        message: 'User registered successfully',
       },
-      'User registered successfully',
-      201
+      { status: 201 }
     );
+
+    // Set cookie using NextResponse API
+    response.cookies.set({
+      name: 'auth-token',
+      value: token,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: '/',
+    });
+
+    return response;
   } catch (error: any) {
     console.error('Signup error:', error);
     return serverErrorResponse(error.message || 'Failed to create user');

@@ -1,90 +1,270 @@
 'use server';
 
+import { cookies } from 'next/headers';
+import { prisma } from '@/lib/prisma';
+import { hashPassword, verifyPassword } from '@/lib/password';
+import { generateToken, verifyToken } from '@/lib/auth';
+import { UserRole, UserStatus } from '@/generated/prisma';
+
 /**
- * Authentication Actions
- * Used by all panels for login, signup, logout
+ * Authentication Server Actions
+ * All auth operations use Server Actions with direct cookie management
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-
-// Signup
+/* ==================== SIGNUP ==================== */
 export async function signup(userData: {
   name: string;
   email: string;
   password: string;
   mobile?: string;
-  role?: 'USER' | 'AGENT' | 'ADMIN' | 'SUPERADMIN';
+  role?: UserRole;
 }) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(userData),
+    // Validate required fields
+    if (!userData.name || !userData.email || !userData.password) {
+      return {
+        success: false,
+        error: 'Name, email, and password are required'
+      };
+    }
+
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email: userData.email }
     });
 
-    const data = await response.json();
-    if (!data.success) throw new Error(data.error);
+    if (existingUser) {
+      return {
+        success: false,
+        error: 'User with this email already exists'
+      };
+    }
 
-    return { success: true, data: data.data, message: data.message };
+    // Hash password
+    const hashedPassword = await hashPassword(userData.password);
+
+    // Create user
+    const user = await prisma.user.create({
+      data: {
+        name: userData.name,
+        email: userData.email,
+        password: hashedPassword,
+        mobile: userData.mobile,
+        role: userData.role || UserRole.USER,
+        status: UserStatus.ACTIVE,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        mobile: true,
+        role: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    // Generate JWT token
+    const token = await generateToken({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    });
+
+    // Set cookie using server-side cookies API
+    const cookieStore = await cookies();
+    cookieStore.set({
+      name: 'auth-token',
+      value: token,
+      httpOnly: true,
+      secure: false, // Set to true in production with HTTPS
+      sameSite: 'strict',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: '/',
+    });
+
+    return {
+      success: true,
+      data: { user, token },
+      message: 'Account created successfully'
+    };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    console.error('Signup error:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to create account'
+    };
   }
 }
 
-// Login
+/* ==================== LOGIN ==================== */
 export async function login(credentials: {
   email: string;
   password: string;
 }) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(credentials),
+    // Validate input
+    if (!credentials.email || !credentials.password) {
+      return {
+        success: false,
+        error: 'Email and password are required'
+      };
+    }
+
+    // Find user by email
+    const user = await prisma.user.findUnique({
+      where: { email: credentials.email }
     });
 
-    const data = await response.json();
-    if (!data.success) throw new Error(data.error);
+    if (!user) {
+      return {
+        success: false,
+        error: 'Invalid email or password'
+      };
+    }
 
-    return { success: true, data: data.data, message: data.message };
+    // Check if account is blocked
+    if (user.status === UserStatus.BLOCKED) {
+      return {
+        success: false,
+        error: 'Your account has been blocked. Please contact support.'
+      };
+    }
+
+    // Verify password
+    const isPasswordValid = await verifyPassword(
+      credentials.password,
+      user.password
+    );
+
+    if (!isPasswordValid) {
+      return {
+        success: false,
+        error: 'Invalid email or password'
+      };
+    }
+
+    // Generate JWT token
+    const token = await generateToken({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    });
+
+    // Set cookie using server-side cookies API
+    const cookieStore = await cookies();
+    cookieStore.set({
+      name: 'auth-token',
+      value: token,
+      httpOnly: true,
+      secure: false, // Set to true in production with HTTPS
+      sameSite: 'strict',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: '/',
+    });
+
+    // Return user without password
+    const { password: _, ...userWithoutPassword } = user;
+
+    return {
+      success: true,
+      data: { user: userWithoutPassword, token },
+      message: 'Login successful'
+    };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    console.error('Login error:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to login'
+    };
   }
 }
 
-// Logout
+/* ==================== LOGOUT ==================== */
 export async function logout() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
-      method: 'POST',
-      credentials: 'include',
-    });
+    const cookieStore = await cookies();
+    cookieStore.delete('auth-token');
 
-    const data = await response.json();
-    if (!data.success) throw new Error(data.error);
-
-    return { success: true, message: data.message };
+    return {
+      success: true,
+      message: 'Logged out successfully'
+    };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    console.error('Logout error:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to logout'
+    };
   }
 }
 
-// Get current user
+/* ==================== GET CURRENT USER ==================== */
 export async function getCurrentUser() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
-      method: 'GET',
-      credentials: 'include',
-      cache: 'no-store',
+    // Get token from cookies
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth-token')?.value;
+
+    if (!token) {
+      return {
+        success: false,
+        error: 'Not authenticated'
+      };
+    }
+
+    // Verify and decode token
+    const decoded = await verifyToken(token);
+
+    if (!decoded) {
+      return {
+        success: false,
+        error: 'Invalid or expired token'
+      };
+    }
+
+    // Fetch user from database
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        mobile: true,
+        role: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
-    const data = await response.json();
-    if (!data.success) throw new Error(data.error);
+    if (!user) {
+      return {
+        success: false,
+        error: 'User not found'
+      };
+    }
 
-    return { success: true, data: data.data };
+    // Check if user is blocked
+    if (user.status === UserStatus.BLOCKED) {
+      // Clear cookie if user is blocked
+      cookieStore.delete('auth-token');
+      return {
+        success: false,
+        error: 'Your account has been blocked'
+      };
+    }
+
+    return {
+      success: true,
+      data: user
+    };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    console.error('Get current user error:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to get user'
+    };
   }
 }

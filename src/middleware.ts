@@ -87,8 +87,6 @@ export async function middleware(request: NextRequest) {
       console.log(`[Middleware] No token found for ${pathname}, redirecting to /auth/admin`);
       const url = request.nextUrl.clone();
       url.pathname = '/auth/admin';
-      url.searchParams.set('redirect', pathname);
-      url.searchParams.set('error', 'authentication_required');
       return NextResponse.redirect(url);
     }
 

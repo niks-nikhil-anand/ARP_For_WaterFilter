@@ -3,6 +3,7 @@
 import prisma from '@/lib/prisma'
 import { UserRole, UserStatus, Prisma } from '@/generated/prisma'
 import { revalidatePath } from 'next/cache'
+import { hashPassword } from '@/lib/password'
 
 export type User = Prisma.UserGetPayload<{}>
 
@@ -29,17 +30,26 @@ export async function createUser(data: {
   password?: string
 }) {
   try {
+    // Hash the password before storing
+    const hashedPassword = data.password 
+      ? await hashPassword(data.password)
+      : await hashPassword('defaultPassword123') // Default password if not provided
+    
     const user = await prisma.user.create({
       data: {
-        ...data,
-        password: data.password || 'hashed_password', // Default password if not provided
+        name: data.name,
+        email: data.email,
+        mobile: data.mobile,
+        role: data.role,
+        status: data.status,
+        password: hashedPassword,
       },
     })
     revalidatePath('/admin/user_details')
     return { success: true, data: user }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to create user:', error)
-    return { success: false, error: 'Failed to create user' }
+    return { success: false, error: error.message || 'Failed to create user' }
   }
 }
 

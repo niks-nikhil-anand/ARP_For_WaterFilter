@@ -190,12 +190,14 @@ const RoleManagementPage = () => {
     name: string
     email: string
     mobile: string
+    password: string
     role: UserRole
     status: UserStatus
   }>({
     name: '',
     email: '',
     mobile: '',
+    password: '',
     role: UserRole.USER,
     status: UserStatus.ACTIVE,
   })
@@ -326,6 +328,7 @@ const RoleManagementPage = () => {
       name: addForm.name,
       email: addForm.email,
       mobile: addForm.mobile,
+      password: addForm.password,
       role: addForm.role,
       status: addForm.status,
     })
@@ -337,6 +340,7 @@ const RoleManagementPage = () => {
         name: '',
         email: '',
         mobile: '',
+        password: '',
         role: UserRole.USER,
         status: UserStatus.ACTIVE,
       })
@@ -808,6 +812,16 @@ const RoleManagementPage = () => {
                 placeholder="+91 98765 43210"
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-password">Password *</Label>
+              <Input
+                id="add-password"
+                type="password"
+                value={addForm.password}
+                onChange={(e) => setAddForm({ ...addForm, password: e.target.value })}
+                placeholder="Enter password"
+              />
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="add-role">Role *</Label>
@@ -853,7 +867,7 @@ const RoleManagementPage = () => {
             </Button>
             <Button
               onClick={handleAddUser}
-              disabled={!addForm.name || !addForm.email}
+              disabled={!addForm.name || !addForm.email || !addForm.password}
             >
               Add User
             </Button>

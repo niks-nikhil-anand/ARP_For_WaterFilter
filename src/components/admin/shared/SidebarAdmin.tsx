@@ -20,12 +20,15 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { authActions } from "@/actions";
 
 interface SidebarAdminProps {
   className?: string;
 }
 
 const SidebarAdmin: React.FC<SidebarAdminProps> = ({ className }) => {
+  const router = useRouter();
   const menuSections = [
     {
       title: "Overview",
@@ -72,26 +75,19 @@ const SidebarAdmin: React.FC<SidebarAdminProps> = ({ className }) => {
 
   const handleLogout = async () => {
     try {
-      console.log("Logging out...");
 
-      const response = await fetch("/api/auth/log-out", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log("✅ Logout successful:", data.message);
-        localStorage.clear();
-        sessionStorage.clear();
-        window.location.href = "/";
-      } else {
-        const errorData = await response.json();
-        console.error("❌ Logout failed:", errorData.message);
-      }
-    } catch (error) {
-      console.error("❌ Logout error:", error);
-    }
+          await authActions.logout();
+          // Clear local storage
+          localStorage.clear();
+          sessionStorage.clear();
+          // Redirect to home page
+          router.push("/");
+          router.refresh();
+        } catch (error) {
+          console.error("Logout error:", error);
+          // Even if logout fails, redirect to home
+          router.push("/");
+        }
   };
 
   return (

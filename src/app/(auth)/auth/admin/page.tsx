@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +35,7 @@ import {
 
 const AdminLogin = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [role, setRole] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -128,9 +129,14 @@ const AdminLogin = () => {
         }...`
       );
 
-      // Redirect based on role
+      // Get redirect URL from query params (set by middleware)
+      const redirectUrl = searchParams.get("redirect");
+
+      // Redirect based on role or to the original requested page
       setTimeout(() => {
-        if (role === "superadmin") {
+        if (redirectUrl && redirectUrl !== "/auth/admin") {
+          window.location.href = redirectUrl;
+        } else if (role === "superadmin") {
           window.location.href = "/admin";
         } else if (role === "admin") {
           window.location.href = "/shop";
@@ -143,8 +149,8 @@ const AdminLogin = () => {
     }
   };
 
-  // Load saved credentials on component mount
-  React.useEffect(() => {
+  // Load saved credentials and handle middleware redirects
+  useEffect(() => {
     const savedEmail = localStorage.getItem("adminEmail");
     const savedRole = localStorage.getItem("adminRole");
     if (savedEmail && savedRole) {
@@ -152,7 +158,22 @@ const AdminLogin = () => {
       setRole(savedRole);
       setRememberMe(true);
     }
-  }, []);
+
+    // Handle error messages from middleware
+    const errorParam = searchParams.get("error");
+    const messageParam = searchParams.get("message");
+
+    if (errorParam) {
+      const errorMessages: Record<string, string> = {
+        authentication_required: "Please login to access this page",
+        invalid_token: "Your session has expired. Please login again",
+        access_denied: messageParam || "You don't have permission to access this page",
+        authentication_error: "Authentication error. Please login again",
+      };
+
+      setError(errorMessages[errorParam] || "Please login to continue");
+    }
+  }, [searchParams]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900 p-4">

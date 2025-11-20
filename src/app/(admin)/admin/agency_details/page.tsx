@@ -57,390 +57,18 @@ import {
   Briefcase,
 } from 'lucide-react'
 
-// Demo data based on Prisma Agency model
-const demoAgencies = [
-  {
-    id: 1,
-    name: 'AquaTech Services Bangalore',
-    type: 'Installation & Service',
-    addressCount: 3,
-    addresses: [
-      {
-        id: 1,
-        type: 'Head Office',
-        locality: 'Indiranagar',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560038',
-        landmark: 'Near Metro Station',
-        apartmentNo: 'Building 12A',
-        phone: '+91 98765 43210',
-        altPhone: '+91 98765 43211',
-      },
-      {
-        id: 2,
-        type: 'Branch Office',
-        locality: 'Koramangala',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560095',
-        landmark: 'Forum Mall Road',
-        apartmentNo: 'Shop No. 45',
-        phone: '+91 98765 43212',
-        altPhone: null,
-      },
-      {
-        id: 3,
-        type: 'Service Center',
-        locality: 'Whitefield',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560066',
-        landmark: 'Phoenix Marketcity',
-        apartmentNo: 'Unit 789',
-        phone: '+91 98765 43213',
-        altPhone: null,
-      },
-    ],
-    createdAt: new Date('2023-01-15'),
-    updatedAt: new Date('2024-10-12'),
-  },
-  {
-    id: 2,
-    name: 'PureWater Solutions India',
-    type: 'Authorized Dealer',
-    addressCount: 2,
-    addresses: [
-      {
-        id: 4,
-        type: 'Main Office',
-        locality: 'HSR Layout',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560102',
-        landmark: 'Sector 2',
-        apartmentNo: 'Floor 3, Suite 301',
-        phone: '+91 98765 43214',
-        altPhone: '+91 98765 43215',
-      },
-      {
-        id: 5,
-        type: 'Warehouse',
-        locality: 'Electronic City',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560100',
-        landmark: 'Tech Park Gate 4',
-        apartmentNo: 'Warehouse B-12',
-        phone: '+91 98765 43216',
-        altPhone: null,
-      },
-    ],
-    createdAt: new Date('2023-03-20'),
-    updatedAt: new Date('2024-10-14'),
-  },
-  {
-    id: 3,
-    name: 'Kent RO Service Network',
-    type: 'Service Partner',
-    addressCount: 4,
-    addresses: [
-      {
-        id: 6,
-        type: 'Regional Office',
-        locality: 'MG Road',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560001',
-        landmark: 'Trinity Circle',
-        apartmentNo: 'Commercial Complex',
-        phone: '+91 98765 43217',
-        altPhone: null,
-      },
-      {
-        id: 7,
-        type: 'Service Center',
-        locality: 'BTM Layout',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560076',
-        landmark: '2nd Stage',
-        apartmentNo: 'Shop 23',
-        phone: '+91 98765 43218',
-        altPhone: null,
-      },
-      {
-        id: 8,
-        type: 'Service Center',
-        locality: 'Jayanagar',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560011',
-        landmark: '4th Block',
-        apartmentNo: 'Ground Floor',
-        phone: '+91 98765 43219',
-        altPhone: null,
-      },
-      {
-        id: 9,
-        type: 'Parts Warehouse',
-        locality: 'Peenya',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560058',
-        landmark: 'Industrial Area',
-        apartmentNo: 'Godown 45',
-        phone: '+91 98765 43220',
-        altPhone: null,
-      },
-    ],
-    createdAt: new Date('2023-05-10'),
-    updatedAt: new Date('2024-10-13'),
-  },
-  {
-    id: 4,
-    name: 'Aquaguard Service Center',
-    type: 'Service Partner',
-    addressCount: 2,
-    addresses: [
-      {
-        id: 10,
-        type: 'Head Office',
-        locality: 'Malleshwaram',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560003',
-        landmark: '8th Cross',
-        apartmentNo: 'Building 67',
-        phone: '+91 98765 43221',
-        altPhone: null,
-      },
-      {
-        id: 11,
-        type: 'Service Center',
-        locality: 'Rajajinagar',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560010',
-        landmark: '1st Block',
-        apartmentNo: 'Shop 56',
-        phone: '+91 98765 43222',
-        altPhone: null,
-      },
-    ],
-    createdAt: new Date('2023-07-05'),
-    updatedAt: new Date('2024-10-10'),
-  },
-  {
-    id: 5,
-    name: 'Blue Star Authorized Service',
-    type: 'Authorized Service Center',
-    addressCount: 3,
-    addresses: [
-      {
-        id: 12,
-        type: 'Main Office',
-        locality: 'Sarjapur Road',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560103',
-        landmark: 'Marathahalli Bridge',
-        apartmentNo: 'Corporate Tower',
-        phone: '+91 98765 43223',
-        altPhone: '+91 98765 43224',
-      },
-      {
-        id: 13,
-        type: 'Service Center',
-        locality: 'Marathahalli',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560037',
-        landmark: 'Outer Ring Road',
-        apartmentNo: 'Service Bay 12',
-        phone: '+91 98765 43225',
-        altPhone: null,
-      },
-      {
-        id: 14,
-        type: 'Branch Office',
-        locality: 'Bellandur',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560103',
-        landmark: 'Ecospace',
-        apartmentNo: 'Office 401',
-        phone: '+91 98765 43226',
-        altPhone: null,
-      },
-    ],
-    createdAt: new Date('2023-08-18'),
-    updatedAt: new Date('2024-10-14'),
-  },
-  {
-    id: 6,
-    name: 'Livpure Smart Service Hub',
-    type: 'Installation & Service',
-    addressCount: 1,
-    addresses: [
-      {
-        id: 15,
-        type: 'Office',
-        locality: 'Yelahanka',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560064',
-        landmark: 'New Town',
-        apartmentNo: 'Commercial Street 89',
-        phone: '+91 98765 43227',
-        altPhone: null,
-      },
-    ],
-    createdAt: new Date('2023-09-25'),
-    updatedAt: new Date('2024-10-11'),
-  },
-  {
-    id: 7,
-    name: 'AO Smith Service Excellence',
-    type: 'Authorized Dealer',
-    addressCount: 2,
-    addresses: [
-      {
-        id: 16,
-        type: 'Showroom',
-        locality: 'JP Nagar',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560078',
-        landmark: '5th Phase',
-        apartmentNo: 'Showroom 234',
-        phone: '+91 98765 43228',
-        altPhone: null,
-      },
-      {
-        id: 17,
-        type: 'Service Center',
-        locality: 'Banashankari',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560070',
-        landmark: '3rd Stage',
-        apartmentNo: 'Service Hub',
-        phone: '+91 98765 43229',
-        altPhone: null,
-      },
-    ],
-    createdAt: new Date('2023-11-12'),
-    updatedAt: new Date('2024-10-09'),
-  },
-  {
-    id: 8,
-    name: 'HUL Pureit Service Network',
-    type: 'Service Partner',
-    addressCount: 3,
-    addresses: [
-      {
-        id: 18,
-        type: 'Regional Hub',
-        locality: 'Hebbal',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560024',
-        landmark: 'Outer Ring Road',
-        apartmentNo: 'Hub Building',
-        phone: '+91 98765 43230',
-        altPhone: '+91 98765 43231',
-      },
-      {
-        id: 19,
-        type: 'Service Point',
-        locality: 'RT Nagar',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560032',
-        landmark: 'Main Road',
-        apartmentNo: 'Service Point 67',
-        phone: '+91 98765 43232',
-        altPhone: null,
-      },
-      {
-        id: 20,
-        type: 'Parts Center',
-        locality: 'Yeshwanthpur',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560022',
-        landmark: 'Industrial Estate',
-        apartmentNo: 'Parts Depot',
-        phone: '+91 98765 43233',
-        altPhone: null,
-      },
-    ],
-    createdAt: new Date('2024-01-08'),
-    updatedAt: new Date('2024-10-12'),
-  },
-  {
-    id: 9,
-    name: 'Havells Water Care Services',
-    type: 'Authorized Service Center',
-    addressCount: 2,
-    addresses: [
-      {
-        id: 21,
-        type: 'Head Office',
-        locality: 'Kalyan Nagar',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560043',
-        landmark: 'HRBR Layout',
-        apartmentNo: 'Office Complex',
-        phone: '+91 98765 43234',
-        altPhone: null,
-      },
-      {
-        id: 22,
-        type: 'Service Center',
-        locality: 'Banaswadi',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560043',
-        landmark: 'Main Road',
-        apartmentNo: 'Service Bay',
-        phone: '+91 98765 43235',
-        altPhone: null,
-      },
-    ],
-    createdAt: new Date('2024-02-14'),
-    updatedAt: new Date('2024-10-14'),
-  },
-  {
-    id: 10,
-    name: 'Faber Service Pro',
-    type: 'Installation & Service',
-    addressCount: 1,
-    addresses: [
-      {
-        id: 23,
-        type: 'Office',
-        locality: 'Kengeri',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560060',
-        landmark: 'Satellite Town',
-        apartmentNo: 'Office 123',
-        phone: '+91 98765 43236',
-        altPhone: null,
-      },
-    ],
-    createdAt: new Date('2024-03-22'),
-    updatedAt: new Date('2024-10-10'),
-  },
-]
+import { getAgencies, createAgency, updateAgency, deleteAgency } from '@/app/actions/agency'
+import type { Agency } from '@/app/actions/agency'
+import { useEffect } from 'react'
+import { toast } from 'sonner'
 
-type Agency = typeof demoAgencies[0]
+// Demo data removed
+
+
+
 
 const AgencyManagementPage = () => {
-  const [agencies, setAgencies] = useState<Agency[]>(demoAgencies)
+  const [agencies, setAgencies] = useState<Agency[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [typeFilter, setTypeFilter] = useState('ALL')
   const [sortField, setSortField] = useState<keyof Agency | null>(null)
@@ -448,6 +76,19 @@ const AgencyManagementPage = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(8)
   const [addDialogOpen, setAddDialogOpen] = useState(false)
+
+  useEffect(() => {
+    loadAgencies()
+  }, [])
+
+  const loadAgencies = async () => {
+    const result = await getAgencies()
+    if (result.success && result.data) {
+      setAgencies(result.data)
+    } else {
+      console.error('Failed to load agencies')
+    }
+  }
 
   // Modal states
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
@@ -467,19 +108,22 @@ const AgencyManagementPage = () => {
   })
 
   // Get unique values for filters
-  const uniqueTypes = Array.from(new Set(demoAgencies.map((a) => a.type))).sort()
+  // Note: Shop doesn't have a type field, so we might need to adjust this or remove type filtering
+  // For now, we'll comment out type filtering logic or adapt it if we add a type field later
+  // const uniqueTypes = Array.from(new Set(agencies.map((a) => a.type))).sort()
+  const uniqueTypes: string[] = []
 
   // Filtering and sorting logic
   const filteredAndSortedAgencies = useMemo(() => {
     const filtered = agencies.filter((agency) => {
       const matchesSearch =
         agency.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        agency.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        agency.addresses.some((addr) =>
+        // agency.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        agency.user.addresses.some((addr) =>
           addr.locality?.toLowerCase().includes(searchTerm.toLowerCase())
         )
 
-      const matchesType = typeFilter === 'ALL' || agency.type === typeFilter
+      const matchesType = typeFilter === 'ALL' // || agency.type === typeFilter
 
       return matchesSearch && matchesType
     })
@@ -511,9 +155,10 @@ const AgencyManagementPage = () => {
   const stats = useMemo(() => {
     return {
       total: agencies.length,
-      totalAddresses: agencies.reduce((acc, a) => acc + a.addressCount, 0),
-      servicePartners: agencies.filter((a) => a.type === 'Service Partner').length,
-      authorizedDealers: agencies.filter((a) => a.type === 'Authorized Dealer').length,
+      total: agencies.length,
+      totalAddresses: agencies.reduce((acc, a) => acc + a.user.addresses.length, 0),
+      servicePartners: 0, // agencies.filter((a) => a.type === 'Service Partner').length,
+      authorizedDealers: 0, // agencies.filter((a) => a.type === 'Authorized Dealer').length,
     }
   }, [agencies])
 
@@ -547,46 +192,59 @@ const AgencyManagementPage = () => {
     setDeleteDialogOpen(true)
   }
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (selectedAgency) {
-      setAgencies(agencies.filter((a) => a.id !== selectedAgency.id))
-      setDeleteDialogOpen(false)
-      setSelectedAgency(null)
+      const result = await deleteAgency(selectedAgency.id)
+      if (result.success) {
+        setAgencies(agencies.filter((a) => a.id !== selectedAgency.id))
+        setDeleteDialogOpen(false)
+        setSelectedAgency(null)
+        // toast.success('Agency deleted successfully')
+      } else {
+        console.error('Failed to delete agency')
+      }
     }
   }
 
- const saveEdit = () => {
-  if (selectedAgency) {
-    setAgencies(
-      agencies.map((a) =>
-        a.id === selectedAgency.id
-          ? {
-              ...a,
-              name: editForm.name,
-              type: editForm.type || "",
-              updatedAt: new Date(),
-            }
-          : a
-      )
-    )
-    setEditDialogOpen(false)
-    setSelectedAgency(null)
-  }
-}
+  const saveEdit = async () => {
+    if (selectedAgency) {
+      const result = await updateAgency(selectedAgency.id, {
+        name: editForm.name,
+        address: editForm.type // Using type field for address temporarily as per plan
+      })
 
-const handleAddAgency = () => {
-  const newAgency: Agency = {
-    id: Math.max(...agencies.map((a) => a.id)) + 1,
-    name: addForm.name,
-    type: addForm.type || "", // 👈 changed null → ""
-    addressCount: 0,
-    addresses: [],
-    createdAt: new Date(),
-    updatedAt: new Date(),
+      if (result.success && result.data) {
+        setAgencies(agencies.map((a) => (a.id === selectedAgency.id ? result.data! : a)))
+        setEditDialogOpen(false)
+        setSelectedAgency(null)
+        // toast.success('Agency updated successfully')
+      } else {
+        console.error('Failed to update agency')
+      }
+    }
   }
 
-  setAgencies([...agencies, newAgency])
-}
+  const handleAddAgency = async () => {
+    // Note: userId is hardcoded for now as we don't have a user selection UI yet
+    // In a real app, we would select a user to be the agency owner
+    const result = await createAgency({
+      name: addForm.name,
+      address: addForm.type, // Using type field for address temporarily
+      userId: Math.floor(Math.random() * 1000) // Placeholder userId
+    })
+
+    if (result.success && result.data) {
+      setAgencies([result.data, ...agencies])
+      setAddDialogOpen(false)
+      setAddForm({
+        name: '',
+        type: '',
+      })
+      // toast.success('Agency added successfully')
+    } else {
+      console.error('Failed to add agency')
+    }
+  }
 
 
   const getSortIcon = (field: keyof Agency) => {
@@ -741,7 +399,7 @@ const handleAddAgency = () => {
                 >
                   <div className="flex items-center">
                     Type
-                    {getSortIcon('type')}
+                    {getSortIcon('address')} {/* Using address as placeholder for type sort */}
                   </div>
                 </TableHead>
                 <TableHead className="text-center">Locations</TableHead>
@@ -781,19 +439,19 @@ const handleAddAgency = () => {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>{getTypeBadge(agency.type)}</TableCell>
+                    <TableCell>{getTypeBadge('Service Partner') /* Placeholder */}</TableCell>
                     <TableCell className="text-center">
                       <div className="flex items-center justify-center gap-1">
                         <MapPin className="h-3 w-3 text-muted-foreground" />
-                        <span className="font-semibold">{agency.addressCount}</span>
+                        <span className="font-semibold">{agency.user.addresses.length}</span>
                       </div>
                     </TableCell>
                     <TableCell>
-                      {agency.addresses.length > 0 ? (
+                      {agency.user.addresses.length > 0 ? (
                         <div className="text-sm">
-                          <div className="font-medium">{agency.addresses[0].locality}</div>
+                          <div className="font-medium">{agency.user.addresses[0].locality}</div>
                           <div className="text-xs text-muted-foreground">
-                            {agency.addresses[0].state}, {agency.addresses[0].pincode}
+                            {agency.user.addresses[0].state}, {agency.user.addresses[0].pincode}
                           </div>
                         </div>
                       ) : (
@@ -973,9 +631,9 @@ const handleAddAgency = () => {
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <MapPin className="h-4 w-4" />
-                    <span className="font-medium">Total Locations</span>
+                    <span className="font-medium">Address Count</span>
                   </div>
-                  <p className="text-lg font-semibold">{selectedAgency.addressCount}</p>
+                  <div>{selectedAgency.user.addresses.length}</div>
                 </div>
                 <div className="col-span-2 space-y-2">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -1008,63 +666,29 @@ const handleAddAgency = () => {
               </div>
 
               {/* Addresses Section */}
-              {selectedAgency.addresses.length > 0 && (
+              {selectedAgency.user.addresses.length > 0 && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
                     <MapPin className="h-4 w-4 text-muted-foreground" />
                     <h3 className="font-semibold">Addresses</h3>
                   </div>
                   <div className="space-y-3">
-                    {selectedAgency.addresses.map((address, index) => (
-                      <div
-                        key={address.id}
-                        className="border rounded-lg p-4 space-y-2 hover:bg-muted/50 transition-colors"
-                      >
-                        <div className="flex items-center justify-between">
-                          <Badge variant="outline">{address.type || 'Office'}</Badge>
-                          <span className="text-xs text-muted-foreground">
-                            Address #{index + 1}
-                          </span>
+                    {selectedAgency.user.addresses.map((address, index) => (
+                      <div key={index} className="border rounded-lg p-3 text-sm">
+                        <div className="flex justify-between items-start mb-1">
+                          <Badge variant="outline">{address.type}</Badge>
                         </div>
-                        <div className="grid grid-cols-2 gap-3 text-sm">
-                          <div>
-                            <span className="text-muted-foreground">Locality:</span>
-                            <p className="font-medium">{address.locality || '-'}</p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Pincode:</span>
-                            <p className="font-medium">{address.pincode || '-'}</p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">State:</span>
-                            <p className="font-medium">{address.state || '-'}</p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Country:</span>
-                            <p className="font-medium">{address.country || '-'}</p>
-                          </div>
-                          {address.landmark && (
-                            <div>
-                              <span className="text-muted-foreground">Landmark:</span>
-                              <p className="font-medium">{address.landmark}</p>
-                            </div>
-                          )}
-                          {address.apartmentNo && (
-                            <div>
-                              <span className="text-muted-foreground">Building:</span>
-                              <p className="font-medium">{address.apartmentNo}</p>
-                            </div>
-                          )}
+                        <div className="space-y-1 text-muted-foreground">
+                          <p>
+                            {address.apartmentNo}, {address.locality}
+                          </p>
+                          <p>
+                            {address.state} - {address.pincode}
+                          </p>
                           {address.phone && (
-                            <div>
-                              <span className="text-muted-foreground">Phone:</span>
-                              <p className="font-medium">{address.phone}</p>
-                            </div>
-                          )}
-                          {address.altPhone && (
-                            <div>
-                              <span className="text-muted-foreground">Alt Phone:</span>
-                              <p className="font-medium">{address.altPhone}</p>
+                            <div className="flex items-center gap-1 mt-2">
+                              <Phone className="h-3 w-3" />
+                              <span>{address.phone}</span>
                             </div>
                           )}
                         </div>

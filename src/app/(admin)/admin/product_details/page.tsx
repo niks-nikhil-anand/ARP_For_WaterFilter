@@ -61,225 +61,28 @@ import {
   ShieldCheck,
   Percent,
 } from 'lucide-react'
+import { getProducts, createProduct, updateProduct, deleteProduct } from '@/app/actions/product'
+import { toast } from 'sonner'
 
-// Demo data based on your Prisma Product model
-const demoProducts = [
-  {
-    id: 1,
-    name: 'Kent Grand Plus RO + UV + UF + TDS Controller Water Purifier',
-    company: 'Kent',
-    type: 'RO + UV + UF Water Purifier',
-    color: 'White & Blue',
-    price: 18999,
-    discountedPrice: 15999,
-    discountPercent: 15.8,
-    offer: 'Free Installation & 1-Year Service AMC',
-    warrantyPeriod: '1 Year',
-    shopId: 1,
-    createdAt: new Date('2024-07-10'),
-    updatedAt: new Date('2024-10-10'),
-  },
-  {
-    id: 2,
-    name: 'Aquaguard Aura RO + UV + UF + Active Copper Water Purifier',
-    company: 'Eureka Forbes',
-    type: 'RO + UV + UF Water Purifier',
-    color: 'Black & Copper',
-    price: 17999,
-    discountedPrice: 14999,
-    discountPercent: 16.7,
-    offer: 'Festival Offer: ₹3000 Off + Free Filter Set',
-    warrantyPeriod: '1 Year',
-    shopId: 1,
-    createdAt: new Date('2024-06-18'),
-    updatedAt: new Date('2024-10-12'),
-  },
-  {
-    id: 3,
-    name: 'Livpure Glo Star RO + UV + Mineralizer Water Purifier',
-    company: 'Livpure',
-    type: 'RO + UV Water Purifier',
-    color: 'White',
-    price: 14999,
-    discountedPrice: 12499,
-    discountPercent: 16.6,
-    offer: 'Free Installation & 1 Free Filter Replacement',
-    warrantyPeriod: '1 Year',
-    shopId: 2,
-    createdAt: new Date('2024-05-25'),
-    updatedAt: new Date('2024-10-14'),
-  },
-  {
-    id: 4,
-    name: 'AO Smith Z9 Green RO Hot & Cold Water Purifier',
-    company: 'AO Smith',
-    type: 'RO Water Purifier with Hot & Cold',
-    color: 'Black',
-    price: 28999,
-    discountedPrice: 25999,
-    discountPercent: 10.3,
-    offer: '₹3000 Cashback on Credit Card EMI',
-    warrantyPeriod: '2 Years',
-    shopId: 2,
-    createdAt: new Date('2024-04-30'),
-    updatedAt: new Date('2024-09-30'),
-  },
-  {
-    id: 5,
-    name: 'Blue Star Aristo RO + UV + UF Water Purifier',
-    company: 'Blue Star',
-    type: 'RO + UV + UF Water Purifier',
-    color: 'Black & Silver',
-    price: 13990,
-    discountedPrice: 11990,
-    discountPercent: 14.3,
-    offer: 'Festival Deal: Free Pre-filter Kit',
-    warrantyPeriod: '1 Year',
-    shopId: 1,
-    createdAt: new Date('2024-04-15'),
-    updatedAt: new Date('2024-10-11'),
-  },
-  {
-    id: 6,
-    name: 'HUL Pureit Copper+ RO Water Purifier',
-    company: 'Pureit (HUL)',
-    type: 'RO + UV + Copper Enriched Water Purifier',
-    color: 'Black & Copper',
-    price: 23999,
-    discountedPrice: 19999,
-    discountPercent: 16.6,
-    offer: 'Free Copper Cartridge Worth ₹1500',
-    warrantyPeriod: '1 Year',
-    shopId: 3,
-    createdAt: new Date('2024-03-22'),
-    updatedAt: new Date('2024-10-09'),
-  },
-  {
-    id: 7,
-    name: 'Aquaguard Marvel RO + UV + Active Copper Water Purifier',
-    company: 'Eureka Forbes',
-    type: 'RO + UV Water Purifier',
-    color: 'Black',
-    price: 16999,
-    discountedPrice: 13999,
-    discountPercent: 17.6,
-    offer: 'Zero Cost EMI for 6 Months',
-    warrantyPeriod: '1 Year',
-    shopId: 3,
-    createdAt: new Date('2024-03-05'),
-    updatedAt: new Date('2024-10-08'),
-  },
-  {
-    id: 8,
-    name: 'Kent Supreme Alkaline RO + UV + UF + TDS Controller Water Purifier',
-    company: 'Kent',
-    type: 'Alkaline RO + UV + UF Water Purifier',
-    color: 'White',
-    price: 21999,
-    discountedPrice: 18499,
-    discountPercent: 15.9,
-    offer: 'Free Filter Replacement Worth ₹2000',
-    warrantyPeriod: '1 Year',
-    shopId: 2,
-    createdAt: new Date('2024-02-10'),
-    updatedAt: new Date('2024-10-14'),
-  },
-  {
-    id: 9,
-    name: 'AO Smith X2 UV + UF Water Purifier',
-    company: 'AO Smith',
-    type: 'UV + UF Water Purifier (Non-RO)',
-    color: 'White & Green',
-    price: 12990,
-    discountedPrice: 10990,
-    discountPercent: 15.4,
-    offer: 'Free Installation + Free Pre-filter',
-    warrantyPeriod: '1 Year',
-    shopId: 1,
-    createdAt: new Date('2024-01-20'),
-    updatedAt: new Date('2024-10-07'),
-  },
-  {
-    id: 10,
-    name: 'Blue Star Eleanor RO + UV + UF + Taste Enhancer Water Purifier',
-    company: 'Blue Star',
-    type: 'RO + UV + UF Water Purifier',
-    color: 'Black & Silver',
-    price: 18999,
-    discountedPrice: 15999,
-    discountPercent: 15.8,
-    offer: 'Free Installation Kit + Pre-filter',
-    warrantyPeriod: '1 Year',
-    shopId: 3,
-    createdAt: new Date('2023-12-05'),
-    updatedAt: new Date('2024-10-13'),
-  },
-  {
-    id: 11,
-    name: 'Havells Max RO + UV + Mineralizer Water Purifier',
-    company: 'Havells',
-    type: 'RO + UV Water Purifier',
-    color: 'White & Blue',
-    price: 16999,
-    discountedPrice: 14499,
-    discountPercent: 14.7,
-    offer: 'Free Installation & 1 Filter Replacement',
-    warrantyPeriod: '1 Year',
-    shopId: 2,
-    createdAt: new Date('2023-11-18'),
-    updatedAt: new Date('2024-10-12'),
-  },
-  {
-    id: 12,
-    name: 'Aquasure Amaze RO + UV + MTDS Water Purifier',
-    company: 'Eureka Forbes',
-    type: 'RO + UV + MTDS Water Purifier',
-    color: 'Black & Red',
-    price: 13999,
-    discountedPrice: 11999,
-    discountPercent: 14.3,
-    offer: 'Buy Now & Get Free Pre-filter',
-    warrantyPeriod: '1 Year',
-    shopId: 1,
-    createdAt: new Date('2023-11-01'),
-    updatedAt: new Date('2024-10-11'),
-  },
-  {
-    id: 13,
-    name: 'Faber Galaxy Plus RO + UV + UF + MAT Water Purifier',
-    company: 'Faber',
-    type: 'RO + UV + UF Water Purifier',
-    color: 'Black',
-    price: 16999,
-    discountedPrice: 13999,
-    discountPercent: 17.6,
-    offer: 'Free Installation & Pre-filter Kit',
-    warrantyPeriod: '1 Year',
-    shopId: 3,
-    createdAt: new Date('2023-10-20'),
-    updatedAt: new Date('2024-10-10'),
-  },
-  {
-    id: 14,
-    name: 'Livpure Pep Pro Plus RO + UV + UF + Taste Enhancer Water Purifier',
-    company: 'Livpure',
-    type: 'RO + UV + UF Water Purifier',
-    color: 'White & Black',
-    price: 15999,
-    discountedPrice: 13499,
-    discountPercent: 15.6,
-    offer: 'Free Installation & 6 Months AMC',
-    warrantyPeriod: '1 Year',
-    shopId: 2,
-    createdAt: new Date('2023-09-15'),
-    updatedAt: new Date('2024-10-09'),
-  },
-]
-
-type Product = typeof demoProducts[0]
+// Interface matching the UI structure
+interface Product {
+  id: number
+  name: string
+  company: string
+  type: string
+  color: string | null
+  price: number
+  discountedPrice: number | null
+  discountPercent: number | null
+  offer: string | null
+  warrantyPeriod: string | null
+  shopId: number
+  createdAt: Date
+  updatedAt: Date
+}
 
 const ProductManagementPage = () => {
-  const [products, setProducts] = useState<Product[]>(demoProducts)
+  const [products, setProducts] = useState<Product[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [companyFilter, setCompanyFilter] = useState('ALL')
@@ -291,37 +94,57 @@ const ProductManagementPage = () => {
   const [itemsPerPage] = useState(6)
 
   // Fetch products from API
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setIsLoading(true)
-        const result = await adminActions.getAllProducts()
-        if (result.success && result.data) {
-          // Transform API data to match demo data structure
-          const transformedProducts = result.data.map((p: any) => ({
-            ...p,
-            createdAt: new Date(p.createdAt),
-            updatedAt: new Date(p.updatedAt),
-            price: 0, // These fields might not exist in current schema
-            discountedPrice: null,
-            discountPercent: null,
-          }))
-          setProducts(transformedProducts)
-        }
-      } catch (error) {
-        console.error('Error fetching products:', error)
-        // Keep demo data as fallback
-      } finally {
-        setIsLoading(false)
+  // Fetch products from API
+  const loadProducts = async () => {
+    try {
+      setIsLoading(true)
+      const result = await getProducts()
+      if (result.success && result.data) {
+        // Transform API data to match UI structure
+        const transformedProducts: Product[] = result.data.map((p) => ({
+          id: p.id,
+          name: p.name,
+          company: p.company,
+          type: p.type,
+          color: p.color,
+          price: p.productDetail?.basePrice || 0,
+          discountedPrice: p.productDetail?.discountedPrice || null,
+          discountPercent:
+            p.productDetail?.basePrice && p.productDetail?.discountedPrice
+              ? parseFloat(
+                  (
+                    ((p.productDetail.basePrice - p.productDetail.discountedPrice) /
+                      p.productDetail.basePrice) *
+                    100
+                  ).toFixed(1)
+                )
+              : null,
+          offer: p.offer,
+          warrantyPeriod: p.warrantyPeriod,
+          shopId: p.shopId,
+          createdAt: new Date(p.createdAt),
+          updatedAt: new Date(p.updatedAt),
+        }))
+        setProducts(transformedProducts)
+      } else {
+        toast.error('Failed to load products')
       }
+    } catch (error) {
+      console.error('Error fetching products:', error)
+      toast.error('Error loading products')
+    } finally {
+      setIsLoading(false)
     }
+  }
 
-    fetchProducts()
+  useEffect(() => {
+    loadProducts()
   }, [])
 
   // Modal states
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
 
@@ -333,14 +156,25 @@ const ProductManagementPage = () => {
     color: '',
     price: '',
     discountedPrice: '',
-    discountPercent: '',
+    offer: '',
+    warrantyPeriod: '',
+  })
+
+  // Add form state
+  const [addForm, setAddForm] = useState({
+    name: '',
+    company: '',
+    type: '',
+    color: '',
+    price: '',
+    discountedPrice: '',
     offer: '',
     warrantyPeriod: '',
   })
 
   // Get unique values for filters
-  const uniqueCompanies = Array.from(new Set(demoProducts.map((p) => p.company))).sort()
-  const uniqueTypes = Array.from(new Set(demoProducts.map((p) => p.type))).sort()
+  const uniqueCompanies = Array.from(new Set(products.map((p) => p.company))).sort()
+  const uniqueTypes = Array.from(new Set(products.map((p) => p.type))).sort()
 
   // Filtering and sorting logic
   const filteredAndSortedProducts = useMemo(() => {
@@ -424,11 +258,24 @@ const ProductManagementPage = () => {
       color: product.color || '',
       price: product.price.toString(),
       discountedPrice: product.discountedPrice?.toString() || '',
-      discountPercent: product.discountPercent?.toString() || '',
       offer: product.offer || '',
       warrantyPeriod: product.warrantyPeriod || '',
     })
     setEditDialogOpen(true)
+  }
+
+  const handleAddProduct = () => {
+    setAddForm({
+      name: '',
+      company: '',
+      type: '',
+      color: '',
+      price: '',
+      discountedPrice: '',
+      offer: '',
+      warrantyPeriod: '',
+    })
+    setAddDialogOpen(true)
   }
 
   const handleDelete = (product: Product) => {
@@ -436,48 +283,75 @@ const ProductManagementPage = () => {
     setDeleteDialogOpen(true)
   }
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (selectedProduct) {
-      setProducts(products.filter((p) => p.id !== selectedProduct.id))
-      setDeleteDialogOpen(false)
-      setSelectedProduct(null)
+      const result = await deleteProduct(selectedProduct.id)
+      if (result.success) {
+        toast.success('Product deleted successfully')
+        loadProducts()
+        setDeleteDialogOpen(false)
+        setSelectedProduct(null)
+      } else {
+        toast.error('Failed to delete product')
+      }
     }
   }
 
-  const saveEdit = () => {
-  if (selectedProduct) {
-    const price = parseFloat(editForm.price)
-    const discountedPrice = editForm.discountedPrice
-      ? parseFloat(editForm.discountedPrice)
-      : price
-    const discountPercent =
-      discountedPrice && price
-        ? parseFloat((((price - discountedPrice) / price) * 100).toFixed(1))
-        : 0
+  const saveEdit = async () => {
+    if (selectedProduct) {
+      const price = parseFloat(editForm.price)
+      const discountedPrice = editForm.discountedPrice
+        ? parseFloat(editForm.discountedPrice)
+        : undefined
 
-    setProducts(
-      products.map((p) =>
-        p.id === selectedProduct.id
-          ? {
-              ...p,
-              name: editForm.name,
-              company: editForm.company,
-              type: editForm.type,
-              color: editForm.color || "",
-              price,
-              discountedPrice,
-              discountPercent,
-              offer: editForm.offer || "",
-              warrantyPeriod: editForm.warrantyPeriod || "",
-              updatedAt: new Date(),
-            }
-          : p
-      )
-    )
-    setEditDialogOpen(false)
-    setSelectedProduct(null)
+      const result = await updateProduct(selectedProduct.id, {
+        name: editForm.name,
+        company: editForm.company,
+        type: editForm.type,
+        color: editForm.color,
+        offer: editForm.offer,
+        warrantyPeriod: editForm.warrantyPeriod,
+        price,
+        discountedPrice,
+      })
+
+      if (result.success) {
+        toast.success('Product updated successfully')
+        loadProducts()
+        setEditDialogOpen(false)
+        setSelectedProduct(null)
+      } else {
+        toast.error('Failed to update product')
+      }
+    }
   }
-}
+
+  const saveAdd = async () => {
+    const price = parseFloat(addForm.price)
+    const discountedPrice = addForm.discountedPrice
+      ? parseFloat(addForm.discountedPrice)
+      : undefined
+
+    const result = await createProduct({
+      name: addForm.name,
+      company: addForm.company,
+      type: addForm.type,
+      color: addForm.color,
+      offer: addForm.offer,
+      warrantyPeriod: addForm.warrantyPeriod,
+      price,
+      discountedPrice,
+      shopId: 1, // Placeholder shop ID
+    })
+
+    if (result.success) {
+      toast.success('Product created successfully')
+      loadProducts()
+      setAddDialogOpen(false)
+    } else {
+      toast.error('Failed to create product')
+    }
+  }
 
 
   const getSortIcon = (field: keyof Product) => {
@@ -545,7 +419,7 @@ const ProductManagementPage = () => {
               Manage your product inventory, pricing, and details
             </p>
           </div>
-          <Button className="flex items-center gap-2">
+          <Button className="flex items-center gap-2" onClick={handleAddProduct}>
             <Plus className="h-4 w-4" />
             Add Product
           </Button>
@@ -1098,6 +972,124 @@ const ProductManagementPage = () => {
               Cancel
             </Button>
             <Button onClick={saveEdit}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Dialog */}
+      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add New Product</DialogTitle>
+            <DialogDescription>Enter the details for the new product</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2 space-y-2">
+                <Label htmlFor="add-name">Product Name</Label>
+                <Input
+                  id="add-name"
+                  value={addForm.name}
+                  onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
+                  placeholder="e.g. Kent Grand Plus"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="add-company">Company</Label>
+                <Input
+                  id="add-company"
+                  value={addForm.company}
+                  onChange={(e) => setAddForm({ ...addForm, company: e.target.value })}
+                  placeholder="e.g. Kent"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="add-type">Type</Label>
+                <Input
+                  id="add-type"
+                  value={addForm.type}
+                  onChange={(e) => setAddForm({ ...addForm, type: e.target.value })}
+                  placeholder="e.g. RO + UV"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="add-color">Color</Label>
+                <Input
+                  id="add-color"
+                  value={addForm.color}
+                  onChange={(e) => setAddForm({ ...addForm, color: e.target.value })}
+                  placeholder="Optional"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="add-warranty">Warranty Period</Label>
+                <Input
+                  id="add-warranty"
+                  value={addForm.warrantyPeriod}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, warrantyPeriod: e.target.value })
+                  }
+                  placeholder="e.g. 1 Year"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="add-price">Original Price (₹)</Label>
+                <Input
+                  id="add-price"
+                  type="number"
+                  value={addForm.price}
+                  onChange={(e) => setAddForm({ ...addForm, price: e.target.value })}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="add-discounted-price">Discounted Price (₹)</Label>
+                <Input
+                  id="add-discounted-price"
+                  type="number"
+                  value={addForm.discountedPrice}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, discountedPrice: e.target.value })
+                  }
+                  placeholder="Optional"
+                />
+              </div>
+              <div className="col-span-2 space-y-2">
+                <Label htmlFor="add-offer">Special Offer</Label>
+                <Textarea
+                  id="add-offer"
+                  value={addForm.offer}
+                  onChange={(e) => setAddForm({ ...addForm, offer: e.target.value })}
+                  placeholder="Optional - e.g., Bank Offer, Free Gift, etc."
+                  rows={3}
+                />
+              </div>
+            </div>
+            {addForm.price && addForm.discountedPrice && (
+              <div className="bg-muted p-4 rounded-md">
+                <p className="text-sm font-medium mb-2">Calculated Discount:</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {(
+                    ((parseFloat(addForm.price) - parseFloat(addForm.discountedPrice)) /
+                      parseFloat(addForm.price)) *
+                    100
+                  ).toFixed(1)}
+                  % OFF
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Save{' '}
+                  {formatPrice(
+                    parseFloat(addForm.price) - parseFloat(addForm.discountedPrice)
+                  )}
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={saveAdd}>Create Product</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

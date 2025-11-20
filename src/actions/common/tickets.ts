@@ -1,193 +1,228 @@
-'use server';
+'use server'
 
-/**
- * Common - Ticket Actions (Book a Service)
- * Used by all panels and public-facing forms
- */
+import prisma from '@/lib/prisma'
+import { revalidatePath } from 'next/cache'
+import { Prisma, TicketStatus, TicketPriority } from '@/generated/prisma'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-
-// POST - Create ticket (Book a Service) - PUBLIC ENDPOINT
-export async function createTicket(ticketData: {
-  customerName: string;
-  customerEmail: string;
-  customerPhone: string;
-  customerAddress?: string;
-  serviceType: string;
-  productType?: string;
-  description?: string;
-  preferredDate?: string;
-  preferredTime?: string;
-  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-  shopId?: number;
-}) {
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/tickets`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(ticketData),
-    });
-
-    const data = await response.json();
-    if (!data.success) throw new Error(data.error);
-
-    return { success: true, data: data.data, message: data.message };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+export type TicketWithDetails = Prisma.TicketGetPayload<{
+  include: {
+    assignedToAgent: {
+      include: {
+        user: true
+      }
+    }
+    shop: true
   }
-}
+}>
 
-// GET all tickets (authenticated)
 export async function getAllTickets(filters?: {
-  status?: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | 'CANCELLED';
-  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-  shopId?: number;
+  status?: TicketStatus
+  priority?: TicketPriority
+  shopId?: number
 }) {
   try {
-    let url = `${API_BASE_URL}/api/tickets`;
-    const params = new URLSearchParams();
+    const where: Prisma.TicketWhereInput = {}
+    
+    if (filters?.status) {
+      where.status = filters.status
+    }
+    if (filters?.priority) {
+      where.priority = filters.priority
+    }
+    if (filters?.shopId) {
+      where.shopId = filters.shopId
+    }
 
-    if (filters?.status) params.append('status', filters.status);
-    if (filters?.priority) params.append('priority', filters.priority);
-    if (filters?.shopId) params.append('shopId', filters.shopId.toString());
-
-    if (params.toString()) url += `?${params.toString()}`;
-
-    const response = await fetch(url, {
-      method: 'GET',
-      credentials: 'include',
-      cache: 'no-store',
-    });
-
-    const data = await response.json();
-    if (!data.success) throw new Error(data.error);
-
-    return { success: true, data: data.data };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+    const tickets = await prisma.ticket.findMany({
+      where,
+      include: {
+        assignedToAgent: {
+          include: {
+            user: true
+          }
+        },
+        shop: true
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    })
+    
+    return { success: true, data: tickets }
+  } catch (error) {
+    console.error('Failed to fetch tickets:', error)
+    return { success: false, error: 'Failed to fetch tickets' }
   }
 }
 
-// GET single ticket
 export async function getTicketById(id: number) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/tickets/${id}`, {
-      method: 'GET',
-      credentials: 'include',
-      cache: 'no-store',
-    });
-
-    const data = await response.json();
-    if (!data.success) throw new Error(data.error);
-
-    return { success: true, data: data.data };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+    const ticket = await prisma.ticket.findUnique({
+      where: { id },
+      include: {
+        assignedToAgent: {
+          include: {
+            user: true
+          }
+        },
+        shop: true
+      },
+    })
+    
+    if (!ticket) {
+      return { success: false, error: 'Ticket not found' }
+    }
+    
+    return { success: true, data: ticket }
+  } catch (error) {
+    console.error('Failed to fetch ticket:', error)
+    return { success: false, error: 'Failed to fetch ticket' }
   }
 }
 
-// PATCH - Update ticket
-export async function updateTicket(id: number, updates: Partial<{
-  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | 'CANCELLED';
-  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-  agentId: number;
-  shopId: number;
-  internalNotes: string;
-  resolutionNotes: string;
-  preferredDate: string;
-  preferredTime: string;
-}>) {
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/tickets/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(updates),
-    });
-
-    const data = await response.json();
-    if (!data.success) throw new Error(data.error);
-
-    return { success: true, data: data.data, message: data.message };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
-}
-
-// PUT - Replace ticket
-export async function replaceTicket(id: number, ticketData: {
-  customerName: string;
-  customerEmail: string;
-  customerPhone: string;
-  customerAddress?: string;
-  serviceType: string;
-  productType?: string;
-  description?: string;
-  preferredDate?: string;
-  preferredTime?: string;
-  status?: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | 'CANCELLED';
-  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-  agentId?: number;
-  shopId?: number;
-  internalNotes?: string;
-  resolutionNotes?: string;
+export async function createTicket(data: {
+  customerName: string
+  customerEmail: string
+  customerPhone: string
+  customerAddress?: string
+  serviceType: string
+  productType?: string
+  description?: string
+  preferredDate?: Date | string
+  preferredTime?: string
+  priority?: TicketPriority
+  shopId?: number
+  agentId?: number
+  source?: string
 }) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/tickets/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(ticketData),
-    });
-
-    const data = await response.json();
-    if (!data.success) throw new Error(data.error);
-
-    return { success: true, data: data.data, message: data.message };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+    const ticket = await prisma.ticket.create({
+      data: {
+        customerName: data.customerName,
+        customerEmail: data.customerEmail,
+        customerPhone: data.customerPhone,
+        customerAddress: data.customerAddress,
+        serviceType: data.serviceType,
+        productType: data.productType,
+        description: data.description,
+        preferredDate: data.preferredDate ? new Date(data.preferredDate) : null,
+        preferredTime: data.preferredTime,
+        priority: data.priority || TicketPriority.MEDIUM,
+        status: TicketStatus.OPEN,
+        source: data.source || 'WEBSITE',
+        shopId: data.shopId,
+        agentId: data.agentId,
+      },
+      include: {
+        assignedToAgent: {
+          include: {
+            user: true
+          }
+        },
+        shop: true
+      },
+    })
+    
+    revalidatePath('/admin/tickets')
+    return { success: true, data: ticket, message: 'Ticket created successfully' }
+  } catch (error) {
+    console.error('Failed to create ticket:', error)
+    return { success: false, error: 'Failed to create ticket' }
   }
 }
 
-// DELETE ticket
+export async function updateTicket(
+  id: number,
+  updates: Partial<{
+    status: TicketStatus
+    priority: TicketPriority
+    agentId: number | null
+    shopId: number | null
+    internalNotes: string
+    resolutionNotes: string
+    preferredDate: Date | string
+    preferredTime: string
+  }>
+) {
+  try {
+    const updateData: Prisma.TicketUpdateInput = {}
+    
+    if (updates.status !== undefined) updateData.status = updates.status
+    if (updates.priority !== undefined) updateData.priority = updates.priority
+    if (updates.internalNotes !== undefined) updateData.internalNotes = updates.internalNotes
+    if (updates.resolutionNotes !== undefined) updateData.resolutionNotes = updates.resolutionNotes
+    if (updates.preferredTime !== undefined) updateData.preferredTime = updates.preferredTime
+    
+    if (updates.preferredDate !== undefined) {
+      updateData.preferredDate = updates.preferredDate ? new Date(updates.preferredDate) : null
+    }
+    
+    if (updates.agentId !== undefined) {
+      updateData.assignedToAgent = updates.agentId 
+        ? { connect: { id: updates.agentId } }
+        : { disconnect: true }
+    }
+    
+    if (updates.shopId !== undefined) {
+      updateData.shop = updates.shopId 
+        ? { connect: { id: updates.shopId } }
+        : { disconnect: true }
+    }
+
+    const ticket = await prisma.ticket.update({
+      where: { id },
+      data: updateData,
+      include: {
+        assignedToAgent: {
+          include: {
+            user: true
+          }
+        },
+        shop: true
+      },
+    })
+    
+    revalidatePath('/admin/tickets')
+    return { success: true, data: ticket, message: 'Ticket updated successfully' }
+  } catch (error) {
+    console.error('Failed to update ticket:', error)
+    return { success: false, error: 'Failed to update ticket' }
+  }
+}
+
 export async function deleteTicket(id: number) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/tickets/${id}`, {
-      method: 'DELETE',
-      credentials: 'include',
-    });
-
-    const data = await response.json();
-    if (!data.success) throw new Error(data.error);
-
-    return { success: true, message: data.message };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+    await prisma.ticket.delete({
+      where: { id },
+    })
+    
+    revalidatePath('/admin/tickets')
+    return { success: true, message: 'Ticket deleted successfully' }
+  } catch (error) {
+    console.error('Failed to delete ticket:', error)
+    return { success: false, error: 'Failed to delete ticket' }
   }
 }
 
-// Helper: Assign agent to ticket
+// Helper functions
 export async function assignAgentToTicket(ticketId: number, agentId: number) {
-  return updateTicket(ticketId, { agentId });
+  return updateTicket(ticketId, { agentId })
 }
 
-// Helper: Update ticket status
 export async function updateTicketStatus(
   ticketId: number,
-  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | 'CANCELLED'
+  status: TicketStatus
 ) {
-  return updateTicket(ticketId, { status });
+  return updateTicket(ticketId, { status })
 }
 
-// Helper: Add resolution notes
 export async function addResolutionNotes(ticketId: number, notes: string) {
-  return updateTicket(ticketId, { resolutionNotes: notes });
+  return updateTicket(ticketId, { resolutionNotes: notes })
 }
 
-// Helper: Close ticket with resolution
 export async function closeTicket(ticketId: number, resolutionNotes: string) {
   return updateTicket(ticketId, {
-    status: 'RESOLVED',
+    status: TicketStatus.RESOLVED,
     resolutionNotes,
-  });
+  })
 }

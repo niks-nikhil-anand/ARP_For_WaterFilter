@@ -68,45 +68,29 @@ import {
   updateTicket,
   deleteTicket,
 } from '@/actions/common/tickets'
-
-// Enums from Prisma
-enum TicketStatus {
-  OPEN = 'OPEN',
-  IN_PROGRESS = 'IN_PROGRESS',
-  RESOLVED = 'RESOLVED',
-  CLOSED = 'CLOSED',
-  CANCELLED = 'CANCELLED',
-}
-
-enum TicketPriority {
-  LOW = 'LOW',
-  MEDIUM = 'MEDIUM',
-  HIGH = 'HIGH',
-  URGENT = 'URGENT',
-}
+import { TicketStatus, TicketPriority } from '@/generated/prisma'
 
 interface TicketType {
   id: number
   customerName: string
   customerEmail: string
   customerPhone: string
-  customerAddress?: string
+  customerAddress?: string | null
   serviceType: string
-  productType?: string
-  description?: string
-  preferredDate?: Date | string
-  preferredTime?: string
+  productType?: string | null
+  description?: string | null
+  preferredDate?: Date | string | null
+  preferredTime?: string | null
   status: TicketStatus
   priority: TicketPriority
-  agentId?: number
-  shopId?: number
-  internalNotes?: string
-  resolutionNotes?: string
-  source?: string
+  agentId?: number | null
+  shopId?: number | null
+  internalNotes?: string | null
+  resolutionNotes?: string | null
+  source?: string | null
   createdAt: Date
   updatedAt: Date
 }
-
 const TicketManagementPage = () => {
   const [tickets, setTickets] = useState<TicketType[]>([])
   const [loading, setLoading] = useState(true)
@@ -125,7 +109,12 @@ const TicketManagementPage = () => {
   const [selectedTicket, setSelectedTicket] = useState<TicketType | null>(null)
 
   // Form states
-  const [editForm, setEditForm] = useState({
+  const [editForm, setEditForm] = useState<{
+    status: TicketStatus
+    priority: TicketPriority
+    internalNotes: string
+    resolutionNotes: string
+  }>({
     status: TicketStatus.OPEN,
     priority: TicketPriority.MEDIUM,
     internalNotes: '',

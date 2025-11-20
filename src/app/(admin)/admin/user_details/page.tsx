@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import {
   Table,
   TableBody,
@@ -56,27 +56,16 @@ import {
   Users,
   CheckCircle,
   XCircle,
-  User,
+  User as UserIcon,
   Mail,
   Phone,
   Calendar,
   Crown,
   Settings,
 } from 'lucide-react'
-
-// Enum from Prisma
-enum UserRole {
-  USER = 'USER',
-  ADMIN = 'ADMIN',
-  SUPERADMIN = 'SUPERADMIN',
-  AGENT = 'AGENT',
-}
-
-enum UserStatus {
-  BLOCKED = 'BLOCKED',
-  PENDING = 'PENDING',
-  ACTIVE = 'ACTIVE',
-}
+import { getUsers, createUser, updateUser, deleteUser } from '@/app/actions/user'
+import { UserRole, UserStatus } from '@/generated/prisma'
+import type { User } from '@/app/actions/user'
 
 // Permission structure
 interface Permission {
@@ -91,98 +80,6 @@ interface RolePermissions {
   role: UserRole
   permissions: Permission[]
 }
-
-// Demo users data
-const demoUsers = [
-  {
-    id: 1,
-    name: 'Rajesh Kumar',
-    email: 'rajesh.kumar@email.com',
-    password: 'hashed_password',
-    mobile: '+91 98765 43210',
-    role: UserRole.SUPERADMIN,
-    status: UserStatus.ACTIVE,
-    createdAt: new Date('2023-01-15'),
-    updatedAt: new Date('2024-10-12'),
-  },
-  {
-    id: 2,
-    name: 'Priya Sharma',
-    email: 'priya.sharma@email.com',
-    password: 'hashed_password',
-    mobile: '+91 98765 43211',
-    role: UserRole.ADMIN,
-    status: UserStatus.ACTIVE,
-    createdAt: new Date('2023-03-20'),
-    updatedAt: new Date('2024-10-14'),
-  },
-  {
-    id: 3,
-    name: 'Amit Patel',
-    email: 'amit.patel@email.com',
-    password: 'hashed_password',
-    mobile: '+91 98765 43212',
-    role: UserRole.AGENT,
-    status: UserStatus.ACTIVE,
-    createdAt: new Date('2023-05-10'),
-    updatedAt: new Date('2024-10-13'),
-  },
-  {
-    id: 4,
-    name: 'Sunita Reddy',
-    email: 'sunita.reddy@email.com',
-    password: 'hashed_password',
-    mobile: '+91 98765 43213',
-    role: UserRole.USER,
-    status: UserStatus.ACTIVE,
-    createdAt: new Date('2023-07-05'),
-    updatedAt: new Date('2024-10-10'),
-  },
-  {
-    id: 5,
-    name: 'Vikram Singh',
-    email: 'vikram.singh@email.com',
-    password: 'hashed_password',
-    mobile: '+91 98765 43214',
-    role: UserRole.ADMIN,
-    status: UserStatus.PENDING,
-    createdAt: new Date('2023-08-18'),
-    updatedAt: new Date('2024-10-14'),
-  },
-  {
-    id: 6,
-    name: 'Anjali Verma',
-    email: 'anjali.verma@email.com',
-    password: 'hashed_password',
-    mobile: '+91 98765 43215',
-    role: UserRole.USER,
-    status: UserStatus.BLOCKED,
-    createdAt: new Date('2023-09-25'),
-    updatedAt: new Date('2024-10-11'),
-  },
-  {
-    id: 7,
-    name: 'Karthik Rao',
-    email: 'karthik.rao@email.com',
-    password: 'hashed_password',
-    mobile: '+91 98765 43216',
-    role: UserRole.AGENT,
-    status: UserStatus.ACTIVE,
-    createdAt: new Date('2023-11-12'),
-    updatedAt: new Date('2024-10-09'),
-  },
-  {
-    id: 8,
-    name: 'Deepa Menon',
-    email: 'deepa.menon@email.com',
-    password: 'hashed_password',
-    mobile: '+91 98765 43217',
-    role: UserRole.USER,
-    status: UserStatus.ACTIVE,
-    createdAt: new Date('2024-01-08'),
-    updatedAt: new Date('2024-10-12'),
-  },
-]
 
 // Default permissions for each role
 const defaultRolePermissions: RolePermissions[] = [
@@ -240,10 +137,8 @@ const defaultRolePermissions: RolePermissions[] = [
   },
 ]
 
-type User = typeof demoUsers[0]
-
 const RoleManagementPage = () => {
-  const [users, setUsers] = useState<User[]>(demoUsers)
+  const [users, setUsers] = useState<User[]>([])
   const [rolePermissions, setRolePermissions] = useState<RolePermissions[]>(defaultRolePermissions)
   const [searchTerm, setSearchTerm] = useState('')
   const [roleFilter, setRoleFilter] = useState('ALL')
@@ -256,6 +151,20 @@ const RoleManagementPage = () => {
   const [permissionsDialogOpen, setPermissionsDialogOpen] = useState(false)
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null)
 
+  useEffect(() => {
+    loadUsers()
+  }, [])
+
+  const loadUsers = async () => {
+    const result = await getUsers()
+    if (result.success && result.data) {
+      setUsers(result.data)
+    } else {
+      // toast.error('Failed to load users')
+      console.error('Failed to load users')
+    }
+  }
+
   // Modal states
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
@@ -263,7 +172,13 @@ const RoleManagementPage = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
 
   // Form states
-  const [editForm, setEditForm] = useState({
+  const [editForm, setEditForm] = useState<{
+    name: string
+    email: string
+    mobile: string
+    role: UserRole
+    status: UserStatus
+  }>({
     name: '',
     email: '',
     mobile: '',
@@ -271,7 +186,13 @@ const RoleManagementPage = () => {
     status: UserStatus.ACTIVE,
   })
 
-  const [addForm, setAddForm] = useState({
+  const [addForm, setAddForm] = useState<{
+    name: string
+    email: string
+    mobile: string
+    role: UserRole
+    status: UserStatus
+  }>({
     name: '',
     email: '',
     mobile: '',
@@ -363,59 +284,68 @@ const RoleManagementPage = () => {
     setDeleteDialogOpen(true)
   }
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (selectedUser) {
-      setUsers(users.filter((u) => u.id !== selectedUser.id))
-      setDeleteDialogOpen(false)
-      setSelectedUser(null)
+      const result = await deleteUser(selectedUser.id)
+      if (result.success) {
+        setUsers(users.filter((u) => u.id !== selectedUser.id))
+        setDeleteDialogOpen(false)
+        setSelectedUser(null)
+        // toast.success('User deleted successfully')
+      } else {
+        // toast.error('Failed to delete user')
+        console.error('Failed to delete user')
+      }
     }
   }
 
-  const saveEdit = () => {
-  if (selectedUser) {
-    setUsers(
-      users.map((u) =>
-        u.id === selectedUser.id
-          ? {
-              ...u,
-              name: editForm.name,
-              email: editForm.email,
-              mobile: editForm.mobile || "",
-              role: editForm.role,
-              status: editForm.status,
-              updatedAt: new Date(),
-            }
-          : u
-      )
-    )
-    setEditDialogOpen(false)
-    setSelectedUser(null)
-  }
-}
+  const saveEdit = async () => {
+    if (selectedUser) {
+      const result = await updateUser(selectedUser.id, {
+        name: editForm.name,
+        email: editForm.email,
+        mobile: editForm.mobile,
+        role: editForm.role,
+        status: editForm.status,
+      })
 
-const handleAddUser = () => {
-  const newUser: User = {
-    id: Math.max(...users.map((u) => u.id)) + 1,
-    name: addForm.name,
-    email: addForm.email,
-    password: "hashed_password",
-    mobile: addForm.mobile || "",
-    role: addForm.role,
-    status: addForm.status,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+      if (result.success && result.data) {
+        setUsers(users.map((u) => (u.id === selectedUser.id ? result.data! : u)))
+        setEditDialogOpen(false)
+        setSelectedUser(null)
+        // toast.success('User updated successfully')
+      } else {
+        // toast.error('Failed to update user')
+        console.error('Failed to update user')
+      }
+    }
   }
 
-  setUsers([newUser, ...users])
-  setAddUserDialogOpen(false)
-  setAddForm({
-    name: "",
-    email: "",
-    mobile: "",
-    role: UserRole.USER,
-    status: UserStatus.ACTIVE,
-  })
-}
+  const handleAddUser = async () => {
+    const result = await createUser({
+      name: addForm.name,
+      email: addForm.email,
+      mobile: addForm.mobile,
+      role: addForm.role,
+      status: addForm.status,
+    })
+
+    if (result.success && result.data) {
+      setUsers([result.data, ...users])
+      setAddUserDialogOpen(false)
+      setAddForm({
+        name: '',
+        email: '',
+        mobile: '',
+        role: UserRole.USER,
+        status: UserStatus.ACTIVE,
+      })
+      // toast.success('User added successfully')
+    } else {
+      // toast.error('Failed to add user')
+      console.error('Failed to add user')
+    }
+  }
 
   const handleViewPermissions = (role: UserRole) => {
     setSelectedRole(role)
@@ -466,7 +396,7 @@ const handleAddUser = () => {
       },
       [UserRole.USER]: {
         className: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
-        icon: <User className="h-3 w-3 mr-1" />,
+        icon: <UserIcon className="h-3 w-3 mr-1" />,
       },
     }
 
@@ -724,7 +654,7 @@ const handleAddUser = () => {
                     <TableCell className="font-medium">#{user.id}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-muted-foreground" />
+                        <UserIcon className="h-4 w-4 text-muted-foreground" />
                         <div>
                           <div className="font-medium">{user.name}</div>
                         </div>
@@ -943,7 +873,7 @@ const handleAddUser = () => {
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <User className="h-4 w-4" />
+                    <UserIcon className="h-4 w-4" />
                     <span className="font-medium">User ID</span>
                   </div>
                   <p className="text-lg font-semibold">#{selectedUser.id}</p>
@@ -957,7 +887,7 @@ const handleAddUser = () => {
                 </div>
                 <div className="col-span-2 space-y-2">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <User className="h-4 w-4" />
+                    <UserIcon className="h-4 w-4" />
                     <span className="font-medium">Full Name</span>
                   </div>
                   <p className="text-lg font-semibold">{selectedUser.name}</p>

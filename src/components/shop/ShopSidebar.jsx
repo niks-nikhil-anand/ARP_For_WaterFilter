@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -18,17 +18,69 @@ import {
   X,
   TrendingUp
 } from 'lucide-react'
+import { getCurrentUser, logoutUser } from '@/app/actions/shopActions'
+import { toast } from 'sonner'
 
-const ShopSidebar = ({ shopName = "Samarth Enterprise", ownerName = "Ramesh Kumar" }) => {
+const ShopSidebar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [currentUser, setCurrentUser] = useState(null)
+  const [shopName, setShopName] = useState("Samarth Enterprise")
+  const [ownerName, setOwnerName] = useState("")
+  const [mounted, setMounted] = useState(false)
   const pathname = usePathname()
 
+  useEffect(() => {
+    setMounted(true)
+    const fetchUser = async () => {
+      console.log("🔍 Fetching user data...")
+      const result = await getCurrentUser()
+      console.log("📦 Result from getCurrentUser:", result)
+      
+      if (result.success && result.data) {
+        console.log("✅ User data received:", result.data)
+        console.log("👤 Name from result:", result.data.name)
+        setCurrentUser(result.data)
+        setOwnerName(result.data.name)
+        setShopName("Samarth Enterprise") // TODO: Fetch actual shop name from database
+      } else {
+        console.log("❌ Failed to get user:", result.error)
+      }
+    }
+    fetchUser()
+  }, [])
+
+  // Prevent hydration mismatch by not rendering user-specific content until mounted
+  if (!mounted) {
+    return null
+  }
+
   const getInitials = (name) => {
+    if (!name || typeof name !== 'string') {
+      return 'U'
+    }
     return name
       .split(' ')
       .map(word => word[0])
       .join('')
       .toUpperCase()
+  }
+
+  const handleLogout = async () => {
+    try {
+      const result = await logoutUser()
+      
+      if (result.success) {
+        toast.success("Logged out successfully")
+        localStorage.clear()
+        sessionStorage.clear()
+        window.location.href = "/auth/admin"
+      } else {
+        toast.error(result.error || "Failed to logout")
+      }
+    } catch (error) {
+      console.error("Logout error:", error)
+      toast.error("An error occurred during logout")
+    }
   }
 
   const navItems = [
@@ -100,9 +152,8 @@ const ShopSidebar = ({ shopName = "Samarth Enterprise", ownerName = "Ramesh Kuma
           </Avatar>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-              {ownerName}
+              {ownerName || "Loading..."}
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Owner</p>
           </div>
         </div>
       </div>
@@ -158,7 +209,8 @@ const ShopSidebar = ({ shopName = "Samarth Enterprise", ownerName = "Ramesh Kuma
       <div className="p-4 border-t border-gray-200 dark:border-gray-800">
         <Button
           variant="ghost"
-          className="w-full justify-start gap-3 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
+          onClick={handleLogout}
+          className="w-full justify-start gap-3 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950 cursor-pointer"
         >
           <LogOut className="h-5 w-5" />
           <span className="font-medium">Logout</span>

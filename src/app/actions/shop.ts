@@ -11,6 +11,7 @@ export type Shop = Prisma.ShopGetPayload<{
         addresses: true
       }
     }
+    addresses: true
   }
 }>
 
@@ -22,7 +23,8 @@ export async function getShops() {
           include: {
             addresses: true
           }
-        }
+        },
+        addresses: true
       },
       orderBy: {
         createdAt: 'desc',
@@ -37,14 +39,12 @@ export async function getShops() {
 
 export async function createShop(data: {
   name: string
-  address?: string
   userId: number
 }) {
   try {
     const shop = await prisma.shop.create({
       data: {
         name: data.name,
-        address: data.address,
         user: {
           connect: { id: data.userId }
         }
@@ -54,7 +54,8 @@ export async function createShop(data: {
           include: {
             addresses: true
           }
-        }
+        },
+        addresses: true
       }
     })
     revalidatePath('/admin/shop_details')
@@ -69,7 +70,10 @@ export async function updateShop(
   id: number,
   data: {
     name?: string
-    address?: string
+    shopName?: string
+    alternateMobile?: string
+    gstNumber?: string
+    panNumber?: string
   }
 ) {
   try {
@@ -81,7 +85,8 @@ export async function updateShop(
           include: {
             addresses: true
           }
-        }
+        },
+        addresses: true
       }
     })
     revalidatePath('/admin/shop_details')
@@ -89,6 +94,69 @@ export async function updateShop(
   } catch (error) {
     console.error('Failed to update shop:', error)
     return { success: false, error: 'Failed to update shop' }
+  }
+}
+
+export async function createOrUpdateShop(
+  userId: number,
+  data: {
+    name?: string
+    shopName?: string
+    alternateMobile?: string
+    gstNumber?: string
+    panNumber?: string
+  }
+) {
+  try {
+    // Check if shop exists for this user
+    const existingShop = await prisma.shop.findUnique({
+      where: { userId }
+    })
+
+    let shop
+    if (existingShop) {
+      // Update existing shop
+      shop = await prisma.shop.update({
+        where: { id: existingShop.id },
+        data,
+        include: {
+          user: {
+            include: {
+              addresses: true
+            }
+          },
+          addresses: true
+        }
+      })
+    } else {
+      // Create new shop for this user
+      shop = await prisma.shop.create({
+        data: {
+          name: data.name || '',
+          shopName: data.shopName,
+          alternateMobile: data.alternateMobile,
+          gstNumber: data.gstNumber,
+          panNumber: data.panNumber,
+          user: {
+            connect: { id: userId }
+          }
+        },
+        include: {
+          user: {
+            include: {
+              addresses: true
+            }
+          },
+          addresses: true
+        }
+      })
+    }
+
+    revalidatePath('/admin/shop_details')
+    return { success: true, data: shop }
+  } catch (error) {
+    console.error('Failed to create or update shop:', error)
+    return { success: false, error: 'Failed to create or update shop' }
   }
 }
 

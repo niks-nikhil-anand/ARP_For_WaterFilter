@@ -24,6 +24,7 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
+    "cloudinary": "^2.8.0",
     "clsx": "^2.1.1",
     "cookie": "^1.0.2",
     "cookies-next": "^6.1.1",

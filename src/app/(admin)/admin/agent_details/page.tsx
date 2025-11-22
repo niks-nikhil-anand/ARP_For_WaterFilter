@@ -57,325 +57,29 @@ import {
   Briefcase,
 } from 'lucide-react'
 
-// Demo data based on Prisma Agency model
-const demoAgencies = [
-  {
-    id: 1,
-    name: 'AquaTech Services Bangalore',
-    type: 'Installation & Service',
-    addressCount: 3,
-    addresses: [
-      {
-        id: 1,
-        type: 'Head Office',
-        locality: 'Indiranagar',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560038',
-        phone: '+91 98765 43210',
-        altPhone: '+91 98765 43211',
-      },
-      {
-        id: 2,
-        type: 'Branch Office',
-        locality: 'Koramangala',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560095',
-        phone: '+91 98765 43212',
-      },
-      {
-        id: 3,
-        type: 'Service Center',
-        locality: 'Whitefield',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560066',
-        phone: '+91 98765 43213',
-      },
-    ],
-    createdAt: new Date('2023-01-15'),
-    updatedAt: new Date('2024-10-12'),
-  },
-  {
-    id: 2,
-    name: 'PureWater Solutions India',
-    type: 'Authorized Dealer',
-    addressCount: 2,
-    addresses: [
-      {
-        id: 4,
-        type: 'Main Office',
-        locality: 'HSR Layout',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560102',
-        phone: '+91 98765 43214',
-        altPhone: '+91 98765 43215',
-      },
-      {
-        id: 5,
-        type: 'Warehouse',
-        locality: 'Electronic City',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560100',
-        phone: '+91 98765 43216',
-      },
-    ],
-    createdAt: new Date('2023-03-20'),
-    updatedAt: new Date('2024-10-14'),
-  },
-  {
-    id: 3,
-    name: 'Kent RO Service Network',
-    type: 'Service Partner',
-    addressCount: 4,
-    addresses: [
-      {
-        id: 6,
-        type: 'Regional Office',
-        locality: 'MG Road',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560001',
-        phone: '+91 98765 43217',
-      },
-      {
-        id: 7,
-        type: 'Service Center',
-        locality: 'BTM Layout',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560076',
-        phone: '+91 98765 43218',
-      },
-      {
-        id: 8,
-        type: 'Service Center',
-        locality: 'Jayanagar',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560011',
-        phone: '+91 98765 43219',
-      },
-      {
-        id: 9,
-        type: 'Parts Warehouse',
-        locality: 'Peenya',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560058',
-        phone: '+91 98765 43220',
-      },
-    ],
-    createdAt: new Date('2023-05-10'),
-    updatedAt: new Date('2024-10-13'),
-  },
-  {
-    id: 4,
-    name: 'Aquaguard Service Center',
-    type: 'Service Partner',
-    addressCount: 2,
-    addresses: [
-      {
-        id: 10,
-        type: 'Head Office',
-        locality: 'Malleshwaram',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560003',
-        phone: '+91 98765 43221',
-      },
-      {
-        id: 11,
-        type: 'Service Center',
-        locality: 'Rajajinagar',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560010',
-        phone: '+91 98765 43222',
-      },
-    ],
-    createdAt: new Date('2023-07-05'),
-    updatedAt: new Date('2024-10-10'),
-  },
-  {
-    id: 5,
-    name: 'Blue Star Authorized Service',
-    type: 'Authorized Service Center',
-    addressCount: 3,
-    addresses: [
-      {
-        id: 12,
-        type: 'Main Office',
-        locality: 'Sarjapur Road',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560103',
-        phone: '+91 98765 43223',
-        altPhone: '+91 98765 43224',
-      },
-      {
-        id: 13,
-        type: 'Service Center',
-        locality: 'Marathahalli',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560037',
-        phone: '+91 98765 43225',
-      },
-      {
-        id: 14,
-        type: 'Branch Office',
-        locality: 'Bellandur',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560103',
-        phone: '+91 98765 43226',
-      },
-    ],
-    createdAt: new Date('2023-08-18'),
-    updatedAt: new Date('2024-10-14'),
-  },
-  {
-    id: 6,
-    name: 'Livpure Smart Service Hub',
-    type: 'Installation & Service',
-    addressCount: 1,
-    addresses: [
-      {
-        id: 15,
-        type: 'Office',
-        locality: 'Yelahanka',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560064',
-        phone: '+91 98765 43227',
-      },
-    ],
-    createdAt: new Date('2023-09-25'),
-    updatedAt: new Date('2024-10-11'),
-  },
-  {
-    id: 7,
-    name: 'AO Smith Service Excellence',
-    type: 'Authorized Dealer',
-    addressCount: 2,
-    addresses: [
-      {
-        id: 16,
-        type: 'Showroom',
-        locality: 'JP Nagar',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560078',
-        phone: '+91 98765 43228',
-      },
-      {
-        id: 17,
-        type: 'Service Center',
-        locality: 'Banashankari',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560070',
-        phone: '+91 98765 43229',
-      },
-    ],
-    createdAt: new Date('2023-11-12'),
-    updatedAt: new Date('2024-10-09'),
-  },
-  {
-    id: 8,
-    name: 'HUL Pureit Service Network',
-    type: 'Service Partner',
-    addressCount: 3,
-    addresses: [
-      {
-        id: 18,
-        type: 'Regional Hub',
-        locality: 'Hebbal',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560024',
-        phone: '+91 98765 43230',
-        altPhone: '+91 98765 43231',
-      },
-      {
-        id: 19,
-        type: 'Service Point',
-        locality: 'RT Nagar',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560032',
-        phone: '+91 98765 43232',
-      },
-      {
-        id: 20,
-        type: 'Parts Center',
-        locality: 'Yeshwanthpur',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560022',
-        phone: '+91 98765 43233',
-      },
-    ],
-    createdAt: new Date('2024-01-08'),
-    updatedAt: new Date('2024-10-12'),
-  },
-  {
-    id: 9,
-    name: 'Havells Water Care Services',
-    type: 'Authorized Service Center',
-    addressCount: 2,
-    addresses: [
-      {
-        id: 21,
-        type: 'Head Office',
-        locality: 'Kalyan Nagar',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560043',
-        phone: '+91 98765 43234',
-      },
-      {
-        id: 22,
-        type: 'Service Center',
-        locality: 'Banaswadi',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560043',
-        phone: '+91 98765 43235',
-      },
-    ],
-    createdAt: new Date('2024-02-14'),
-    updatedAt: new Date('2024-10-14'),
-  },
-  {
-    id: 10,
-    name: 'Faber Service Pro',
-    type: 'Installation & Service',
-    addressCount: 1,
-    addresses: [
-      {
-        id: 23,
-        type: 'Office',
-        locality: 'Kengeri',
-        state: 'Karnataka',
-        country: 'India',
-        pincode: '560060',
-        phone: '+91 98765 43236',
-      },
-    ],
-    createdAt: new Date('2024-03-22'),
-    updatedAt: new Date('2024-10-10'),
-  },
-]
+import { toast } from 'sonner'
 
-type Agency = typeof demoAgencies[0]
+type Agency = {
+  id: number
+  name: string
+  type: string
+  addressCount: number
+  addresses: Array<{
+    id: number
+    type: string
+    locality: string
+    state: string
+    country: string
+    pincode: string
+    phone: string
+    altPhone?: string
+  }>
+  createdAt: Date
+  updatedAt: Date
+}
 
 const AgencyManagementPage = () => {
-  const [agencies, setAgencies] = useState<Agency[]>(demoAgencies)
+  const [agencies, setAgencies] = useState<Agency[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [typeFilter, setTypeFilter] = useState('ALL')
   const [sortField, setSortField] = useState<keyof Agency | null>(null)
@@ -402,7 +106,9 @@ const AgencyManagementPage = () => {
   })
 
   // Get unique values for filters
-  const uniqueTypes = Array.from(new Set(demoAgencies.map((a) => a.type))).sort()
+  const uniqueTypes = Array.from(new Set(agencies.map((a) => a.type))).sort()
+
+
 
   // Filtering and sorting logic
   const filteredAndSortedAgencies = useMemo(() => {
@@ -579,7 +285,6 @@ const handleAddAgency = () => {
             Add Agency
           </Button>
         </div>
-
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="border rounded-lg p-4">

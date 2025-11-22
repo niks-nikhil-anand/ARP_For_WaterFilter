@@ -5,7 +5,7 @@ import { hashPassword } from '@/lib/password';
 import { successResponse, errorResponse, unauthorizedResponse, serverErrorResponse, forbiddenResponse } from '@/lib/api-response';
 import { UserRole, UserStatus } from '../../../generated/prisma';
 
-// GET all users
+// GET all users (with optional role filter)
 export async function GET(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
@@ -19,7 +19,22 @@ export async function GET(request: NextRequest) {
       return forbiddenResponse('You do not have permission to access this resource');
     }
 
+    // Get role filter from query parameters
+    const { searchParams } = new URL(request.url);
+    const roleFilter = searchParams.get('role');
+
+    // Build query with optional role filter
+    const whereClause: any = {};
+    if (roleFilter) {
+      // Validate role is a valid UserRole
+      const validRoles = Object.values(UserRole);
+      if (validRoles.includes(roleFilter as UserRole)) {
+        whereClause.role = roleFilter as UserRole;
+      }
+    }
+
     const users = await prisma.user.findMany({
+      where: whereClause,
       select: {
         id: true,
         name: true,

@@ -11,7 +11,6 @@ import {
   ShoppingCart,
   ShieldCheck,
   Wrench,
-  Building2,
   Shield,
   Settings,
   LogOut,
@@ -62,8 +61,8 @@ const SidebarAdmin: React.FC<SidebarAdminProps> = ({ className }) => {
         },
         {
           icon: Wrench,
-          label: "Repair Requests",
-          href: "/admin/repair_requests",
+          label: "AMC & Repairs",
+          href: "/admin/amc_repairs",
         },
       ],
     },

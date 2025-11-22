@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Table,
   TableBody,
@@ -17,6 +17,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
 import {
   Select,
   SelectContent,
@@ -25,237 +29,118 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
-import {
-  Eye,
-  Pencil,
   Trash2,
-  ChevronLeft,
-  ChevronRight,
   Search,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-  Plus,
-  Building2,
-  MapPin,
-  Phone,
-  Calendar,
   Users,
-  Briefcase,
+  UserCheck,
+  UserX,
+  Pencil,
 } from 'lucide-react'
 
+import { getUsersByRole, deleteUser, updateUser } from '@/actions/admin/users'
 import { toast } from 'sonner'
 
-type Agency = {
+type AgentUser = {
   id: number
   name: string
-  type: string
-  addressCount: number
-  addresses: Array<{
-    id: number
-    type: string
-    locality: string
-    state: string
-    country: string
-    pincode: string
-    phone: string
-    altPhone?: string
-  }>
+  email: string
+  mobile: string | null
+  role: string
+  status: string
   createdAt: Date
   updatedAt: Date
 }
 
-const AgencyManagementPage = () => {
-  const [agencies, setAgencies] = useState<Agency[]>([])
+const AgentUsersPage = () => {
+  const [agentUsers, setAgentUsers] = useState<AgentUser[]>([])
   const [searchTerm, setSearchTerm] = useState('')
-  const [typeFilter, setTypeFilter] = useState('ALL')
-  const [sortField, setSortField] = useState<keyof Agency | null>(null)
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage] = useState(8)
-  const [addDialogOpen, setAddDialogOpen] = useState(false)
-
-  // Modal states
-  const [viewDialogOpen, setViewDialogOpen] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [selectedAgency, setSelectedAgency] = useState<Agency | null>(null)
-
-  // Form states
+  const [selectedUser, setSelectedUser] = useState<AgentUser | null>(null)
   const [editForm, setEditForm] = useState({
     name: '',
-    type: '',
+    email: '',
+    mobile: '',
+    status: '',
   })
 
-  const [addForm, setAddForm] = useState({
-    name: '',
-    type: '',
-  })
+  useEffect(() => {
+    loadAgentUsers()
+  }, [])
 
-  // Get unique values for filters
-  const uniqueTypes = Array.from(new Set(agencies.map((a) => a.type))).sort()
-
-
-
-  // Filtering and sorting logic
-  const filteredAndSortedAgencies = useMemo(() => {
-    const filtered = agencies.filter((agency) => {
-      const matchesSearch =
-        agency.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        agency.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        agency.addresses.some((addr) =>
-          addr.locality?.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-
-      const matchesType = typeFilter === 'ALL' || agency.type === typeFilter
-
-      return matchesSearch && matchesType
-    })
-
-    if (sortField) {
-      filtered.sort((a, b) => {
-        const aValue = a[sortField]
-        const bValue = b[sortField]
-
-        if (aValue === null || aValue === undefined) return 1
-        if (bValue === null || bValue === undefined) return -1
-
-        if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1
-        if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1
-        return 0
-      })
-    }
-
-    return filtered
-  }, [agencies, searchTerm, typeFilter, sortField, sortOrder])
-
-  // Pagination logic
-  const totalPages = Math.ceil(filteredAndSortedAgencies.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const currentAgencies = filteredAndSortedAgencies.slice(startIndex, endIndex)
-
-  // Stats calculation
-  const stats = useMemo(() => {
-    return {
-      total: agencies.length,
-      totalAddresses: agencies.reduce((acc, a) => acc + a.addressCount, 0),
-      servicePartners: agencies.filter((a) => a.type === 'Service Partner').length,
-      authorizedDealers: agencies.filter((a) => a.type === 'Authorized Dealer').length,
-    }
-  }, [agencies])
-
-  // Sort handler
-  const handleSort = (field: keyof Agency) => {
-    if (sortField === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+  const loadAgentUsers = async () => {
+    setLoading(true)
+    const result = await getUsersByRole('AGENT')
+    if (result.success && result.data) {
+      setAgentUsers(result.data)
     } else {
-      setSortField(field)
-      setSortOrder('asc')
+      console.error('Failed to load agent users')
+      toast.error('Failed to load agent users')
+    }
+    setLoading(false)
+  }
+
+  const handleDeleteUser = async (user: AgentUser) => {
+    const confirmed = confirm(`Delete user ${user.name || user.email}?`)
+    if (!confirmed) return
+
+    const result = await deleteUser(user.id)
+    if (result.success) {
+      loadAgentUsers()
+      toast.success('User deleted successfully')
+    } else {
+      toast.error('Failed to delete user')
     }
   }
 
-  // CRUD handlers
-  const handleView = (agency: Agency) => {
-    setSelectedAgency(agency)
-    setViewDialogOpen(true)
-  }
-
-  const handleEdit = (agency: Agency) => {
-    setSelectedAgency(agency)
+  const handleEdit = (user: AgentUser) => {
+    setSelectedUser(user)
     setEditForm({
-      name: agency.name,
-      type: agency.type || '',
+      name: user.name || '',
+      email: user.email || '',
+      mobile: user.mobile || '',
+      status: user.status || 'ACTIVE',
     })
     setEditDialogOpen(true)
   }
 
-  const handleDelete = (agency: Agency) => {
-    setSelectedAgency(agency)
-    setDeleteDialogOpen(true)
-  }
+  const handleSaveEdit = async () => {
+    if (!selectedUser) return
 
-  const confirmDelete = () => {
-    if (selectedAgency) {
-      setAgencies(agencies.filter((a) => a.id !== selectedAgency.id))
-      setDeleteDialogOpen(false)
-      setSelectedAgency(null)
+    const result = await updateUser(selectedUser.id, {
+      name: editForm.name,
+      email: editForm.email,
+      mobile: editForm.mobile,
+      status: editForm.status,
+    })
+
+    if (result.success) {
+      loadAgentUsers()
+      setEditDialogOpen(false)
+      setSelectedUser(null)
+      toast.success('User updated successfully')
+    } else {
+      toast.error('Failed to update user')
     }
   }
 
-  const saveEdit = () => {
-  if (selectedAgency) {
-    setAgencies(
-      agencies.map((a) =>
-        a.id === selectedAgency.id
-          ? {
-              ...a,
-              name: editForm.name,
-              type: editForm.type || "",
-              updatedAt: new Date(),
-            }
-          : a
-      )
-    )
-    setEditDialogOpen(false)
-    setSelectedAgency(null)
-  }
-}
+  // Filter users based on search term
+  const filteredUsers = agentUsers.filter((user) =>
+    user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.mobile?.toLowerCase().includes(searchTerm.toLowerCase())
+  )
 
-const handleAddAgency = () => {
-  const newAgency: Agency = {
-    id: Math.max(...agencies.map((a) => a.id)) + 1,
-    name: addForm.name,
-    type: addForm.type || "", // 👈 changed null → ""
-    addressCount: 0,
-    addresses: [],
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  }
-
-  setAgencies([...agencies, newAgency])
-}
-
-
-  const getSortIcon = (field: keyof Agency) => {
-    if (sortField !== field) {
-      return <ArrowUpDown className="h-4 w-4 ml-2" />
-    }
-    return sortOrder === 'asc' ? (
-      <ArrowUp className="h-4 w-4 ml-2" />
-    ) : (
-      <ArrowDown className="h-4 w-4 ml-2" />
-    )
-  }
-
-  const getTypeBadge = (type: string | null) => {
-    if (!type) return null
-
+  const getStatusBadge = (status: string) => {
     const variants: Record<string, string> = {
-      'Service Partner': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-      'Authorized Dealer': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-      'Installation & Service':
-        'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
-      'Authorized Service Center':
-        'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300',
+      'ACTIVE': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+      'BLOCKED': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
+      'PENDING': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
     }
 
     return (
-      <Badge className={variants[type] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}>
-        {type}
+      <Badge className={variants[status] || 'bg-gray-100 text-gray-800'}>
+        {status}
       </Badge>
     )
   }
@@ -272,516 +157,194 @@ const handleAddAgency = () => {
     <div className="h-[90vh] max-h-[92vh] overflow-y-auto">
       <div className="container mx-auto py-10 px-4 pb-20">
         <div className="space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Agency Management</h1>
-            <p className="text-muted-foreground mt-2">
-              Manage service agencies, dealers, and installation partners
-            </p>
-          </div>
-          <Button className="flex items-center gap-2" onClick={() => setAddDialogOpen(true)}>
-            <Plus className="h-4 w-4" />
-            Add Agency
-          </Button>
-        </div>
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="border rounded-lg p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-2">
-              <Building2 className="h-4 w-4" />
-              <span className="text-sm font-medium">Total Agencies</span>
+          {/* Header */}
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Agent Users</h1>
+              <p className="text-muted-foreground mt-2">
+                Manage users with agent role
+              </p>
             </div>
-            <p className="text-2xl font-bold">{stats.total}</p>
           </div>
-          <div className="border rounded-lg p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-2">
-              <MapPin className="h-4 w-4" />
-              <span className="text-sm font-medium">Total Locations</span>
-            </div>
-            <p className="text-2xl font-bold">{stats.totalAddresses}</p>
-          </div>
-          <div className="border rounded-lg p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-2">
-              <Users className="h-4 w-4" />
-              <span className="text-sm font-medium">Service Partners</span>
-            </div>
-            <p className="text-2xl font-bold">{stats.servicePartners}</p>
-          </div>
-          <div className="border rounded-lg p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-2">
-              <Briefcase className="h-4 w-4" />
-              <span className="text-sm font-medium">Authorized Dealers</span>
-            </div>
-            <p className="text-2xl font-bold">{stats.authorizedDealers}</p>
-          </div>
-        </div>
 
-        {/* Filters and Search */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="border rounded-lg p-4">
+              <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                <Users className="h-4 w-4" />
+                <span className="text-sm font-medium">Total Agents</span>
+              </div>
+              <p className="text-2xl font-bold">{agentUsers.length}</p>
+            </div>
+            <div className="border rounded-lg p-4">
+              <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                <UserCheck className="h-4 w-4" />
+                <span className="text-sm font-medium">Active</span>
+              </div>
+              <p className="text-2xl font-bold">
+                {agentUsers.filter((u) => u.status === 'ACTIVE').length}
+              </p>
+            </div>
+            <div className="border rounded-lg p-4">
+              <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                <UserX className="h-4 w-4" />
+                <span className="text-sm font-medium">Blocked</span>
+              </div>
+              <p className="text-2xl font-bold">
+                {agentUsers.filter((u) => u.status === 'BLOCKED').length}
+              </p>
+            </div>
+          </div>
+
+          {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by agency name, type, or location..."
+              placeholder="Search by name, email, or mobile..."
               value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value)
-                setCurrentPage(1)
-              }}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
             />
           </div>
-          <Select
-            value={typeFilter}
-            onValueChange={(value) => {
-              setTypeFilter(value)
-              setCurrentPage(1)
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Filter by type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Types</SelectItem>
-              {uniqueTypes.map((type) => (
-                <SelectItem key={type} value={type}>
-                  {type}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
 
-        {/* Table */}
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('id')}
-                >
-                  <div className="flex items-center">
-                    ID
-                    {getSortIcon('id')}
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('name')}
-                >
-                  <div className="flex items-center">
-                    Agency Name
-                    {getSortIcon('name')}
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('type')}
-                >
-                  <div className="flex items-center">
-                    Type
-                    {getSortIcon('type')}
-                  </div>
-                </TableHead>
-                <TableHead className="text-center">Locations</TableHead>
-                <TableHead>Primary Address</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('createdAt')}
-                >
-                  <div className="flex items-center">
-                    Created Date
-                    {getSortIcon('createdAt')}
-                  </div>
-                </TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {currentAgencies.length === 0 ? (
+          {/* Table */}
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-10">
-                    <div className="flex flex-col items-center gap-2">
-                      <Building2 className="h-10 w-10 text-muted-foreground" />
-                      <p className="text-muted-foreground">No agencies found</p>
-                    </div>
-                  </TableCell>
+                  <TableHead>ID</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Mobile</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created At</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ) : (
-                currentAgencies.map((agency) => (
-                  <TableRow key={agency.id}>
-                    <TableCell className="font-medium">#{agency.id}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          <div className="font-medium">{agency.name}</div>
-                        </div>
-                      </div>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-10">
+                      <p className="text-muted-foreground">Loading...</p>
                     </TableCell>
-                    <TableCell>{getTypeBadge(agency.type)}</TableCell>
-                    <TableCell className="text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <MapPin className="h-3 w-3 text-muted-foreground" />
-                        <span className="font-semibold">{agency.addressCount}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {agency.addresses.length > 0 ? (
-                        <div className="text-sm">
-                          <div className="font-medium">{agency.addresses[0].locality}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {agency.addresses[0].state}, {agency.addresses[0].pincode}
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">No address</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {agency.addresses.length > 0 && agency.addresses[0].phone ? (
-                        <div className="flex items-center gap-2">
-                          <Phone className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-sm">{agency.addresses[0].phone}</span>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-sm">{formatDate(agency.createdAt)}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleView(agency)}
-                          title="View details"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(agency)}
-                          title="Edit agency"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(agency)}
-                          title="Delete agency"
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                  </TableRow>
+                ) : filteredUsers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-10">
+                      <div className="flex flex-col items-center gap-2">
+                        <Users className="h-10 w-10 text-muted-foreground" />
+                        <p className="text-muted-foreground">
+                          {searchTerm ? 'No users found matching your search' : 'No agent users found'}
+                        </p>
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-
-        {/* Pagination */}
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Showing {startIndex + 1} to {Math.min(endIndex, filteredAndSortedAgencies.length)}{' '}
-            of {filteredAndSortedAgencies.length} agencies
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-            >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Previous
-            </Button>
-            <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                let pageNum
-                if (totalPages <= 5) {
-                  pageNum = i + 1
-                } else if (currentPage <= 3) {
-                  pageNum = i + 1
-                } else if (currentPage >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i
-                } else {
-                  pageNum = currentPage - 2 + i
-                }
-                return (
-                  <Button
-                    key={pageNum}
-                    variant={currentPage === pageNum ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setCurrentPage(pageNum)}
-                    className="w-9"
-                  >
-                    {pageNum}
-                  </Button>
-                )
-              })}
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-            >
-              Next
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
+                ) : (
+                  filteredUsers.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-medium">#{user.id}</TableCell>
+                      <TableCell>{user.name || '-'}</TableCell>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell>{user.mobile || '-'}</TableCell>
+                      <TableCell>{getStatusBadge(user.status)}</TableCell>
+                      <TableCell>{formatDate(user.createdAt)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(user)}
+                            title="Edit user"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteUser(user)}
+                            title="Delete user"
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
         </div>
       </div>
 
-      {/* Add Agency Dialog */}
-      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+      {/* Edit User Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Add New Agency</DialogTitle>
-            <DialogDescription>Create a new agency or service partner</DialogDescription>
+            <DialogTitle>Edit User</DialogTitle>
+            <DialogDescription>
+              Update user information
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="add-name">Agency Name *</Label>
+              <Label htmlFor="edit-name">Name</Label>
               <Input
-                id="add-name"
-                value={addForm.name}
-                onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
-                placeholder="Enter agency name"
+                id="edit-name"
+                value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                placeholder="Enter name"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="add-type">Agency Type</Label>
+              <Label htmlFor="edit-email">Email</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editForm.email}
+                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                placeholder="Enter email"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-mobile">Mobile</Label>
+              <Input
+                id="edit-mobile"
+                value={editForm.mobile}
+                onChange={(e) => setEditForm({ ...editForm, mobile: e.target.value })}
+                placeholder="Enter mobile number"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-status">Status</Label>
               <Select
-                value={addForm.type}
-                onValueChange={(value) => setAddForm({ ...addForm, type: value })}
+                value={editForm.status}
+                onValueChange={(value) => setEditForm({ ...editForm, status: value })}
               >
-                <SelectTrigger id="add-type">
-                  <SelectValue placeholder="Select agency type" />
+                <SelectTrigger id="edit-status">
+                  <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
-                  {uniqueTypes.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="ACTIVE">Active</SelectItem>
+                  <SelectItem value="BLOCKED">Blocked</SelectItem>
+                  <SelectItem value="PENDING">Pending</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleAddAgency} disabled={!addForm.name}>
-              Add Agency
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* View Dialog */}
-      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Agency Details</DialogTitle>
-            <DialogDescription>Complete information about the agency</DialogDescription>
-          </DialogHeader>
-          {selectedAgency && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Building2 className="h-4 w-4" />
-                    <span className="font-medium">Agency ID</span>
-                  </div>
-                  <p className="text-lg font-semibold">#{selectedAgency.id}</p>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <MapPin className="h-4 w-4" />
-                    <span className="font-medium">Total Locations</span>
-                  </div>
-                  <p className="text-lg font-semibold">{selectedAgency.addressCount}</p>
-                </div>
-                <div className="col-span-2 space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Building2 className="h-4 w-4" />
-                    <span className="font-medium">Agency Name</span>
-                  </div>
-                  <p className="text-lg font-semibold">{selectedAgency.name}</p>
-                </div>
-                <div className="col-span-2 space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Briefcase className="h-4 w-4" />
-                    <span className="font-medium">Agency Type</span>
-                  </div>
-                  <div>{getTypeBadge(selectedAgency.type)}</div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
-                    <span className="font-medium">Created At</span>
-                  </div>
-                  <p className="text-sm">{formatDate(selectedAgency.createdAt)}</p>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
-                    <span className="font-medium">Last Updated</span>
-                  </div>
-                  <p className="text-sm">{formatDate(selectedAgency.updatedAt)}</p>
-                </div>
-              </div>
-
-              {/* Addresses Section */}
-              {selectedAgency.addresses.length > 0 && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <h3 className="font-semibold">Addresses</h3>
-                  </div>
-                  <div className="space-y-3">
-                    {selectedAgency.addresses.map((address, index) => (
-                      <div
-                        key={address.id}
-                        className="border rounded-lg p-4 space-y-2 hover:bg-muted/50 transition-colors"
-                      >
-                        <div className="flex items-center justify-between">
-                          <Badge variant="outline">{address.type || 'Office'}</Badge>
-                          <span className="text-xs text-muted-foreground">
-                            Address #{index + 1}
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3 text-sm">
-                          <div>
-                            <span className="text-muted-foreground">Locality:</span>
-                            <p className="font-medium">{address.locality || '-'}</p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Pincode:</span>
-                            <p className="font-medium">{address.pincode || '-'}</p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">State:</span>
-                            <p className="font-medium">{address.state || '-'}</p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Country:</span>
-                            <p className="font-medium">{address.country || '-'}</p>
-                          </div>
-                          {address.phone && (
-                            <div>
-                              <span className="text-muted-foreground">Phone:</span>
-                              <p className="font-medium">{address.phone}</p>
-                            </div>
-                          )}
-                          {address.altPhone && (
-                            <div>
-                              <span className="text-muted-foreground">Alt Phone:</span>
-                              <p className="font-medium">{address.altPhone}</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setViewDialogOpen(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>Edit Agency</DialogTitle>
-            <DialogDescription>Update agency information</DialogDescription>
-          </DialogHeader>
-          {selectedAgency && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-name">Agency Name</Label>
-                <Input
-                  id="edit-name"
-                  value={editForm.name}
-                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-type">Agency Type</Label>
-                <Select
-                  value={editForm.type}
-                  onValueChange={(value) => setEditForm({ ...editForm, type: value })}
-                >
-                  <SelectTrigger id="edit-type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {uniqueTypes.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {type}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={saveEdit}>Save Changes</Button>
+            <Button onClick={handleSaveEdit}>
+              Save Changes
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the agency{' '}
-              <span className="font-semibold">{selectedAgency?.name}</span> and all associated
-              addresses.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Delete Agency
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      </div>
-      </div>
+    </div>
   )
 }
 
-export default AgencyManagementPage
+export default AgentUsersPage

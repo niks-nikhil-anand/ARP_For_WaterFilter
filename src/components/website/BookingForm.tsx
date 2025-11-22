@@ -14,7 +14,7 @@ const BookingForm = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    phone: '',
+    phone: '+91 ',
     address: '',
     serviceType: '',
     productType: '',
@@ -36,6 +36,25 @@ const BookingForm = () => {
     })
   }
 
+  // Enforce phone input: always show '+91 ' prefix, accept only digits after it, max 10 digits
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const prefix = '+91 '
+    const raw = e.target.value || ''
+    // Extract digits only
+    let digits = raw.replace(/\D/g, '')
+    // If user pasted full international like '919876543210' or '+919876543210', strip leading country code
+    if (digits.startsWith('91')) {
+      // remove only a single leading '91' if present
+      digits = digits.replace(/^91/, '')
+    }
+    // Limit to 10 digits
+    digits = digits.slice(0, 10)
+    setFormData({
+      ...formData,
+      phone: prefix + digits
+    })
+  }
+
   const handleSelectChange = (name: string, value: string) => {
     setFormData({
       ...formData,
@@ -47,13 +66,22 @@ const BookingForm = () => {
     e.preventDefault()
     setIsSubmitting(true)
     setSubmitStatus({ type: null, message: '' })
+    // Normalize and validate phone: extract digits and ensure 10-digit local number
+    const allDigits = formData.phone.replace(/\D/g, '')
+    // remove leading '91' if present (because our stored value contains '91' from '+91 ')
+    const localDigits = allDigits.replace(/^91/, '')
+    if (localDigits.length !== 10) {
+      setSubmitStatus({ type: 'error', message: 'Please enter a valid 10-digit phone number.' })
+      setIsSubmitting(false)
+      return
+    }
 
     try {
       // Create ticket using the server action
       const result = await commonActions.createTicket({
         customerName: formData.name,
         customerEmail: formData.email,
-        customerPhone: formData.phone,
+        customerPhone: `+91${localDigits}`,
         customerAddress: formData.address,
         serviceType: formData.serviceType,
         productType: formData.productType || undefined,
@@ -64,11 +92,11 @@ const BookingForm = () => {
       })
 
       if (result.success) {
-        // Success - reset form
+        // Success - reset form (keep default country code)
         setFormData({
           name: '',
           email: '',
-          phone: '',
+          phone: '+91 ',
           address: '',
           serviceType: '',
           productType: '',
@@ -152,16 +180,16 @@ const BookingForm = () => {
                         <Phone className="h-4 w-4" />
                         Phone Number *
                       </Label>
-                      <Input
-                        id="phone"
-                        name="phone"
-                        type="tel"
-                        required
-                        value={formData.phone}
-                        onChange={handleChange}
-                        className="mt-2 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-                        placeholder="+91 XXXXX XXXXX"
-                      />
+                        <Input
+                          id="phone"
+                          name="phone"
+                          type="tel"
+                          required
+                          value={formData.phone}
+                          onChange={handlePhoneChange}
+                          className="mt-2 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+                          placeholder="+91 XXXXX XXXXX"
+                        />
                     </div>
 
                     {/* Email */}

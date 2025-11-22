@@ -436,20 +436,6 @@ const BookingForm = () => {
               </CardContent>
             </Card>
 
-            {/* Trust Badge */}
-            <Card className="dark:bg-gray-900 dark:border-gray-800 text-center">
-              <CardContent className="pt-6">
-                <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
-                  10,000+
-                </div>
-                <p className="text-gray-700 dark:text-gray-300 font-semibold">
-                  Satisfied Customers
-                </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                  Trust us for reliable water purification services
-                </p>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>

@@ -85,25 +85,31 @@ const ContactPage = () => {
         {/* Contact Information Cards */}
         <section className="py-20 bg-white dark:bg-gray-950">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
               {contactInfo.map((info, index) => (
-                <Card key={index} className="text-center dark:bg-gray-900 dark:border-gray-800">
-                  <CardHeader>
-                    <div className="flex justify-center mb-4">{info.icon}</div>
-                    <CardTitle className="text-xl dark:text-white">{info.title}</CardTitle>
+                <Card
+                  key={index}
+                  className="overflow-hidden relative text-center dark:bg-gray-900 dark:border-gray-800 transform hover:-translate-y-1 hover:shadow-2xl transition-transform duration-200"
+                >
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-400 to-emerald-400" />
+                  <CardHeader className="pt-6">
+                    <div className="flex justify-center mb-4">
+                      <div className="h-14 w-14 rounded-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-800 dark:to-gray-800">
+                        {info.icon}
+                      </div>
+                    </div>
+                    <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">{info.title}</CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="pt-2">
                     {info.link ? (
                       <a
                         href={info.link}
-                        className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors whitespace-pre-line"
+                        className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors whitespace-pre-line block"
                       >
                         {info.content}
                       </a>
                     ) : (
-                      <p className="text-gray-700 dark:text-gray-300 whitespace-pre-line">
-                        {info.content}
-                      </p>
+                      <p className="text-gray-600 dark:text-gray-300 whitespace-pre-line">{info.content}</p>
                     )}
                   </CardContent>
                 </Card>
@@ -112,184 +118,51 @@ const ContactPage = () => {
           </div>
         </section>
 
-        {/* Contact Form & Map Section */}
+        {/* Map & Additional Info - responsive layout (Quick Contact + Assistance) */}
         <section className="py-20 bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid lg:grid-cols-2 gap-12">
-              {/* Contact Form */}
-              <div>
-                <div className="mb-8">
-                  <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                    Send Us a Message
-                  </h2>
-                  <p className="text-lg text-gray-600 dark:text-gray-400">
-                    Fill out the form below and we'll get back to you as soon as possible.
-                  </p>
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 max-w-4xl mx-auto">
+              <div className="relative overflow-hidden rounded-xl border dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xl">
+                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-400 to-emerald-400" />
+                <div className="p-8">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 h-12 w-12 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-800 dark:to-gray-800 flex items-center justify-center">
+                      <MapPin className="h-6 w-6 text-blue-600 dark:text-blue-300" />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">Samarth Waterpurifier Sales & Services</h3>
+                      <p className="text-gray-600 dark:text-gray-300 mt-1">Office no-1, Om Niwas, Plot No 73, RSC 19/120, Svarakar Nagar, Opp Sankalp School, Thane(W)- 400606</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <a href="tel:+91XXXXXXXXXX" className="inline-block">
+                      <Button  className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 py-4">
+                        <Phone className="mr-2 h-5 w-5" />
+                        Call Now
+                      </Button>
+                    </a>
+
+                    <a href="https://www.google.com/maps/dir/?api=1&destination=Office+no-1,+Om+Niwas,+Plot+No+73,+RSC+19/120,+Svarakar+Nagar,+Opp+Sankalp+School,+Thane+W,+400606" target="_blank" rel="noreferrer" className="inline-block">
+                      <Button variant="secondary"  className="w-full py-4">
+                        Get Directions
+                      </Button>
+                    </a>
+                  </div>
                 </div>
-
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div>
-                    <Label htmlFor="name" className="text-gray-900 dark:text-white">
-                      Full Name *
-                    </Label>
-                    <Input
-                      id="name"
-                      name="name"
-                      type="text"
-                      required
-                      value={formData.name}
-                      onChange={handleChange}
-                      className="mt-2 dark:bg-gray-900 dark:border-gray-700 dark:text-white"
-                      placeholder="Enter your name"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="email" className="text-gray-900 dark:text-white">
-                      Email Address *
-                    </Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      required
-                      value={formData.email}
-                      onChange={handleChange}
-                      className="mt-2 dark:bg-gray-900 dark:border-gray-700 dark:text-white"
-                      placeholder="Enter your email"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="phone" className="text-gray-900 dark:text-white">
-                      Phone Number *
-                    </Label>
-                    <Input
-                      id="phone"
-                      name="phone"
-                      type="tel"
-                      required
-                      value={formData.phone}
-                      onChange={handleChange}
-                      className="mt-2 dark:bg-gray-900 dark:border-gray-700 dark:text-white"
-                      placeholder="Enter your phone number"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="subject" className="text-gray-900 dark:text-white">
-                      Subject *
-                    </Label>
-                    <Input
-                      id="subject"
-                      name="subject"
-                      type="text"
-                      required
-                      value={formData.subject}
-                      onChange={handleChange}
-                      className="mt-2 dark:bg-gray-900 dark:border-gray-700 dark:text-white"
-                      placeholder="What is this regarding?"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="message" className="text-gray-900 dark:text-white">
-                      Message *
-                    </Label>
-                    <Textarea
-                      id="message"
-                      name="message"
-                      required
-                      value={formData.message}
-                      onChange={handleChange}
-                      className="mt-2 dark:bg-gray-900 dark:border-gray-700 dark:text-white"
-                      placeholder="Tell us more about your inquiry..."
-                      rows={6}
-                    />
-                  </div>
-
-                  <Button
-                    type="submit"
-                    size="lg"
-                    className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
-                  >
-                    <Send className="mr-2 h-5 w-5" />
-                    Send Message
-                  </Button>
-                </form>
               </div>
 
-              {/* Map & Additional Info */}
-              <div className="space-y-8">
-                <div className="bg-white dark:bg-gray-900 p-8 rounded-xl shadow-lg border dark:border-gray-800">
-                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                    Our Location
-                  </h3>
-                  <div className="aspect-video bg-gray-200 dark:bg-gray-800 rounded-lg mb-4 flex items-center justify-center">
-                    <MapPin className="h-16 w-16 text-gray-400" />
-                  </div>
-                  <p className="text-gray-700 dark:text-gray-300 mb-4">
-                    <strong>Samarth Waterpurifier Sales & Services</strong>
-                  </p>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Office no-1, Om Niwas, Plot No 73, RSC 19/120, Svarakar Nagar,
-                    Opp Sankalp School, Thane(W)- 400606
-                  </p>
-                </div>
-
-                <div className="bg-white dark:bg-gray-900 p-8 rounded-xl shadow-lg border dark:border-gray-800">
-                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                    Quick Contact
-                  </h3>
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Phone</p>
-                      <a
-                        href="tel:+91XXXXXXXXXX"
-                        className="text-lg font-semibold text-blue-600 dark:text-blue-400 hover:underline"
-                      >
-                        +91 XXXXX XXXXX
-                      </a>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Email</p>
-                      <a
-                        href="mailto:info@samarthwaterpurifier.com"
-                        className="text-lg font-semibold text-blue-600 dark:text-blue-400 hover:underline"
-                      >
-                        info@samarthwaterpurifier.com
-                      </a>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Working Hours</p>
-                      <p className="text-gray-700 dark:text-gray-300">
-                        Monday - Saturday<br />
-                        9:00 AM - 7:00 PM
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-blue-600 dark:bg-blue-700 p-8 rounded-xl shadow-lg text-white">
-                  <h3 className="text-2xl font-bold mb-4">Need Immediate Assistance?</h3>
-                  <p className="text-blue-100 mb-6">
-                    For urgent service requests or emergency repairs, call us directly.
-                    We're here to help!
-                  </p>
-                  <Button
-                    variant="secondary"
-                    size="lg"
-                    className="w-full"
-                  >
-                    <Phone className="mr-2 h-5 w-5" />
-                    Call Now
-                  </Button>
-                </div>
+              <div className="bg-gradient-to-br from-rose-500 to-pink-600 dark:from-rose-600 dark:to-pink-700 p-8 rounded-xl shadow-2xl text-white">
+                <h3 className="text-2xl font-bold mb-4">Need Immediate Assistance?</h3>
+                <p className="text-rose-50 mb-6">For urgent service requests or emergency repairs, call us directly. We're here to help!</p>
+                <Button variant="secondary" size="lg" className="w-full bg-white text-pink-600 hover:bg-gray-100">
+                  <Phone className="mr-2 h-5 w-5" />
+                  Call Now
+                </Button>
               </div>
             </div>
           </div>
         </section>
-
         {/* Service Areas */}
         <section className="py-20 bg-white dark:bg-gray-950">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

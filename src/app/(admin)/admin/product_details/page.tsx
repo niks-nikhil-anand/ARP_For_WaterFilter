@@ -1,7 +1,6 @@
 'use client'
 
-import React, { useState, useMemo, useEffect } from 'react'
-import { adminActions } from '@/actions'
+import React, { useState, useEffect } from 'react'
 import {
   Table,
   TableBody,
@@ -19,13 +18,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -39,211 +31,104 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Textarea } from '@/components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Eye,
   Pencil,
   Trash2,
-  ChevronLeft,
-  ChevronRight,
   Search,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-  Plus,
+  Download,
   Package,
-  Tag,
-  IndianRupee,
-  Palette,
-  Building2,
-  ShoppingBag,
-  Calendar,
-  ShieldCheck,
-  Percent,
+  Plus,
+  ChevronRight,
+  ChevronLeft,
+  Upload,
+  X,
 } from 'lucide-react'
-import { getProducts, createProduct, updateProduct, deleteProduct } from '@/app/actions/product'
+import { getProducts, createProduct, updateProduct, deleteProduct, generateInvoice } from '@/app/actions/product'
+import { uploadImageToCloudinary } from '@/app/actions/cloudinary'
+import { generateProductId } from '@/utils/generateId'
 import { toast } from 'sonner'
+import { Checkbox } from '@/components/ui/checkbox'
 
-// Interface matching the UI structure
-interface Product {
+type Product = {
   id: number
+  uniqueId: string
+  invoiceNo: string | null
   name: string
+  productName: string | null
+  description: string | null
   company: string
   type: string
   color: string | null
-  price: number
-  discountedPrice: number | null
-  discountPercent: number | null
-  offer: string | null
-  warrantyPeriod: string | null
-  shopId: number
+  price: number | null
+  discount: number | null
+  discountType: string | null
+  status: string
   createdAt: Date
   updatedAt: Date
 }
 
 const ProductManagementPage = () => {
   const [products, setProducts] = useState<Product[]>([])
-  const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [companyFilter, setCompanyFilter] = useState('ALL')
-  const [typeFilter, setTypeFilter] = useState('ALL')
-  const [priceRange, setPriceRange] = useState('ALL')
-  const [sortField, setSortField] = useState<keyof Product | null>(null)
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage] = useState(6)
-
-  // Fetch products from API
-  // Fetch products from API
-  const loadProducts = async () => {
-    try {
-      setIsLoading(true)
-      const result = await getProducts()
-      if (result.success && result.data) {
-        // Transform API data to match UI structure
-        const transformedProducts: Product[] = result.data.map((p) => ({
-          id: p.id,
-          name: p.name,
-          company: p.company,
-          type: p.type,
-          color: p.color,
-          price: p.productDetail?.basePrice || 0,
-          discountedPrice: p.productDetail?.discountedPrice || null,
-          discountPercent:
-            p.productDetail?.basePrice && p.productDetail?.discountedPrice
-              ? parseFloat(
-                  (
-                    ((p.productDetail.basePrice - p.productDetail.discountedPrice) /
-                      p.productDetail.basePrice) *
-                    100
-                  ).toFixed(1)
-                )
-              : null,
-          offer: p.offer,
-          warrantyPeriod: p.warrantyPeriod,
-          shopId: p.shopId,
-          createdAt: new Date(p.createdAt),
-          updatedAt: new Date(p.updatedAt),
-        }))
-        setProducts(transformedProducts)
-      } else {
-        toast.error('Failed to load products')
-      }
-    } catch (error) {
-      console.error('Error fetching products:', error)
-      toast.error('Error loading products')
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const [loading, setLoading] = useState(true)
+  const [viewDialogOpen, setViewDialogOpen] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [addDialogOpen, setAddDialogOpen] = useState(false)
+  const [currentStep, setCurrentStep] = useState(1)
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [editForm, setEditForm] = useState({
+    name: '',
+    productName: '',
+    description: '',
+    company: '',
+    type: '',
+    color: '',
+    price: '',
+    discount: '',
+    discountType: '',
+    status: '',
+  })
+  const [addForm, setAddForm] = useState({
+    productName: '',
+    description: '',
+    type: '',
+    color: '',
+    warrantyPeriod: '',
+    freeInstallation: false,
+    price: '',
+    discountType: 'PERCENTAGE',
+    discount: '',
+    featuredImage: null as File | null,
+    images: [] as File[],
+  })
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [imagePreviews, setImagePreviews] = useState<string[]>([])
+  const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
     loadProducts()
   }, [])
 
-  // Modal states
-  const [viewDialogOpen, setViewDialogOpen] = useState(false)
-  const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [addDialogOpen, setAddDialogOpen] = useState(false)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
-
-  // Edit form state
-  const [editForm, setEditForm] = useState({
-    name: '',
-    company: '',
-    type: '',
-    color: '',
-    price: '',
-    discountedPrice: '',
-    offer: '',
-    warrantyPeriod: '',
-  })
-
-  // Add form state
-  const [addForm, setAddForm] = useState({
-    name: '',
-    company: '',
-    type: '',
-    color: '',
-    price: '',
-    discountedPrice: '',
-    offer: '',
-    warrantyPeriod: '',
-  })
-
-  // Get unique values for filters
-  const uniqueCompanies = Array.from(new Set(products.map((p) => p.company))).sort()
-  const uniqueTypes = Array.from(new Set(products.map((p) => p.type))).sort()
-
-  // Filtering and sorting logic
-  const filteredAndSortedProducts = useMemo(() => {
-    const filtered = products.filter((product) => {
-      const matchesSearch =
-        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (product.color?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
-
-      const matchesCompany = companyFilter === 'ALL' || product.company === companyFilter
-      const matchesType = typeFilter === 'ALL' || product.type === typeFilter
-
-      let matchesPriceRange = true
-      if (priceRange !== 'ALL') {
-        const price = product.discountedPrice || product.price
-        switch (priceRange) {
-          case 'UNDER_25K':
-            matchesPriceRange = price < 25000
-            break
-          case '25K_50K':
-            matchesPriceRange = price >= 25000 && price < 50000
-            break
-          case '50K_100K':
-            matchesPriceRange = price >= 50000 && price < 100000
-            break
-          case 'ABOVE_100K':
-            matchesPriceRange = price >= 100000
-            break
-        }
-      }
-
-      return matchesSearch && matchesCompany && matchesType && matchesPriceRange
-    })
-
-    if (sortField) {
-      filtered.sort((a, b) => {
-        const aValue = a[sortField]
-        const bValue = b[sortField]
-
-        if (aValue === null || aValue === undefined) return 1
-        if (bValue === null || bValue === undefined) return -1
-
-        if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1
-        if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1
-        return 0
-      })
-    }
-
-    return filtered
-  }, [products, searchTerm, companyFilter, typeFilter, priceRange, sortField, sortOrder])
-
-  // Pagination logic
-  const totalPages = Math.ceil(filteredAndSortedProducts.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const currentProducts = filteredAndSortedProducts.slice(startIndex, endIndex)
-
-  // Sort handler
-  const handleSort = (field: keyof Product) => {
-    if (sortField === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+  const loadProducts = async () => {
+    setLoading(true)
+    const result = await getProducts()
+    if (result.success && result.data) {
+      setProducts(result.data)
     } else {
-      setSortField(field)
-      setSortOrder('asc')
+      toast.error('Failed to load products')
     }
+    setLoading(false)
   }
 
-  // CRUD handlers
   const handleView = (product: Product) => {
     setSelectedProduct(product)
     setViewDialogOpen(true)
@@ -252,30 +137,18 @@ const ProductManagementPage = () => {
   const handleEdit = (product: Product) => {
     setSelectedProduct(product)
     setEditForm({
-      name: product.name,
-      company: product.company,
-      type: product.type,
+      name: product.name || '',
+      productName: product.productName || '',
+      description: product.description || '',
+      company: product.company || '',
+      type: product.type || '',
       color: product.color || '',
-      price: product.price.toString(),
-      discountedPrice: product.discountedPrice?.toString() || '',
-      offer: product.offer || '',
-      warrantyPeriod: product.warrantyPeriod || '',
+      price: product.price?.toString() || '',
+      discount: product.discount?.toString() || '',
+      discountType: product.discountType || 'PERCENTAGE',
+      status: product.status || 'PENDING',
     })
     setEditDialogOpen(true)
-  }
-
-  const handleAddProduct = () => {
-    setAddForm({
-      name: '',
-      company: '',
-      type: '',
-      color: '',
-      price: '',
-      discountedPrice: '',
-      offer: '',
-      warrantyPeriod: '',
-    })
-    setAddDialogOpen(true)
   }
 
   const handleDelete = (product: Product) => {
@@ -284,89 +157,224 @@ const ProductManagementPage = () => {
   }
 
   const confirmDelete = async () => {
-    if (selectedProduct) {
-      const result = await deleteProduct(selectedProduct.id)
-      if (result.success) {
-        toast.success('Product deleted successfully')
-        loadProducts()
-        setDeleteDialogOpen(false)
-        setSelectedProduct(null)
-      } else {
-        toast.error('Failed to delete product')
-      }
+    if (!selectedProduct) return
+
+    const result = await deleteProduct(selectedProduct.id)
+    if (result.success) {
+      loadProducts()
+      setDeleteDialogOpen(false)
+      setSelectedProduct(null)
+      toast.success('Product deleted successfully')
+    } else {
+      toast.error('Failed to delete product')
     }
   }
 
-  const saveEdit = async () => {
-    if (selectedProduct) {
-      const price = parseFloat(editForm.price)
-      const discountedPrice = editForm.discountedPrice
-        ? parseFloat(editForm.discountedPrice)
-        : undefined
+  const handleSaveEdit = async () => {
+    if (!selectedProduct) return
 
-      const result = await updateProduct(selectedProduct.id, {
-        name: editForm.name,
-        company: editForm.company,
-        type: editForm.type,
-        color: editForm.color,
-        offer: editForm.offer,
-        warrantyPeriod: editForm.warrantyPeriod,
-        price,
-        discountedPrice,
-      })
-
-      if (result.success) {
-        toast.success('Product updated successfully')
-        loadProducts()
-        setEditDialogOpen(false)
-        setSelectedProduct(null)
-      } else {
-        toast.error('Failed to update product')
-      }
-    }
-  }
-
-  const saveAdd = async () => {
-    const price = parseFloat(addForm.price)
-    const discountedPrice = addForm.discountedPrice
-      ? parseFloat(addForm.discountedPrice)
-      : undefined
-
-    const result = await createProduct({
-      name: addForm.name,
-      company: addForm.company,
-      type: addForm.type,
-      color: addForm.color,
-      offer: addForm.offer,
-      warrantyPeriod: addForm.warrantyPeriod,
-      price,
-      discountedPrice,
-      shopId: 1, // Placeholder shop ID
+    const result = await updateProduct(selectedProduct.id, {
+      name: editForm.name,
+      productName: editForm.productName,
+      description: editForm.description,
+      company: editForm.company,
+      type: editForm.type,
+      color: editForm.color,
+      price: editForm.price ? parseFloat(editForm.price) : undefined,
+      discount: editForm.discount ? parseFloat(editForm.discount) : undefined,
+      discountType: editForm.discountType as 'PERCENTAGE' | 'FLAT_RATE',
+      status: editForm.status as 'ACTIVE' | 'BLOCKED' | 'PENDING',
     })
 
     if (result.success) {
-      toast.success('Product created successfully')
       loadProducts()
-      setAddDialogOpen(false)
+      setEditDialogOpen(false)
+      setSelectedProduct(null)
+      toast.success('Product updated successfully')
     } else {
-      toast.error('Failed to create product')
+      toast.error('Failed to update product')
     }
   }
 
-
-  const getSortIcon = (field: keyof Product) => {
-    if (sortField !== field) {
-      return <ArrowUpDown className="h-4 w-4 ml-2" />
+  const handleDownloadInvoice = async (product: Product) => {
+    const result = await generateInvoice(product.id)
+    if (result.success) {
+      toast.success('Invoice generated successfully')
+      // TODO: Implement actual PDF download
+    } else {
+      toast.error('Failed to generate invoice')
     }
-    return sortOrder === 'asc' ? (
-      <ArrowUp className="h-4 w-4 ml-2" />
-    ) : (
-      <ArrowDown className="h-4 w-4 ml-2" />
+  }
+
+  // Add Product Handlers
+  const openAddDialog = () => {
+    setAddForm({
+      productName: '',
+      description: '',
+      type: '',
+      color: '',
+      warrantyPeriod: '',
+      freeInstallation: false,
+      price: '',
+      discountType: 'PERCENTAGE',
+      discount: '',
+      featuredImage: null,
+      images: [],
+    })
+    setImagePreview(null)
+    setImagePreviews([])
+    setCurrentStep(1)
+    setAddDialogOpen(true)
+  }
+
+  const handleNextStep = () => {
+    if (currentStep < 3) {
+      setCurrentStep(currentStep + 1)
+    }
+  }
+
+  const handlePrevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1)
+    }
+  }
+
+  const handleFeaturedImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setAddForm({ ...addForm, featuredImage: file })
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length > 0) {
+      setAddForm({ ...addForm, images: [...addForm.images, ...files] })
+      
+      files.forEach(file => {
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          setImagePreviews(prev => [...prev, reader.result as string])
+        }
+        reader.readAsDataURL(file)
+      })
+    }
+  }
+
+  const removeImage = (index: number) => {
+    const newImages = addForm.images.filter((_, i) => i !== index)
+    const newPreviews = imagePreviews.filter((_, i) => i !== index)
+    setAddForm({ ...addForm, images: newImages })
+    setImagePreviews(newPreviews)
+  }
+
+  const calculateFinalPrice = () => {
+    const price = parseFloat(addForm.price) || 0
+    const discount = parseFloat(addForm.discount) || 0
+    
+    if (addForm.discountType === 'PERCENTAGE') {
+      return price - (price * discount / 100)
+    }
+    return price - discount
+  }
+
+  const handleAddProduct = async () => {
+    setUploading(true)
+    try {
+      // Helper function to convert File to base64
+      const fileToBase64 = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader()
+          reader.readAsDataURL(file)
+          reader.onload = () => resolve(reader.result as string)
+          reader.onerror = error => reject(error)
+        })
+      }
+
+      // Upload featured image
+      let featuredImageUrl = ''
+      if (addForm.featuredImage) {
+        const base64 = await fileToBase64(addForm.featuredImage)
+        const result = await uploadImageToCloudinary(base64, 'products/featured')
+        if (result.success && result.url) {
+          featuredImageUrl = result.url
+        }
+      }
+
+      // Upload additional images
+      const imageUrls: string[] = []
+      for (const image of addForm.images) {
+        const base64 = await fileToBase64(image)
+        const result = await uploadImageToCloudinary(base64, 'products/gallery')
+        if (result.success && result.url) {
+          imageUrls.push(result.url)
+        }
+      }
+
+      // Generate unique ID using utility function
+      const uniqueId = generateProductId()
+
+      // Create product
+      const result = await createProduct({
+        uniqueId,
+        name: addForm.productName,
+        productName: addForm.productName,
+        description: addForm.description,
+        company: 'Default Company', // You can add this to the form if needed
+        type: addForm.type,
+        color: addForm.color,
+        price: parseFloat(addForm.price),
+        discount: parseFloat(addForm.discount) || undefined,
+        discountType: addForm.discountType as 'PERCENTAGE' | 'FLAT_RATE',
+        warrantyPeriod: addForm.warrantyPeriod,
+        featuredImageUrl,
+        images: imageUrls,
+        status: 'PENDING',
+        shopId: 1, // You should get this from the logged-in user's shop
+      })
+
+      if (result.success) {
+        loadProducts()
+        setAddDialogOpen(false)
+        toast.success('Product added successfully')
+      } else {
+        toast.error('Failed to add product')
+      }
+    } catch (error) {
+      console.error('Error adding product:', error)
+      toast.error('Error uploading images or creating product')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const filteredProducts = products.filter((product) =>
+    product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    product.uniqueId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    product.company?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    product.type?.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, string> = {
+      'ACTIVE': 'bg-green-100 text-green-800',
+      'BLOCKED': 'bg-red-100 text-red-800',
+      'PENDING': 'bg-yellow-100 text-yellow-800',
+    }
+    return (
+      <Badge className={variants[status] || 'bg-gray-100 text-gray-800'}>
+        {status}
+      </Badge>
     )
   }
 
   const formatPrice = (price: number | null) => {
-    if (price === null || price === undefined) return '₹0'
+    if (!price) return '-'
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
@@ -374,477 +382,245 @@ const ProductManagementPage = () => {
     }).format(price)
   }
 
-  const getDiscountBadge = (discountPercent: number | null) => {
-    if (!discountPercent) return null
-    return (
-      <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
-        {discountPercent}% OFF
-      </Badge>
-    )
+  const calculateDiscountedPrice = (price: number | null, discount: number | null, discountType: string | null) => {
+    if (!price || !discount) return price
+    if (discountType === 'PERCENTAGE') {
+      return price - (price * discount / 100)
+    }
+    return price - discount
   }
 
-  const getTypeBadge = (type: string) => {
-    // Generate color based on type string for consistent coloring
-    const colors = [
-      'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-      'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
-      'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300',
-      'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300',
-      'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-300',
-      'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300',
-      'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
-      'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-    ]
-    
-    // Simple hash function to get consistent color for each type
-    const hash = type.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-    const colorClass = colors[hash % colors.length]
-    
-    return (
-      <Badge className={colorClass}>
-        {type}
-      </Badge>
-    )
+  const formatDate = (date: Date) => {
+    return new Date(date).toLocaleDateString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    })
   }
 
   return (
     <div className="h-[90vh] max-h-[92vh] overflow-y-auto">
       <div className="container mx-auto py-10 px-4 pb-20">
         <div className="space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Product Management</h1>
-            <p className="text-muted-foreground mt-2">
-              Manage your product inventory, pricing, and details
-            </p>
+          {/* Header */}
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Product Management</h1>
+              <p className="text-muted-foreground mt-2">
+                Manage your product inventory and details
+              </p>
+            </div>
+            <Button onClick={openAddDialog} className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Add Product
+            </Button>
           </div>
-          <Button className="flex items-center gap-2" onClick={handleAddProduct}>
-            <Plus className="h-4 w-4" />
-            Add Product
-          </Button>
-        </div>
 
-        {/* Filters and Search */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="relative lg:col-span-2">
+          {/* Search */}
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search products by name, company, type, or color..."
+              placeholder="Search by product ID, name, company, or type..."
               value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value)
-                setCurrentPage(1)
-              }}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
             />
           </div>
-          <Select
-            value={companyFilter}
-            onValueChange={(value) => {
-              setCompanyFilter(value)
-              setCurrentPage(1)
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Filter by company" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Companies</SelectItem>
-              {uniqueCompanies.map((company) => (
-                <SelectItem key={company} value={company}>
-                  {company}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={typeFilter}
-            onValueChange={(value) => {
-              setTypeFilter(value)
-              setCurrentPage(1)
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Filter by type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Types</SelectItem>
-              {uniqueTypes.map((type) => (
-                <SelectItem key={type} value={type}>
-                  {type}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
 
-        <div className="flex gap-4">
-          <Select
-            value={priceRange}
-            onValueChange={(value) => {
-              setPriceRange(value)
-              setCurrentPage(1)
-            }}
-          >
-            <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="Filter by price" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Prices</SelectItem>
-              <SelectItem value="UNDER_25K">Under ₹25,000</SelectItem>
-              <SelectItem value="25K_50K">₹25,000 - ₹50,000</SelectItem>
-              <SelectItem value="50K_100K">₹50,000 - ₹1,00,000</SelectItem>
-              <SelectItem value="ABOVE_100K">Above ₹1,00,000</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Table */}
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('id')}
-                >
-                  <div className="flex items-center">
-                    ID
-                    {getSortIcon('id')}
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('name')}
-                >
-                  <div className="flex items-center">
-                    Product
-                    {getSortIcon('name')}
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('company')}
-                >
-                  <div className="flex items-center">
-                    Company
-                    {getSortIcon('company')}
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('type')}
-                >
-                  <div className="flex items-center">
-                    Type
-                    {getSortIcon('type')}
-                  </div>
-                </TableHead>
-                <TableHead className="text-right">Color</TableHead>
-                <TableHead
-                  className="cursor-pointer select-none text-right"
-                  onClick={() => handleSort('price')}
-                >
-                  <div className="flex items-center justify-end">
-                    Price
-                    {getSortIcon('price')}
-                  </div>
-                </TableHead>
-                <TableHead className="text-right">Discount</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {currentProducts.length === 0 ? (
+          {/* Table */}
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-10">
-                    <div className="flex flex-col items-center gap-2">
-                      <Package className="h-10 w-10 text-muted-foreground" />
-                      <p className="text-muted-foreground">No products found</p>
-                    </div>
-                  </TableCell>
+                  <TableHead>Product ID</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Color</TableHead>
+                  <TableHead>Price</TableHead>
+                  <TableHead>Discount</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ) : (
-                currentProducts.map((product) => (
-                  <TableRow key={product.id}>
-                    <TableCell className="font-medium">{product.id}</TableCell>
-                    <TableCell>
-                      <div className="font-medium">{product.name}</div>
-                      {product.offer && (
-                        <div className="text-xs text-green-600 mt-1 flex items-center gap-1">
-                          <Tag className="h-3 w-3" />
-                          {product.offer.substring(0, 30)}
-                          {product.offer.length > 30 && '...'}
-                        </div>
-                      )}
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center py-10">
+                      <p className="text-muted-foreground">Loading...</p>
                     </TableCell>
-                    <TableCell>{product.company}</TableCell>
-                    <TableCell>{getTypeBadge(product.type)}</TableCell>
-                    <TableCell className="text-right">
-                      {product.color ? (
-                        <div className="flex items-center justify-end gap-2">
-                          <Palette className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{product.color}</span>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex flex-col items-end">
-                        {product.discountedPrice ? (
-                          <>
-                            <span className="font-semibold text-green-600">
-                              {formatPrice(product.discountedPrice)}
-                            </span>
-                            <span className="text-xs text-muted-foreground line-through">
-                              {formatPrice(product.price)}
-                            </span>
-                          </>
-                        ) : (
-                          <span className="font-semibold">{formatPrice(product.price)}</span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {getDiscountBadge(product.discountPercent)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleView(product)}
-                          title="View details"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(product)}
-                          title="Edit product"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(product)}
-                          title="Delete product"
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                  </TableRow>
+                ) : filteredProducts.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center py-10">
+                      <div className="flex flex-col items-center gap-2">
+                        <Package className="h-10 w-10 text-muted-foreground" />
+                        <p className="text-muted-foreground">
+                          {searchTerm ? 'No products found matching your search' : 'No products found'}
+                        </p>
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-
-        {/* Pagination */}
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Showing {startIndex + 1} to{' '}
-            {Math.min(endIndex, filteredAndSortedProducts.length)} of{' '}
-            {filteredAndSortedProducts.length} products
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-            >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Previous
-            </Button>
-            <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                let pageNum
-                if (totalPages <= 5) {
-                  pageNum = i + 1
-                } else if (currentPage <= 3) {
-                  pageNum = i + 1
-                } else if (currentPage >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i
-                } else {
-                  pageNum = currentPage - 2 + i
-                }
-                return (
-                  <Button
-                    key={pageNum}
-                    variant={currentPage === pageNum ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setCurrentPage(pageNum)}
-                    className="w-9"
-                  >
-                    {pageNum}
-                  </Button>
-                )
-              })}
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-            >
-              Next
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
+                ) : (
+                  filteredProducts.map((product) => (
+                    <TableRow key={product.id}>
+                      <TableCell className="font-medium">{product.uniqueId}</TableCell>
+                      <TableCell>
+                        <div className="font-medium">{product.name}</div>
+                        {product.productName && (
+                          <div className="text-sm text-muted-foreground">{product.productName}</div>
+                        )}
+                      </TableCell>
+                      <TableCell>{product.type}</TableCell>
+                      <TableCell>{product.color || '-'}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{formatPrice(product.price)}</span>
+                          {product.discount && (
+                            <span className="text-sm text-green-600">
+                              {formatPrice(calculateDiscountedPrice(product.price, product.discount, product.discountType))}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {product.discount ? (
+                          <span className="text-sm text-green-600">
+                            {product.discount}{product.discountType === 'PERCENTAGE' ? '%' : ' ₹'}
+                          </span>
+                        ) : '-'}
+                      </TableCell>
+                      <TableCell>{getStatusBadge(product.status)}</TableCell>
+                      <TableCell>{formatDate(product.createdAt)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDownloadInvoice(product)}
+                            title="Download invoice"
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleView(product)}
+                            title="View details"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(product)}
+                            title="Edit product"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(product)}
+                            title="Delete product"
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
         </div>
       </div>
 
       {/* View Dialog */}
       <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Product Details</DialogTitle>
-            <DialogDescription>Complete information about the product</DialogDescription>
+            <DialogDescription>Complete product information</DialogDescription>
           </DialogHeader>
           {selectedProduct && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-6">
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Package className="h-4 w-4" />
-                    <span className="font-medium">Product ID</span>
-                  </div>
-                  <p className="text-sm">{selectedProduct.id}</p>
+                  <Label className="text-muted-foreground">Product ID</Label>
+                  <p className="font-medium">{selectedProduct.uniqueId}</p>
                 </div>
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <ShoppingBag className="h-4 w-4" />
-                    <span className="font-medium">Shop ID</span>
-                  </div>
-                  <p className="text-sm">{selectedProduct.shopId}</p>
+                  <Label className="text-muted-foreground">Invoice No.</Label>
+                  <p className="font-medium">{selectedProduct.invoiceNo || '-'}</p>
                 </div>
-                <div className="col-span-2 space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Package className="h-4 w-4" />
-                    <span className="font-medium">Product Name</span>
-                  </div>
-                  <p className="text-lg font-semibold">{selectedProduct.name}</p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-muted-foreground">Name</Label>
+                <p className="font-medium">{selectedProduct.name}</p>
+              </div>
+              {selectedProduct.productName && (
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Product Name</Label>
+                  <p className="font-medium">{selectedProduct.productName}</p>
+                </div>
+              )}
+              {selectedProduct.description && (
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Description</Label>
+                  <p className="text-sm">{selectedProduct.description}</p>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Company</Label>
+                  <p className="font-medium">{selectedProduct.company}</p>
                 </div>
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Building2 className="h-4 w-4" />
-                    <span className="font-medium">Company</span>
-                  </div>
-                  <p className="text-sm font-medium">{selectedProduct.company}</p>
+                  <Label className="text-muted-foreground">Type</Label>
+                  <p className="font-medium">{selectedProduct.type}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Color</Label>
+                  <p className="font-medium">{selectedProduct.color || '-'}</p>
                 </div>
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Tag className="h-4 w-4" />
-                    <span className="font-medium">Type</span>
-                  </div>
-                  <div>{getTypeBadge(selectedProduct.type)}</div>
+                  <Label className="text-muted-foreground">Status</Label>
+                  {getStatusBadge(selectedProduct.status)}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Price</Label>
+                  <p className="font-medium text-lg">{formatPrice(selectedProduct.price)}</p>
                 </div>
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Palette className="h-4 w-4" />
-                    <span className="font-medium">Color</span>
-                  </div>
-                  <p className="text-sm">{selectedProduct.color || 'Not specified'}</p>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <ShieldCheck className="h-4 w-4" />
-                    <span className="font-medium">Warranty</span>
-                  </div>
-                  <p className="text-sm">
-                    {selectedProduct.warrantyPeriod || 'No warranty'}
+                  <Label className="text-muted-foreground">Discount</Label>
+                  <p className="font-medium text-green-600">
+                    {selectedProduct.discount ? `${selectedProduct.discount}${selectedProduct.discountType === 'PERCENTAGE' ? '%' : ' ₹'}` : '-'}
                   </p>
                 </div>
+              </div>
+              {selectedProduct.discount && (
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <IndianRupee className="h-4 w-4" />
-                    <span className="font-medium">Original Price</span>
-                  </div>
-                  <p className="text-lg font-semibold">
-                    {formatPrice(selectedProduct.price)}
+                  <Label className="text-muted-foreground">Final Price</Label>
+                  <p className="font-medium text-lg text-green-600">
+                    {formatPrice(calculateDiscountedPrice(selectedProduct.price, selectedProduct.discount, selectedProduct.discountType))}
                   </p>
                 </div>
+              )}
+              <div className="grid grid-cols-2 gap-4 border-t pt-4">
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <IndianRupee className="h-4 w-4" />
-                    <span className="font-medium">Discounted Price</span>
-                  </div>
-                  <p className="text-lg font-semibold text-green-600">
-                    {selectedProduct.discountedPrice
-                      ? formatPrice(selectedProduct.discountedPrice)
-                      : 'No discount'}
-                  </p>
+                  <Label className="text-muted-foreground">Created At</Label>
+                  <p className="font-medium">{formatDate(selectedProduct.createdAt)}</p>
                 </div>
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Percent className="h-4 w-4" />
-                    <span className="font-medium">Discount</span>
-                  </div>
-                  <div>
-                    {selectedProduct.discountPercent ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg font-semibold text-green-600">
-                          {selectedProduct.discountPercent}%
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                          (Save{' '}
-                          {formatPrice(
-                            selectedProduct.price -
-                              (selectedProduct.discountedPrice || selectedProduct.price)
-                          )}
-                          )
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">No discount</span>
-                    )}
-                  </div>
-                </div>
-                {selectedProduct.offer && (
-                  <div className="col-span-2 space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Tag className="h-4 w-4" />
-                      <span className="font-medium">Special Offer</span>
-                    </div>
-                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md p-3">
-                      <p className="text-sm text-green-800 dark:text-green-300">
-                        {selectedProduct.offer}
-                      </p>
-                    </div>
-                  </div>
-                )}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
-                    <span className="font-medium">Created At</span>
-                  </div>
-                  <p className="text-sm">
-                    {selectedProduct.createdAt.toLocaleDateString('en-IN', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                    })}
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
-                    <span className="font-medium">Last Updated</span>
-                  </div>
-                  <p className="text-sm">
-                    {selectedProduct.updatedAt.toLocaleDateString('en-IN', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                    })}
-                  </p>
+                  <Label className="text-muted-foreground">Updated At</Label>
+                  <p className="font-medium">{formatDate(selectedProduct.updatedAt)}</p>
                 </div>
               </div>
             </div>
@@ -859,237 +635,131 @@ const ProductManagementPage = () => {
 
       {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Product</DialogTitle>
-            <DialogDescription>Make changes to product information</DialogDescription>
+            <DialogDescription>Update product information</DialogDescription>
           </DialogHeader>
-          {selectedProduct && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2 space-y-2">
-                  <Label htmlFor="edit-name">Product Name</Label>
-                  <Input
-                    id="edit-name"
-                    value={editForm.name}
-                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-company">Company</Label>
-                  <Input
-                    id="edit-company"
-                    value={editForm.company}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, company: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-type">Type</Label>
-                  <Input
-                    id="edit-type"
-                    value={editForm.type}
-                    onChange={(e) => setEditForm({ ...editForm, type: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-color">Color</Label>
-                  <Input
-                    id="edit-color"
-                    value={editForm.color}
-                    onChange={(e) => setEditForm({ ...editForm, color: e.target.value })}
-                    placeholder="Optional"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-warranty">Warranty Period</Label>
-                  <Input
-                    id="edit-warranty"
-                    value={editForm.warrantyPeriod}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, warrantyPeriod: e.target.value })
-                    }
-                    placeholder="e.g., 1 Year"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-price">Original Price (₹)</Label>
-                  <Input
-                    id="edit-price"
-                    type="number"
-                    value={editForm.price}
-                    onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-discounted-price">Discounted Price (₹)</Label>
-                  <Input
-                    id="edit-discounted-price"
-                    type="number"
-                    value={editForm.discountedPrice}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, discountedPrice: e.target.value })
-                    }
-                    placeholder="Optional"
-                  />
-                </div>
-                <div className="col-span-2 space-y-2">
-                  <Label htmlFor="edit-offer">Special Offer</Label>
-                  <Textarea
-                    id="edit-offer"
-                    value={editForm.offer}
-                    onChange={(e) => setEditForm({ ...editForm, offer: e.target.value })}
-                    placeholder="Optional - e.g., Bank Offer, Free Gift, etc."
-                    rows={3}
-                  />
-                </div>
-              </div>
-              {editForm.price && editForm.discountedPrice && (
-                <div className="bg-muted p-4 rounded-md">
-                  <p className="text-sm font-medium mb-2">Calculated Discount:</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {(
-                      ((parseFloat(editForm.price) -
-                        parseFloat(editForm.discountedPrice)) /
-                        parseFloat(editForm.price)) *
-                      100
-                    ).toFixed(1)}
-                    % OFF
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Save{' '}
-                    {formatPrice(
-                      parseFloat(editForm.price) - parseFloat(editForm.discountedPrice)
-                    )}
-                  </p>
-                </div>
-              )}
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Name</Label>
+              <Input
+                id="edit-name"
+                value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                placeholder="Enter product name"
+              />
             </div>
-          )}
+            <div className="space-y-2">
+              <Label htmlFor="edit-productName">Product Name</Label>
+              <Input
+                id="edit-productName"
+                value={editForm.productName}
+                onChange={(e) => setEditForm({ ...editForm, productName: e.target.value })}
+                placeholder="Enter product name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Description</Label>
+              <Input
+                id="edit-description"
+                value={editForm.description}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                placeholder="Enter description"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-company">Company</Label>
+                <Input
+                  id="edit-company"
+                  value={editForm.company}
+                  onChange={(e) => setEditForm({ ...editForm, company: e.target.value })}
+                  placeholder="Enter company"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-type">Type</Label>
+                <Input
+                  id="edit-type"
+                  value={editForm.type}
+                  onChange={(e) => setEditForm({ ...editForm, type: e.target.value })}
+                  placeholder="Enter type"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-color">Color</Label>
+              <Input
+                id="edit-color"
+                value={editForm.color}
+                onChange={(e) => setEditForm({ ...editForm, color: e.target.value })}
+                placeholder="Enter color"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-price">Price</Label>
+                <Input
+                  id="edit-price"
+                  type="number"
+                  value={editForm.price}
+                  onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
+                  placeholder="Enter price"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-discount">Discount</Label>
+                <Input
+                  id="edit-discount"
+                  type="number"
+                  value={editForm.discount}
+                  onChange={(e) => setEditForm({ ...editForm, discount: e.target.value })}
+                  placeholder="Enter discount"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-discountType">Discount Type</Label>
+                <Select
+                  value={editForm.discountType}
+                  onValueChange={(value) => setEditForm({ ...editForm, discountType: value })}
+                >
+                  <SelectTrigger id="edit-discountType">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PERCENTAGE">Percentage</SelectItem>
+                    <SelectItem value="FLAT_RATE">Flat Rate</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-status">Status</Label>
+                <Select
+                  value={editForm.status}
+                  onValueChange={(value) => setEditForm({ ...editForm, status: value })}
+                >
+                  <SelectTrigger id="edit-status">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ACTIVE">Active</SelectItem>
+                    <SelectItem value="BLOCKED">Blocked</SelectItem>
+                    <SelectItem value="PENDING">Pending</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={saveEdit}>Save Changes</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Add Dialog */}
-      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Add New Product</DialogTitle>
-            <DialogDescription>Enter the details for the new product</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2 space-y-2">
-                <Label htmlFor="add-name">Product Name</Label>
-                <Input
-                  id="add-name"
-                  value={addForm.name}
-                  onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
-                  placeholder="e.g. Kent Grand Plus"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="add-company">Company</Label>
-                <Input
-                  id="add-company"
-                  value={addForm.company}
-                  onChange={(e) => setAddForm({ ...addForm, company: e.target.value })}
-                  placeholder="e.g. Kent"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="add-type">Type</Label>
-                <Input
-                  id="add-type"
-                  value={addForm.type}
-                  onChange={(e) => setAddForm({ ...addForm, type: e.target.value })}
-                  placeholder="e.g. RO + UV"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="add-color">Color</Label>
-                <Input
-                  id="add-color"
-                  value={addForm.color}
-                  onChange={(e) => setAddForm({ ...addForm, color: e.target.value })}
-                  placeholder="Optional"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="add-warranty">Warranty Period</Label>
-                <Input
-                  id="add-warranty"
-                  value={addForm.warrantyPeriod}
-                  onChange={(e) =>
-                    setAddForm({ ...addForm, warrantyPeriod: e.target.value })
-                  }
-                  placeholder="e.g. 1 Year"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="add-price">Original Price (₹)</Label>
-                <Input
-                  id="add-price"
-                  type="number"
-                  value={addForm.price}
-                  onChange={(e) => setAddForm({ ...addForm, price: e.target.value })}
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="add-discounted-price">Discounted Price (₹)</Label>
-                <Input
-                  id="add-discounted-price"
-                  type="number"
-                  value={addForm.discountedPrice}
-                  onChange={(e) =>
-                    setAddForm({ ...addForm, discountedPrice: e.target.value })
-                  }
-                  placeholder="Optional"
-                />
-              </div>
-              <div className="col-span-2 space-y-2">
-                <Label htmlFor="add-offer">Special Offer</Label>
-                <Textarea
-                  id="add-offer"
-                  value={addForm.offer}
-                  onChange={(e) => setAddForm({ ...addForm, offer: e.target.value })}
-                  placeholder="Optional - e.g., Bank Offer, Free Gift, etc."
-                  rows={3}
-                />
-              </div>
-            </div>
-            {addForm.price && addForm.discountedPrice && (
-              <div className="bg-muted p-4 rounded-md">
-                <p className="text-sm font-medium mb-2">Calculated Discount:</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {(
-                    ((parseFloat(addForm.price) - parseFloat(addForm.discountedPrice)) /
-                      parseFloat(addForm.price)) *
-                    100
-                  ).toFixed(1)}
-                  % OFF
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Save{' '}
-                  {formatPrice(
-                    parseFloat(addForm.price) - parseFloat(addForm.discountedPrice)
-                  )}
-                </p>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
-              Cancel
+            <Button onClick={handleSaveEdit}>
+              Save Changes
             </Button>
-            <Button onClick={saveAdd}>Create Product</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1098,26 +768,276 @@ const ProductManagementPage = () => {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the product{' '}
-              <span className="font-semibold">{selectedProduct?.name}</span> and remove it
-              from your inventory.
+              This will permanently delete the product "{selectedProduct?.name}". This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className="bg-red-600 hover:bg-red-700"
-            >
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      </div>
-      </div>
+
+      {/* Add Product Dialog - 3 Steps */}
+      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add New Product - Step {currentStep} of 3</DialogTitle>
+            <DialogDescription>
+              {currentStep === 1 && 'Enter product details'}
+              {currentStep === 2 && 'Set pricing and discounts'}
+              {currentStep === 3 && 'Upload product images'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            {/* Step 1: Product Details */}
+            {currentStep === 1 && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="add-productName">Product Name *</Label>
+                  <Input
+                    id="add-productName"
+                    value={addForm.productName}
+                    onChange={(e) => setAddForm({ ...addForm, productName: e.target.value })}
+                    placeholder="Enter product name"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-description">Description</Label>
+                  <Input
+                    id="add-description"
+                    value={addForm.description}
+                    onChange={(e) => setAddForm({ ...addForm, description: e.target.value })}
+                    placeholder="Enter product description"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="add-type">Type *</Label>
+                    <Input
+                      id="add-type"
+                      value={addForm.type}
+                      onChange={(e) => setAddForm({ ...addForm, type: e.target.value })}
+                      placeholder="e.g., RO, UV, UF"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="add-color">Color</Label>
+                    <Input
+                      id="add-color"
+                      value={addForm.color}
+                      onChange={(e) => setAddForm({ ...addForm, color: e.target.value })}
+                      placeholder="Enter color"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-warranty">Warranty Period</Label>
+                  <Select
+                    value={addForm.warrantyPeriod}
+                    onValueChange={(value) => setAddForm({ ...addForm, warrantyPeriod: value })}
+                  >
+                    <SelectTrigger id="add-warranty">
+                      <SelectValue placeholder="Select warranty period" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="6">6 Months</SelectItem>
+                      <SelectItem value="12">12 Months (1 Year)</SelectItem>
+                      <SelectItem value="18">18 Months</SelectItem>
+                      <SelectItem value="24">24 Months (2 Years)</SelectItem>
+                      <SelectItem value="36">36 Months (3 Years)</SelectItem>
+                      <SelectItem value="48">48 Months (4 Years)</SelectItem>
+                      <SelectItem value="60">60 Months (5 Years)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="add-freeInstallation"
+                    checked={addForm.freeInstallation}
+                    onCheckedChange={(checked) => setAddForm({ ...addForm, freeInstallation: checked as boolean })}
+                  />
+                  <Label htmlFor="add-freeInstallation" className="cursor-pointer">
+                    Free Installation
+                  </Label>
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Pricing */}
+            {currentStep === 2 && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="add-price">Price (₹) *</Label>
+                  <Input
+                    id="add-price"
+                    type="number"
+                    value={addForm.price}
+                    onChange={(e) => setAddForm({ ...addForm, price: e.target.value })}
+                    placeholder="Enter price"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="add-discountType">Discount Type</Label>
+                    <Select
+                      value={addForm.discountType}
+                      onValueChange={(value) => setAddForm({ ...addForm, discountType: value })}
+                    >
+                      <SelectTrigger id="add-discountType">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="PERCENTAGE">Percentage (%)</SelectItem>
+                        <SelectItem value="FLAT_RATE">Flat Rate (₹)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="add-discount">Discount</Label>
+                    <Input
+                      id="add-discount"
+                      type="number"
+                      value={addForm.discount}
+                      onChange={(e) => setAddForm({ ...addForm, discount: e.target.value })}
+                      placeholder={addForm.discountType === 'PERCENTAGE' ? 'Enter %' : 'Enter amount'}
+                    />
+                  </div>
+                </div>
+                {addForm.price && (
+                  <div className="p-4 border rounded-md bg-muted/50">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">Final Price:</span>
+                      <span className="text-2xl font-bold text-green-600">
+                        ₹{calculateFinalPrice().toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                    {addForm.discount && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        You save: ₹{(parseFloat(addForm.price) - calculateFinalPrice()).toLocaleString('en-IN')}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Step 3: Images */}
+            {currentStep === 3 && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="add-featuredImage">Featured Image</Label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      id="add-featuredImage"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFeaturedImageChange}
+                      className="flex-1"
+                    />
+                  </div>
+                  {imagePreview && (
+                    <div className="relative w-full h-48 border rounded-md overflow-hidden">
+                      <img
+                        src={imagePreview}
+                        alt="Featured preview"
+                        className="w-full h-full object-cover"
+                      />
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-2 right-2"
+                        onClick={() => {
+                          setAddForm({ ...addForm, featuredImage: null })
+                          setImagePreview(null)
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-images">Additional Images</Label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      id="add-images"
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImagesChange}
+                      className="flex-1"
+                    />
+                  </div>
+                  {imagePreviews.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2">
+                      {imagePreviews.map((preview, index) => (
+                        <div key={index} className="relative aspect-square border rounded-md overflow-hidden">
+                          <img
+                            src={preview}
+                            alt={`Preview ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-1 right-1 h-6 w-6"
+                            onClick={() => removeImage(index)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="flex justify-between">
+            <div className="flex gap-2">
+              {currentStep > 1 && (
+                <Button variant="outline" onClick={handlePrevStep}>
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Previous
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
+                Cancel
+              </Button>
+              {currentStep < 3 ? (
+                <Button onClick={handleNextStep}>
+                  Next
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              ) : (
+                <Button onClick={handleAddProduct} disabled={uploading}>
+                  {uploading ? (
+                    <>
+                      <Upload className="h-4 w-4 mr-2 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    'Add Product'
+                  )}
+                </Button>
+              )}
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   )
 }
 

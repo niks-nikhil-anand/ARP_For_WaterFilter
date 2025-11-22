@@ -189,7 +189,6 @@ const ContactPage = () => {
           </div>
         </section>
       </main>
-
       <Footer />
     </div>
   )

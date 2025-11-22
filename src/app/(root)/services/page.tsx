@@ -246,7 +246,7 @@ const ServicesPage = () => {
                 <Phone className="mr-2 h-5 w-5" />
                 Call Now: +91 XXXXX XXXXX
               </Button>
-              <Button size="lg" variant="outline" className="text-lg border-white text-white hover:bg-white hover:text-blue-600">
+              <Button size="lg" variant="outline" className="text-lg border-white text-black hover:bg-white hover:text-blue-600">
                 Request Quote
               </Button>
             </div>

@@ -42,7 +42,7 @@ const Navbar = () => {
             ))}
             <ThemeToggle />
             <Button className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600">
-              Get Quote
+              Login
             </Button>
           </div>
 
@@ -78,7 +78,7 @@ const Navbar = () => {
                 </Link>
               ))}
               <Button className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 w-full">
-                Get Quote
+               Login
               </Button>
             </div>
           </div>

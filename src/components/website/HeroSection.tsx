@@ -79,23 +79,6 @@ const HeroSection = () => {
                 <span className="text-gray-700 dark:text-gray-300 font-medium">Mumbai & Thane</span>
               </div>
             </div>
-
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <Button size="lg" className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 dark:from-blue-500 dark:to-blue-600 dark:hover:from-blue-600 dark:hover:to-blue-700 text-lg shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5">
-                <Phone className="mr-2 h-5 w-5" />
-                Contact Us Now
-              </Button>
-              <Button size="lg" variant="outline" className="text-lg border-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-800 shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5">
-                Explore Services
-              </Button>
-            </div>
-
-            {/* Contact Info */}
-            <div className="bg-gradient-to-r from-blue-600 to-cyan-600 dark:from-blue-700 dark:to-cyan-700 p-6 rounded-2xl shadow-xl inline-block border-2 border-blue-400 dark:border-blue-500">
-              <p className="text-sm text-blue-100 mb-2 font-medium">📞 Call us for immediate assistance</p>
-              <p className="text-3xl font-bold text-white">+91 XXXXX XXXXX</p>
-            </div>
           </div>
 
           {/* Right Content - Image/Visual */}

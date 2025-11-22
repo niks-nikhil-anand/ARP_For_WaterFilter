@@ -43,6 +43,7 @@ const SidebarAdmin: React.FC<SidebarAdminProps> = ({ className }) => {
         { icon: Package, label: "Products", href: "/admin/product_details" },
         { icon: Store, label: "Shops", href: "/admin/shop_details" },
         { icon: Store, label: "Agents", href: "/admin/agent_details" },
+        { icon: Users, label: "Customers", href: "/admin/customer_details" },
         { icon: ShoppingCart, label: "Orders", href: "/admin/order_details" },
       ],
     },

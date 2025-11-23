@@ -14,6 +14,7 @@ import {
 import { Eye, Phone, Mail, MapPin, Package, CreditCard, Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import { OrderToolbar } from '@/components/admin/orders/OrderToolbar'
+import { OrderActions } from '@/components/admin/orders/OrderActions'
 
 export default async function OrderDetailsPage({
   searchParams,
@@ -225,12 +226,7 @@ export default async function OrderDetailsPage({
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Link href={`/admin/order_details/${order.id}`}>
-                          <Button variant="ghost" size="sm">
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
-                          </Button>
-                        </Link>
+                        <OrderActions order={order} />
                       </TableCell>
                     </TableRow>
                   ))}

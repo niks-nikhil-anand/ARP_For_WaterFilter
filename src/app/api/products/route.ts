@@ -14,7 +14,12 @@ export async function GET(request: NextRequest) {
 
     // Public endpoint for homepage - no authentication required
     if (publicView) {
+      console.log('🔍 Fetching public products with status ACTIVE...')
+      
       const products = await prisma.product.findMany({
+        where: {
+          status: 'ACTIVE', // Only show active products to public
+        },
         include: {
           shop: {
             select: {
@@ -22,13 +27,15 @@ export async function GET(request: NextRequest) {
               name: true,
             },
           },
-          productDetail: true,
         },
         orderBy: {
           createdAt: 'desc',
         },
         take: 50, // Limit public view to 50 products
       });
+
+      console.log(`✅ Found ${products.length} active products`)
+      console.log('📦 Products:', JSON.stringify(products, null, 2))
 
       return successResponse(products);
     }

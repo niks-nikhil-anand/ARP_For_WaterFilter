@@ -12,6 +12,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 
@@ -38,10 +45,17 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
     phone: '',
     alternatePhone: '',
     address: '',
+    additionalWarranty: 'none',
+    amc: 'none',
+    paymentOption: 'pay_later',
   })
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+  }
+
+  const handleSelectChange = (name: string, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
@@ -100,6 +114,9 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
         phone: '',
         alternatePhone: '',
         address: '',
+        additionalWarranty: 'none',
+        amc: 'none',
+        paymentOption: 'pay_later',
       })
 
       onClose()
@@ -198,6 +215,82 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
             />
           </div>
 
+          {/* Additional Warranty */}
+          <div className="space-y-2">
+            <Label htmlFor="additionalWarranty">Additional Warranty</Label>
+            <Select
+              value={formData.additionalWarranty}
+              onValueChange={(value) => handleSelectChange('additionalWarranty', value)}
+              disabled={isSubmitting}
+            >
+              <SelectTrigger id="additionalWarranty">
+                <SelectValue placeholder="Select additional warranty" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No Additional Warranty</SelectItem>
+                <SelectItem value="1year">1 Year Extended Warranty</SelectItem>
+                <SelectItem value="2year">2 Years Extended Warranty</SelectItem>
+                <SelectItem value="3year">3 Years Extended Warranty</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* AMC (Annual Maintenance Contract) */}
+          <div className="space-y-2">
+            <Label htmlFor="amc">AMC (Annual Maintenance Contract)</Label>
+            <Select
+              value={formData.amc}
+              onValueChange={(value) => handleSelectChange('amc', value)}
+              disabled={isSubmitting}
+            >
+              <SelectTrigger id="amc">
+                <SelectValue placeholder="Select AMC plan" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No AMC</SelectItem>
+                <SelectItem value="1year">1 Year AMC</SelectItem>
+                <SelectItem value="2year">2 Years AMC</SelectItem>
+                <SelectItem value="3year">3 Years AMC</SelectItem>
+                <SelectItem value="5year">5 Years AMC</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Payment Option */}
+          <div className="space-y-2">
+            <Label>Payment Option</Label>
+            <div className="flex gap-4">
+              <label className="flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="paymentOption"
+                  value="pay_later"
+                  checked={formData.paymentOption === 'pay_later'}
+                  onChange={(e) => handleSelectChange('paymentOption', e.target.value)}
+                  disabled={isSubmitting}
+                  className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Pay Later (Cash on Delivery)
+                </span>
+              </label>
+              <label className="flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="paymentOption"
+                  value="pay_now"
+                  checked={formData.paymentOption === 'pay_now'}
+                  onChange={(e) => handleSelectChange('paymentOption', e.target.value)}
+                  disabled={isSubmitting}
+                  className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Pay Now (Online Payment)
+                </span>
+              </label>
+            </div>
+          </div>
+
           {/* Address */}
           <div className="space-y-2">
             <Label htmlFor="address">
@@ -236,6 +329,8 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Submitting...
                 </>
+              ) : formData.paymentOption === 'pay_now' ? (
+                'Pay Now'
               ) : (
                 'Submit Booking'
               )}

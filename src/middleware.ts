@@ -47,7 +47,7 @@ function isPublicRoute(pathname: string): boolean {
 /**
  * Get required roles for a given pathname
  */
-function getRequiredRoles(pathname: string): string[] | null {
+function getRequiredRoles(pathname: string): readonly string[] | null {
   // Check each protected route pattern
   for (const [route, roles] of Object.entries(ROUTE_ACCESS_RULES)) {
     if (pathname.startsWith(route)) {
@@ -82,11 +82,17 @@ export async function middleware(request: NextRequest) {
     // Get auth-token from cookies
     const token = request.cookies.get('auth-token')?.value;
 
-    // If no token, redirect to auth page
+    // If no token, redirect to appropriate auth page
     if (!token) {
-      console.log(`[Middleware] No token found for ${pathname}, redirecting to /auth/admin`);
+      // Determine appropriate auth page based on route
+      let authPath = '/auth/admin';
+      if (pathname.startsWith('/agent')) {
+        authPath = '/auth/agent';
+      }
+      
+      console.log(`[Middleware] No token found for ${pathname}, redirecting to ${authPath}`);
       const url = request.nextUrl.clone();
-      url.pathname = '/auth/admin';
+      url.pathname = authPath;
       return NextResponse.redirect(url);
     }
 
@@ -120,8 +126,16 @@ export async function middleware(request: NextRequest) {
           `[Middleware] Access denied for ${pathname}. User role: ${userRole}, Required: ${requiredRoles.join(', ')}`
         );
 
+        // Determine appropriate auth page based on route
+        let authPath = '/auth/admin';
+        if (pathname.startsWith('/agent')) {
+          authPath = '/auth/agent';
+        } else if (pathname.startsWith('/shop')) {
+          authPath = '/auth/admin';
+        }
+
         const url = request.nextUrl.clone();
-        url.pathname = '/auth/admin';
+        url.pathname = authPath;
         url.searchParams.set('error', 'access_denied');
         url.searchParams.set('message', `This page requires ${requiredRoles.join(' or ')} privileges`);
         return NextResponse.redirect(url);

@@ -21,7 +21,7 @@ import { verifyToken } from '@/lib/auth';
 // Define role-based route access rules
 const ROUTE_ACCESS_RULES = {
   '/admin': ['SUPERADMIN'],
-  '/shop': ['ADMIN', 'SUPERADMIN'],
+  '/shop': ['ADMIN'],
   '/agent': ['AGENT'],
 } as const;
 

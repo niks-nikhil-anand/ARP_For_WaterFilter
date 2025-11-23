@@ -73,6 +73,65 @@ export default async function OrderDetailsPage({
         </div>
       </div>
 
+      {/* Summary Cards */}
+      {orders && orders.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Total Orders
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{pagination?.total || orders.length}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Pending Payments
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {orders.filter((o: any) => o.paymentStatus === 'PENDING').length}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Completed Payments
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {orders.filter((o: any) => o.paymentStatus === 'COMPLETED').length}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Total Revenue (Page)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                ₹
+                {orders
+                  .filter((o: any) => o.paymentStatus === 'COMPLETED')
+                  .reduce((sum: number, o: any) => sum + (o.amountPaid || 0), 0)
+                  .toLocaleString('en-IN')}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Toolbar */}
       <OrderToolbar />
 
@@ -224,65 +283,6 @@ export default async function OrderDetailsPage({
           )}
         </CardContent>
       </Card>
-
-      {/* Summary Cards */}
-      {orders && orders.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Total Orders
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{pagination?.total || orders.length}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Pending Payments
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {orders.filter((o: any) => o.paymentStatus === 'PENDING').length}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Completed Payments
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {orders.filter((o: any) => o.paymentStatus === 'COMPLETED').length}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Total Revenue (Page)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                ₹
-                {orders
-                  .filter((o: any) => o.paymentStatus === 'COMPLETED')
-                  .reduce((sum: number, o: any) => sum + (o.amountPaid || 0), 0)
-                  .toLocaleString('en-IN')}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
     </div>
   )
 }

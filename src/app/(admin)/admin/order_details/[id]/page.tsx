@@ -1,12 +1,11 @@
 import React from 'react'
 import { getOrderById } from '@/actions/common/orders'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Phone,
   Mail,
-  MapPin,
   Package,
   CreditCard,
   Calendar,
@@ -19,6 +18,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { EditOrderDialog } from '@/components/admin/orders/EditOrderDialog'
 
 export default async function OrderDetailPage({ params }: { params: { id: string } }) {
   const orderId = parseInt(params.id)
@@ -42,6 +42,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
         return <Clock className="h-5 w-5 text-gray-600" />
     }
   }
+  // ... existing code
 
   return (
     <div className="p-6 space-y-6">
@@ -67,6 +68,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
             </p>
           </div>
         </div>
+        <EditOrderDialog order={order} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

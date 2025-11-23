@@ -1,0 +1,5 @@
+-- CreateEnum
+CREATE TYPE "AMCStatus" AS ENUM ('ACTIVE', 'EXPIRED', 'BLOCKED', 'CANCELLED', 'PENDING');
+
+-- AlterTable
+ALTER TABLE "AMCContract" ADD COLUMN     "status" "AMCStatus" NOT NULL DEFAULT 'ACTIVE';

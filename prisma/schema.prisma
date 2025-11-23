@@ -64,6 +64,14 @@ enum TicketPriority {
   URGENT
 }
 
+enum AMCStatus {
+  ACTIVE
+  EXPIRED
+  BLOCKED
+  CANCELLED
+  PENDING
+}
+
 enum PaymentMethod {
   CASH
   ONLINE
@@ -185,6 +193,7 @@ model AMCContract {
   name          String
   duration      String
   price         Float
+  status        AMCStatus      @default(ACTIVE)
   shop          Shop           @relation(fields: [shopId], references: [id])
   shopId        Int
   services      AMCService[]

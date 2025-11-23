@@ -14,7 +14,7 @@ import { Search, SlidersHorizontal } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Droplet, Shield, Star, ArrowRight } from 'lucide-react'
-import Link from 'next/link'
+import BookingModal from './BookingModal'
 
 type Product = {
   id: number
@@ -42,6 +42,8 @@ export default function ProductFilters({ products }: ProductFiltersProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterType, setFilterType] = useState('all')
   const [sortBy, setSortBy] = useState('newest')
+  const [showBookingModal, setShowBookingModal] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
 
   const calculateDiscountedPrice = (price: number | null, discount: number | null, discountType: string | null) => {
     if (!price || !discount) return price
@@ -63,6 +65,11 @@ export default function ProductFilters({ products }: ProductFiltersProps) {
 
     return matchesSearch && matchesType
   })
+
+  const handleBookNow = (product: Product) => {
+    setSelectedProduct(product)
+    setShowBookingModal(true)
+  }
 
   // Sort products
   filteredProducts = [...filteredProducts].sort((a, b) => {
@@ -223,12 +230,13 @@ export default function ProductFilters({ products }: ProductFiltersProps) {
                   </div>
 
                   {/* CTA Button */}
-                  <Link href={`/contact`}>
-                    <Button className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-sm py-2">
-                      Book Now
-                      <ArrowRight className="ml-2 h-3.5 w-3.5" />
-                    </Button>
-                  </Link>
+                  <Button 
+                    onClick={() => handleBookNow(product)}
+                    className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-sm py-2"
+                  >
+                    Book Now
+                    <ArrowRight className="ml-2 h-3.5 w-3.5" />
+                  </Button>
                 </CardContent>
               </Card>
             )
@@ -254,6 +262,13 @@ export default function ProductFilters({ products }: ProductFiltersProps) {
           </Button>
         </div>
       )}
+
+      {/* Booking Modal */}
+      <BookingModal
+        isOpen={showBookingModal}
+        onClose={() => setShowBookingModal(false)}
+        product={selectedProduct}
+      />
     </div>
   )
 }

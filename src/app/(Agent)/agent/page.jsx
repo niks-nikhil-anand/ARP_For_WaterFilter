@@ -30,11 +30,13 @@ import {
   ArrowUpDown
 } from 'lucide-react'
 import { getCurrentAgentData } from '@/actions/agent/profile'
+import { getAgentTickets } from '@/actions/agent/tickets'
 
 const AgentPage = () => {
   // Agent data state
   const [agentData, setAgentData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [analytics, setAnalytics] = useState({ pending: 0, resolved: 0, total: 0 })
 
   // Fetch agent data on mount
   useEffect(() => {
@@ -50,87 +52,20 @@ const AgentPage = () => {
 
   const agentName = agentData?.name || 'Agent'
 
-  // Extended sample ticket data with more tickets for pagination
-  const [tickets, setTickets] = useState([
-    {
-      id: 'TKT-001',
-      customerName: 'Amit Sharma',
-      phone: '+91 98765 43210',
-      email: 'amit.sharma@example.com',
-      address: '123, MG Road, Bangalore, Karnataka - 560001',
-      issueType: 'Water Filter Repair',
-      reason: 'Water flow is very slow and the water has an unusual taste. The filter might be clogged or needs replacement.',
-      priority: 'High',
-      dateCreated: '2025-11-15',
-      timeCreated: '10:30 AM',
-      status: 'Pending'
-    },
-    {
-      id: 'TKT-002',
-      customerName: 'Priya Patel',
-      phone: '+91 87654 32109',
-      email: 'priya.patel@example.com',
-      address: '456, Residency Road, Ahmedabad, Gujarat - 380015',
-      issueType: 'Regular Maintenance',
-      reason: 'Annual maintenance service required. Filter was installed 11 months ago and needs routine checkup.',
-      priority: 'Medium',
-      dateCreated: '2025-11-16',
-      timeCreated: '02:15 PM',
-      status: 'Pending'
-    },
-    {
-      id: 'TKT-003',
-      customerName: 'Suresh Reddy',
-      phone: '+91 76543 21098',
-      email: 'suresh.reddy@example.com',
-      address: '789, Jubilee Hills, Hyderabad, Telangana - 500033',
-      issueType: 'Filter Replacement',
-      reason: 'RO membrane needs replacement. Water TDS level is higher than normal. Last replacement was done 18 months ago.',
-      priority: 'High',
-      dateCreated: '2025-11-17',
-      timeCreated: '09:00 AM',
-      status: 'Pending'
-    },
-    {
-      id: 'TKT-004',
-      customerName: 'Neha Gupta',
-      phone: '+91 98123 45678',
-      email: 'neha.gupta@example.com',
-      address: '22, Park Street, Kolkata, West Bengal - 700016',
-      issueType: 'New Installation',
-      reason: 'Need to install new RO water purifier. 6-member family.',
-      priority: 'Low',
-      dateCreated: '2025-11-14',
-      timeCreated: '11:00 AM',
-      status: 'Resolved'
-    },
-    {
-      id: 'TKT-005',
-      customerName: 'Vikram Singh',
-      phone: '+91 99887 76655',
-      email: 'vikram.singh@example.com',
-      address: '567, Civil Lines, Delhi - 110054',
-      issueType: 'Water Filter Repair',
-      reason: 'Water purifier making unusual noise. Power indicator blinking.',
-      priority: 'High',
-      dateCreated: '2025-11-18',
-      timeCreated: '08:45 AM',
-      status: 'Pending'
-    },
-    {
-      id: 'TKT-006',
-      customerName: 'Anjali Mehta',
-      phone: '+91 97654 32100',
-      email: 'anjali.mehta@example.com',
-      address: '890, Sector 21, Noida, Uttar Pradesh - 201301',
-      issueType: 'Regular Maintenance',
-      reason: 'Scheduled quarterly maintenance check.',
-      priority: 'Low',
-      dateCreated: '2025-11-13',
-      timeCreated: '03:30 PM',
-      status: 'Resolved'
+  // Fetch tickets
+  useEffect(() => {
+    async function fetchTickets() {
+      const result = await getAgentTickets()
+      if (result.success) {
+        setTickets(result.data.tickets)
+        setAnalytics(result.data.analytics)
+      }
     }
-  ])
+    fetchTickets()
+  }, [])
+
+  // State for tickets
+  const [tickets, setTickets] = useState([])
 
   // Filter and Sort state
   const [searchQuery, setSearchQuery] = useState('')
@@ -321,7 +256,7 @@ const AgentPage = () => {
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Pending Tickets</p>
                   <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">
-                    {tickets.filter(t => t.status === 'Pending').length}
+                    {analytics.pending}
                   </p>
                 </div>
                 <AlertCircle className="h-12 w-12 text-orange-600 dark:text-orange-400" />
@@ -335,7 +270,7 @@ const AgentPage = () => {
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Resolved Today</p>
                   <p className="text-3xl font-bold text-green-600 dark:text-green-400">
-                    {tickets.filter(t => t.status === 'Resolved').length}
+                    {analytics.resolved}
                   </p>
                 </div>
                 <CheckCircle2 className="h-12 w-12 text-green-600 dark:text-green-400" />
@@ -349,7 +284,7 @@ const AgentPage = () => {
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Total Tickets</p>
                   <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                    {tickets.length}
+                    {analytics.total}
                   </p>
                 </div>
                 <FileText className="h-12 w-12 text-blue-600 dark:text-blue-400" />

@@ -14,6 +14,7 @@ import {
   Bell
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { logoutAgent } from '@/actions/agent/auth'
 
 const AgentNavbar = ({ agentName = "Rajesh Kumar" }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -25,6 +26,14 @@ const AgentNavbar = ({ agentName = "Rajesh Kumar" }) => {
       .map(word => word[0])
       .join('')
       .toUpperCase()
+  }
+
+  const handleLogout = async () => {
+    try {
+      await logoutAgent()
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
   }
 
   const navItems = [
@@ -120,7 +129,9 @@ const AgentNavbar = ({ agentName = "Rajesh Kumar" }) => {
             <Button
               variant="ghost"
               size="icon"
+              onClick={handleLogout}
               className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
+              title="Logout"
             >
               <LogOut className="h-5 w-5" />
             </Button>
@@ -198,7 +209,10 @@ const AgentNavbar = ({ agentName = "Rajesh Kumar" }) => {
             </Link>
 
             {/* Logout */}
-            <button className="flex items-center gap-3 w-full px-3 py-3 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-colors">
+            <button 
+              onClick={handleLogout}
+              className="flex items-center gap-3 w-full px-3 py-3 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-colors"
+            >
               <LogOut className="h-5 w-5" />
               <span className="font-medium">Logout</span>
             </button>

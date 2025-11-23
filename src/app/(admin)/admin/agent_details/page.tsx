@@ -47,12 +47,26 @@ type AgentUser = {
   mobile: string | null
   role: string
   status: string
+  agents: Array<{
+    id: number
+    shopId: number
+    shop: {
+      id: number
+      name: string
+    }
+  }>
   createdAt: Date
   updatedAt: Date
 }
 
+type Shop = {
+  id: number
+  name: string
+}
+
 const AgentUsersPage = () => {
   const [agentUsers, setAgentUsers] = useState<AgentUser[]>([])
+  const [shops, setShops] = useState<Shop[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
@@ -62,11 +76,33 @@ const AgentUsersPage = () => {
     email: '',
     mobile: '',
     status: '',
+    shopId: '',
   })
 
   useEffect(() => {
     loadAgentUsers()
+    loadShops()
   }, [])
+
+  const loadShops = async () => {
+    try {
+      const response = await fetch('/api/shops')
+      if (response.ok) {
+        const data = await response.json()
+        // Handle different response structures
+        if (data.success && Array.isArray(data.data)) {
+          setShops(data.data)
+        } else if (Array.isArray(data)) {
+          setShops(data)
+        } else {
+          setShops([])
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load shops:', error)
+      setShops([])
+    }
+  }
 
   const loadAgentUsers = async () => {
     setLoading(true)
@@ -95,11 +131,13 @@ const AgentUsersPage = () => {
 
   const handleEdit = (user: AgentUser) => {
     setSelectedUser(user)
+    const assignedShop = user.agents && user.agents.length > 0 ? user.agents[0].shopId.toString() : 'none'
     setEditForm({
       name: user.name || '',
       email: user.email || '',
       mobile: user.mobile || '',
       status: user.status || 'ACTIVE',
+      shopId: assignedShop,
     })
     setEditDialogOpen(true)
   }
@@ -112,6 +150,7 @@ const AgentUsersPage = () => {
       email: editForm.email,
       mobile: editForm.mobile,
       status: editForm.status,
+      shopId: editForm.shopId && editForm.shopId !== 'none' ? parseInt(editForm.shopId) : null,
     })
 
     if (result.success) {
@@ -120,7 +159,7 @@ const AgentUsersPage = () => {
       setSelectedUser(null)
       toast.success('User updated successfully')
     } else {
-      toast.error('Failed to update user')
+      toast.error(result.error || 'Failed to update user')
     }
   }
 
@@ -329,6 +368,25 @@ const AgentUsersPage = () => {
                   <SelectItem value="ACTIVE">Active</SelectItem>
                   <SelectItem value="BLOCKED">Blocked</SelectItem>
                   <SelectItem value="PENDING">Pending</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-shop">Assign to Shop</Label>
+              <Select
+                value={editForm.shopId}
+                onValueChange={(value) => setEditForm({ ...editForm, shopId: value })}
+              >
+                <SelectTrigger id="edit-shop">
+                  <SelectValue placeholder="Select shop" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No Shop</SelectItem>
+                  {shops.map((shop) => (
+                    <SelectItem key={shop.id} value={shop.id.toString()}>
+                      {shop.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

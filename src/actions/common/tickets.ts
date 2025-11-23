@@ -142,6 +142,7 @@ export async function updateTicket(
     resolutionNotes: string
     preferredDate: Date | string
     preferredTime: string
+    assignToUserId: number | null
   }>
 ) {
   try {
@@ -157,7 +158,31 @@ export async function updateTicket(
       updateData.preferredDate = updates.preferredDate ? new Date(updates.preferredDate) : null
     }
     
-    if (updates.agentId !== undefined) {
+    if (updates.assignToUserId !== undefined) {
+      if (updates.assignToUserId) {
+        // Check if user already has an agent record
+        const existingAgent = await prisma.agent.findUnique({
+          where: { userId: updates.assignToUserId }
+        })
+
+        if (existingAgent) {
+          updateData.assignedToAgent = { connect: { id: existingAgent.id } }
+        } else {
+          // Create new agent record without requiring a shop
+          const newAgent = await prisma.agent.create({
+            data: {
+              userId: updates.assignToUserId,
+              shopId: updates.shopId || null
+            }
+          })
+          
+          updateData.assignedToAgent = { connect: { id: newAgent.id } }
+        }
+      } else {
+        updateData.assignedToAgent = { disconnect: true }
+      }
+    } else if (updates.agentId !== undefined) {
+      // Legacy support for direct agentId assignment
       updateData.assignedToAgent = updates.agentId 
         ? { connect: { id: updates.agentId } }
         : { disconnect: true }
@@ -186,7 +211,8 @@ export async function updateTicket(
     return { success: true, data: ticket, message: 'Ticket updated successfully' }
   } catch (error) {
     console.error('Failed to update ticket:', error)
-    return { success: false, error: 'Failed to update ticket' }
+    const errorMessage = error instanceof Error ? error.message : 'Failed to update ticket'
+    return { success: false, error: errorMessage }
   }
 }
 

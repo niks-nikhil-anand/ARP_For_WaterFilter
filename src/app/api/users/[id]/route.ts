@@ -82,11 +82,12 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { name, email, password, mobile, role, status } = body;
+    const { name, email, password, mobile, role, status, shopId } = body;
 
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
       where: { id: userId },
+      include: { agents: true }
     });
 
     if (!existingUser) {
@@ -115,6 +116,45 @@ export async function PATCH(
     if (currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPERADMIN) {
       if (role !== undefined) updateData.role = role;
       if (status !== undefined) updateData.status = status;
+      
+      // Handle shop assignment for AGENT users
+      if (shopId !== undefined && existingUser.role === 'AGENT') {
+        if (shopId) {
+          // Assign agent to shop
+          if (existingUser.agents && existingUser.agents.length > 0) {
+            // Update existing agent record
+            await prisma.agent.update({
+              where: { id: existingUser.agents[0].id },
+              data: { shopId: parseInt(shopId) }
+            });
+          } else {
+            // Create new agent record with shop
+            await prisma.agent.create({
+              data: {
+                userId: userId,
+                shopId: parseInt(shopId)
+              }
+            });
+          }
+        } else {
+          // Handle "No Shop" case
+          if (existingUser.agents && existingUser.agents.length > 0) {
+            // Update existing agent to remove shop
+            await prisma.agent.update({
+              where: { id: existingUser.agents[0].id },
+              data: { shopId: null }
+            });
+          } else {
+            // Create agent without shop
+            await prisma.agent.create({
+              data: {
+                userId: userId,
+                shopId: null
+              }
+            });
+          }
+        }
+      }
     }
 
     // Update user

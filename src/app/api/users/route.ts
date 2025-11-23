@@ -42,6 +42,16 @@ export async function GET(request: NextRequest) {
         mobile: true,
         role: true,
         status: true,
+        agents: {
+          include: {
+            shop: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        },
         createdAt: true,
         updatedAt: true,
       },

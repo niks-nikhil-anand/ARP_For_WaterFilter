@@ -120,6 +120,7 @@ export async function updateUser(id: number, updates: Partial<{
   mobile: string;
   role: string;
   status: string;
+  shopId: number | null;
 }>) {
   try {
     const cookieStore = await cookies();

@@ -68,7 +68,9 @@ import {
   updateTicket,
   deleteTicket,
 } from '@/actions/common/tickets'
+import { getActiveAgents } from '@/actions/common/agents'
 import { TicketStatus, TicketPriority } from '@/generated/prisma'
+import { toast } from 'sonner'
 
 interface TicketType {
   id: number
@@ -84,6 +86,14 @@ interface TicketType {
   status: TicketStatus
   priority: TicketPriority
   agentId?: number | null
+  assignedToAgent?: {
+    id: number
+    userId: number
+    user: {
+      name: string
+      email: string
+    }
+  } | null
   shopId?: number | null
   internalNotes?: string | null
   resolutionNotes?: string | null
@@ -93,6 +103,7 @@ interface TicketType {
 }
 const TicketManagementPage = () => {
   const [tickets, setTickets] = useState<TicketType[]>([])
+  const [agents, setAgents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
@@ -107,6 +118,7 @@ const TicketManagementPage = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedTicket, setSelectedTicket] = useState<TicketType | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
 
   // Form states
   const [editForm, setEditForm] = useState<{
@@ -114,17 +126,27 @@ const TicketManagementPage = () => {
     priority: TicketPriority
     internalNotes: string
     resolutionNotes: string
+    assignToUserId: string
   }>({
     status: TicketStatus.OPEN,
     priority: TicketPriority.MEDIUM,
     internalNotes: '',
     resolutionNotes: '',
+    assignToUserId: 'unassigned',
   })
 
   // Load tickets
   useEffect(() => {
     loadTickets()
+    loadAgents()
   }, [])
+
+  const loadAgents = async () => {
+    const result = await getActiveAgents()
+    if (result.success && result.data) {
+      setAgents(result.data)
+    }
+  }
 
   const loadTickets = async () => {
     setLoading(true)
@@ -213,6 +235,7 @@ const TicketManagementPage = () => {
       priority: ticket.priority,
       internalNotes: ticket.internalNotes || '',
       resolutionNotes: ticket.resolutionNotes || '',
+      assignToUserId: ticket.assignedToAgent?.userId ? ticket.assignedToAgent.userId.toString() : 'unassigned',
     })
     setEditDialogOpen(true)
   }
@@ -235,11 +258,29 @@ const TicketManagementPage = () => {
 
   const saveEdit = async () => {
     if (selectedTicket) {
-      const result = await updateTicket(selectedTicket.id, editForm)
-      if (result.success) {
-        await loadTickets()
-        setEditDialogOpen(false)
-        setSelectedTicket(null)
+      setIsSaving(true)
+      try {
+        const updates: any = {
+          status: editForm.status,
+          priority: editForm.priority,
+          internalNotes: editForm.internalNotes,
+          resolutionNotes: editForm.resolutionNotes,
+          assignToUserId: editForm.assignToUserId === 'unassigned' ? null : parseInt(editForm.assignToUserId),
+        }
+
+        const result = await updateTicket(selectedTicket.id, updates)
+        if (result.success) {
+          toast.success('Ticket updated successfully')
+          await loadTickets()
+          setEditDialogOpen(false)
+          setSelectedTicket(null)
+        } else {
+          toast.error(result.error || 'Failed to update ticket')
+        }
+      } catch (error: any) {
+        toast.error(error.message || 'An error occurred while updating the ticket')
+      } finally {
+        setIsSaving(false)
       }
     }
   }
@@ -485,13 +526,14 @@ const TicketManagementPage = () => {
                       {getSortIcon('createdAt')}
                     </div>
                   </TableHead>
+                  <TableHead>Assigned Agent</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {currentTickets.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-10">
+                    <TableCell colSpan={8} className="text-center py-10">
                       <div className="flex flex-col items-center gap-2">
                         <Ticket className="h-10 w-10 text-muted-foreground" />
                         <p className="text-muted-foreground">No tickets found</p>
@@ -534,6 +576,16 @@ const TicketManagementPage = () => {
                           <Calendar className="h-4 w-4 text-muted-foreground" />
                           <span className="text-sm">{formatDate(ticket.createdAt)}</span>
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        {ticket.assignedToAgent ? (
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">{ticket.assignedToAgent.user.name}</span>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">Unassigned</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
@@ -827,6 +879,47 @@ const TicketManagementPage = () => {
                       </SelectContent>
                     </Select>
                   </div>
+                  <div className="col-span-2 space-y-2">
+                    <Label htmlFor="edit-agent">Assign Agent</Label>
+                    <Select
+                      value={editForm.assignToUserId}
+                      onValueChange={(value) =>
+                        setEditForm({ ...editForm, assignToUserId: value })
+                      }
+                    >
+                      <SelectTrigger id="edit-agent">
+                        <SelectValue placeholder="Select an agent" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {agents.map((agent) => (
+                          <SelectItem key={agent.userId} value={agent.userId.toString()}>
+                            {agent.name} ({agent.role === 'ADMIN' ? 'Shop Owner' : 'Agent'}{agent.shopName ? ` - ${agent.shopName}` : ''})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-priority">Priority</Label>
+                    <Select
+                      value={editForm.priority}
+                      onValueChange={(value) =>
+                        setEditForm({ ...editForm, priority: value as TicketPriority })
+                      }
+                    >
+                      <SelectTrigger id="edit-priority">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.values(TicketPriority).map((priority) => (
+                          <SelectItem key={priority} value={priority}>
+                            {priority}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-internal-notes">Internal Notes</Label>
@@ -855,10 +948,12 @@ const TicketManagementPage = () => {
               </div>
             )}
             <DialogFooter>
-              <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={saveEdit}>Save Changes</Button>
+              <Button variant="outline" onClick={() => setEditDialogOpen(false)} disabled={isSaving}>
+              Cancel
+            </Button>
+            <Button onClick={saveEdit} disabled={isSaving}>
+              {isSaving ? 'Saving...' : 'Save Changes'}
+            </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

@@ -142,7 +142,6 @@ model Agent {
 model Product {
   id               Int            @id @default(autoincrement())
   uniqueId         String         @unique
-  invoiceNo        String?
   name             String
   productName      String?
   description      String?

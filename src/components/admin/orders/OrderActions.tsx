@@ -12,141 +12,215 @@ interface OrderActionsProps {
 }
 
 export function OrderActions({ order }: OrderActionsProps) {
-  const generatePDF = (type: 'INVOICE' | 'RECEIPT') => {
+  const generateInvoice = () => {
     try {
       const doc = new jsPDF()
-      const title = type === 'INVOICE' ? 'TAX INVOICE' : 'PAYMENT RECEIPT'
-      const themeColor = type === 'INVOICE' ? [41, 128, 185] : [39, 174, 96] // Blue for Invoice, Green for Receipt
+      const themeColor = [41, 128, 185] // Blue for Invoice
+      const secondaryColor = [100, 100, 100]
 
-      // --- Header Section ---
-      // Colored Top Bar
-      doc.setFillColor(themeColor[0], themeColor[1], themeColor[2])
-      doc.rect(0, 0, 210, 40, 'F')
+      // Helper to format currency
+      const formatCurrency = (amount: number) => `Rs. ${amount.toLocaleString('en-IN')}`
 
-      // Title
-      doc.setTextColor(255, 255, 255)
+      // --- Background Watermark ---
+      doc.setTextColor(245, 245, 245)
+      doc.setFontSize(60)
       doc.setFont('helvetica', 'bold')
-      doc.setFontSize(22)
-      doc.text(title, 190, 25, { align: 'right' })
-
-      // Company Name & Subtitle
-      doc.setFontSize(18)
-      doc.text('Samarth Enterprise', 20, 20)
-      doc.setFontSize(10)
-      doc.setFont('helvetica', 'normal')
-      doc.text('WaterFilter Management System', 20, 28)
-
-      // --- Company Details (Below Header) ---
-      doc.setTextColor(60, 60, 60)
-      doc.setFontSize(10)
-      doc.text('123, Enterprise Hub, Business District', 20, 55)
-      doc.text('Mumbai, Maharashtra - 400001', 20, 60)
-      doc.text('Phone: +91 98765 43210', 20, 65)
-      doc.text('Email: contact@samarth-enterprise.com', 20, 70)
-
-      // --- Document Details (Right Side) ---
-      doc.setFont('helvetica', 'bold')
-      doc.text(`${type === 'INVOICE' ? 'Invoice' : 'Receipt'} No:`, 140, 55)
-      doc.text('Date:', 140, 60)
-      if (type === 'RECEIPT' && order.transactionId) {
-        doc.text('Transaction ID:', 140, 65)
-      }
-
-      doc.setFont('helvetica', 'normal')
-      doc.text(`#${type.substring(0, 3)}-${order.id.toString().padStart(6, '0')}`, 170, 55)
-      doc.text(new Date(order.createdAt).toLocaleDateString('en-IN'), 170, 60)
-      if (type === 'RECEIPT' && order.transactionId) {
-        doc.text(order.transactionId, 170, 65)
-      }
-
-      // --- Divider ---
-      doc.setDrawColor(200, 200, 200)
-      doc.line(20, 80, 190, 80)
-
-      // --- Bill To Section ---
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(12)
-      doc.setTextColor(themeColor[0], themeColor[1], themeColor[2])
-      doc.text('Bill To:', 20, 95)
-
-      doc.setTextColor(0, 0, 0)
-      doc.setFontSize(11)
-      doc.setFont('helvetica', 'bold')
-      doc.text(order.customerName, 20, 105)
+      doc.text('SAMARTH', 105, 150, { align: 'center', angle: 45 })
       
-      doc.setFont('helvetica', 'normal')
+      // --- Header Section ---
+      // Top Bar
+      doc.setFillColor(themeColor[0], themeColor[1], themeColor[2])
+      doc.rect(0, 0, 210, 6, 'F')
+
+      // Logo Placeholder (Left)
+      doc.setFillColor(themeColor[0], themeColor[1], themeColor[2])
+      doc.roundedRect(15, 15, 20, 20, 2, 2, 'F')
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(14)
+      doc.setFont('helvetica', 'bold')
+      doc.text('SE', 25, 28, { align: 'center' })
+
+      // Company Name (Left)
+      doc.setTextColor(0, 0, 0)
+      doc.setFontSize(20)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Samarth Enterprise', 40, 22)
+      
       doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2])
+      doc.text('WaterFilter Management System', 40, 28)
+      doc.text('GSTIN: 27ABCDE1234F1Z5', 40, 33) // Mock GSTIN
+
+      // Invoice Title (Right)
+      doc.setTextColor(themeColor[0], themeColor[1], themeColor[2])
+      doc.setFontSize(24)
+      doc.setFont('helvetica', 'bold')
+      doc.text('INVOICE', 195, 25, { align: 'right' })
+      
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(0, 0, 0)
+      doc.text(`# INV-${order.id.toString().padStart(6, '0')}`, 195, 33, { align: 'right' })
+
+      // --- Info Grid ---
+      const gridY = 45
+      
+      // Left Column: Company Address
+      doc.setFontSize(9)
+      doc.setTextColor(0, 0, 0)
+      doc.setFont('helvetica', 'bold')
+      doc.text('From:', 15, gridY)
+      doc.setFont('helvetica', 'normal')
       doc.setTextColor(60, 60, 60)
-      let yOffset = 112
-      if (order.customerEmail) {
-        doc.text(order.customerEmail, 20, yOffset)
-        yOffset += 6
-      }
-      if (order.customerPhone) {
-        doc.text(order.customerPhone, 20, yOffset)
+      doc.text('123, Enterprise Hub, Business District', 15, gridY + 5)
+      doc.text('Mumbai, Maharashtra - 400001', 15, gridY + 10)
+      doc.text('Phone: +91 98765 43210', 15, gridY + 15)
+      doc.text('Email: contact@samarth-enterprise.com', 15, gridY + 20)
+
+      // Right Column: Bill To
+      doc.setTextColor(0, 0, 0)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Bill To:', 110, gridY)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(60, 60, 60)
+      doc.text(order.customerName, 110, gridY + 5)
+      if (order.customerEmail) doc.text(order.customerEmail, 110, gridY + 10)
+      if (order.customerPhone) doc.text(order.customerPhone, 110, gridY + 15)
+      doc.text(`Date: ${new Date(order.createdAt).toLocaleDateString('en-IN')}`, 110, gridY + 25)
+
+      // --- Payment Details Bar ---
+      const payY = 80
+      doc.setFillColor(245, 245, 245)
+      doc.roundedRect(15, payY, 180, 15, 2, 2, 'F')
+      
+      doc.setFontSize(9)
+      doc.setTextColor(0, 0, 0)
+      
+      // Status
+      doc.setFont('helvetica', 'bold')
+      doc.text('Status:', 25, payY + 9)
+      doc.setFont('helvetica', 'normal')
+      const statusColor = order.paymentStatus === 'COMPLETED' ? [39, 174, 96] : [192, 57, 43]
+      doc.setTextColor(statusColor[0], statusColor[1], statusColor[2])
+      doc.text(order.paymentStatus, 40, payY + 9)
+
+      // Method
+      doc.setTextColor(0, 0, 0)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Payment Method:', 80, payY + 9)
+      doc.setFont('helvetica', 'normal')
+      doc.text(order.paymentMethod, 110, payY + 9)
+
+      // Transaction ID
+      if (order.transactionId) {
+        doc.setFont('helvetica', 'bold')
+        doc.text('Transaction ID:', 140, payY + 9)
+        doc.setFont('helvetica', 'normal')
+        doc.text(order.transactionId, 165, payY + 9)
       }
 
       // --- Item Table ---
-      let yPos = 135
+      let yPos = 110
       
-      // Table Header
-      doc.setFillColor(245, 245, 245)
-      doc.rect(20, yPos - 8, 170, 12, 'F')
+      // Headers
+      doc.setFillColor(themeColor[0], themeColor[1], themeColor[2])
+      doc.rect(15, yPos, 180, 10, 'F')
+      doc.setTextColor(255, 255, 255)
       doc.setFont('helvetica', 'bold')
-      doc.setTextColor(0, 0, 0)
-      doc.text('Description', 25, yPos)
-      doc.text('Amount', 180, yPos, { align: 'right' })
-
-      // Table Content
-      yPos += 15
-      doc.setFont('helvetica', 'bold')
-      const productName = order.product?.productName || order.product?.name || 'Product'
-      doc.text(productName, 25, yPos)
-      
-      doc.setFont('helvetica', 'normal')
       doc.setFontSize(9)
-      doc.setTextColor(80, 80, 80)
-      const productDesc = `${order.product?.company || ''} ${order.product?.type || ''}`
-      doc.text(productDesc, 25, yPos + 6)
+      doc.text('#', 20, yPos + 6)
+      doc.text('Item Description', 35, yPos + 6)
+      doc.text('Qty', 130, yPos + 6, { align: 'center' })
+      doc.text('Price', 155, yPos + 6, { align: 'right' })
+      doc.text('Total', 190, yPos + 6, { align: 'right' })
 
-      doc.setFontSize(10)
+      // Row 1
+      yPos += 10
+      doc.setFillColor(250, 250, 250) // Zebra stripe
+      doc.rect(15, yPos, 180, 15, 'F') // Taller row for description
+      
+      doc.setTextColor(0, 0, 0)
+      doc.setFont('helvetica', 'normal')
+      doc.text('1', 20, yPos + 6)
+      
+      // Product Name & Desc
+      const productName = order.product?.productName || order.product?.name || 'Product'
+      const productDesc = `${order.product?.company || ''} ${order.product?.type || ''} - ${order.product?.color || ''}`
+      
+      doc.setFont('helvetica', 'bold')
+      doc.text(productName, 35, yPos + 6)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      doc.setTextColor(80, 80, 80)
+      doc.text(productDesc, 35, yPos + 11)
+
+      // Numbers
+      doc.setFontSize(9)
       doc.setTextColor(0, 0, 0)
       const amount = order.amountPaid || 0
-      doc.text(`₹${amount.toLocaleString('en-IN')}`, 180, yPos, { align: 'right' })
+      doc.text('1', 130, yPos + 8, { align: 'center' })
+      doc.text(formatCurrency(amount), 155, yPos + 8, { align: 'right' })
+      doc.text(formatCurrency(amount), 190, yPos + 8, { align: 'right' })
 
-      // --- Totals Section ---
-      yPos += 25
+      // Bottom Line
+      yPos += 15
       doc.setDrawColor(220, 220, 220)
-      doc.line(20, yPos, 190, yPos)
-      
-      yPos += 10
-      doc.setFontSize(12)
-      doc.setFont('helvetica', 'bold')
-      doc.text('Total Amount', 140, yPos)
-      doc.setTextColor(themeColor[0], themeColor[1], themeColor[2])
-      doc.text(`₹${amount.toLocaleString('en-IN')}`, 180, yPos, { align: 'right' })
+      doc.line(15, yPos, 195, yPos)
 
-      // --- Footer ---
+      // --- Totals ---
+      yPos += 5
+      const totalX = 140
+      const valX = 190
+      
+      doc.setFontSize(9)
+      doc.text('Subtotal:', totalX, yPos + 5)
+      doc.text(formatCurrency(amount), valX, yPos + 5, { align: 'right' })
+      
+      doc.text('Tax (0%):', totalX, yPos + 10)
+      doc.text(formatCurrency(0), valX, yPos + 10, { align: 'right' })
+      
+      yPos += 15
+      doc.setFillColor(themeColor[0], themeColor[1], themeColor[2])
+      doc.rect(totalX - 5, yPos, 60, 10, 'F')
+      doc.setTextColor(255, 255, 255)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(11)
+      doc.text('Grand Total:', totalX, yPos + 6)
+      doc.text(formatCurrency(amount), valX, yPos + 6, { align: 'right' })
+
+      // --- Footer Section ---
       const pageHeight = doc.internal.pageSize.height
       
-      // Terms & Conditions (Example)
+      // Terms
+      doc.setTextColor(0, 0, 0)
       doc.setFontSize(8)
-      doc.setTextColor(100, 100, 100)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Terms & Conditions:', 15, pageHeight - 50)
       doc.setFont('helvetica', 'normal')
-      doc.text('Terms & Conditions:', 20, pageHeight - 40)
-      doc.text('1. This is a computer-generated invoice/receipt and does not require a signature.', 20, pageHeight - 35)
-      doc.text('2. Goods once sold will not be taken back.', 20, pageHeight - 31)
+      doc.setTextColor(80, 80, 80)
+      doc.text('1. Goods once sold will not be taken back.', 15, pageHeight - 45)
+      doc.text('2. Subject to Mumbai Jurisdiction.', 15, pageHeight - 41)
+      doc.text('3. This is a computer generated invoice.', 15, pageHeight - 37)
 
-      // Thank You Note
-      doc.setFontSize(10)
-      doc.setTextColor(themeColor[0], themeColor[1], themeColor[2])
-      doc.setFont('helvetica', 'bolditalic')
-      doc.text('Thank you for choosing Samarth Enterprise!', 105, pageHeight - 15, { align: 'center' })
+      // Authorized Signatory
+      doc.setTextColor(0, 0, 0)
+      doc.text('For Samarth Enterprise', 150, pageHeight - 50)
+      doc.setDrawColor(0, 0, 0)
+      doc.line(150, pageHeight - 35, 190, pageHeight - 35)
+      doc.text('Authorized Signatory', 150, pageHeight - 30)
+
+      // Bottom Bar
+      doc.setFillColor(themeColor[0], themeColor[1], themeColor[2])
+      doc.rect(0, pageHeight - 10, 210, 10, 'F')
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(8)
+      doc.text('Thank you for your business!', 105, pageHeight - 4, { align: 'center' })
 
       // Save
-      const fileName = `${type === 'INVOICE' ? 'Invoice' : 'Receipt'}_${order.id}_${new Date().getTime()}.pdf`
+      const fileName = `Invoice_${order.id}_${new Date().getTime()}.pdf`
       doc.save(fileName)
-      toast.success(`${type === 'INVOICE' ? 'Invoice' : 'Receipt'} downloaded successfully`)
+      toast.success('Invoice downloaded successfully')
     } catch (error) {
       console.error('Error generating PDF:', error)
       toast.error('Failed to generate PDF')
@@ -158,18 +232,10 @@ export function OrderActions({ order }: OrderActionsProps) {
       <Button
         variant="ghost"
         size="icon"
-        onClick={() => generatePDF('INVOICE')}
+        onClick={generateInvoice}
         title="Download Invoice"
       >
         <FileText className="h-4 w-4" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => generatePDF('RECEIPT')}
-        title="Download Receipt"
-      >
-        <Receipt className="h-4 w-4" />
       </Button>
       <Link href={`/admin/order_details/${order.id}`}>
         <Button variant="ghost" size="icon" title="View Details">

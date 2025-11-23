@@ -43,7 +43,7 @@ import {
   Pencil,
   Trash2,
   Search,
-  Download,
+
   Package,
   Plus,
   ChevronRight,
@@ -51,7 +51,7 @@ import {
   Upload,
   X,
 } from 'lucide-react'
-import { getProducts, createProduct, updateProduct, deleteProduct, generateInvoice } from '@/app/actions/product'
+import { getProducts, createProduct, updateProduct, deleteProduct } from '@/app/actions/product'
 import { uploadImageToCloudinary } from '@/app/actions/cloudinary'
 import { generateProductId } from '@/utils/generateId'
 import { toast } from 'sonner'
@@ -196,15 +196,7 @@ const ProductManagementPage = () => {
     }
   }
 
-  const handleDownloadInvoice = async (product: Product) => {
-    const result = await generateInvoice(product.id)
-    if (result.success) {
-      toast.success('Invoice generated successfully')
-      // TODO: Implement actual PDF download
-    } else {
-      toast.error('Failed to generate invoice')
-    }
-  }
+
 
   // Add Product Handlers
   const openAddDialog = () => {
@@ -494,14 +486,7 @@ const ProductManagementPage = () => {
                       <TableCell>{formatDate(product.createdAt)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDownloadInvoice(product)}
-                            title="Download invoice"
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
+
                           <Button
                             variant="ghost"
                             size="icon"

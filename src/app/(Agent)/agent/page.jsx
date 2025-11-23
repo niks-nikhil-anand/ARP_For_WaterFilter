@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -29,10 +29,26 @@ import {
   ChevronRight,
   ArrowUpDown
 } from 'lucide-react'
+import { getCurrentAgentData } from '@/actions/agent/profile'
 
 const AgentPage = () => {
-  // Demo agent name
-  const agentName = "Rajesh Kumar"
+  // Agent data state
+  const [agentData, setAgentData] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  // Fetch agent data on mount
+  useEffect(() => {
+    async function fetchAgentData() {
+      const result = await getCurrentAgentData()
+      if (result.success) {
+        setAgentData(result.data)
+      }
+      setLoading(false)
+    }
+    fetchAgentData()
+  }, [])
+
+  const agentName = agentData?.name || 'Agent'
 
   // Extended sample ticket data with more tickets for pagination
   const [tickets, setTickets] = useState([
@@ -262,7 +278,13 @@ const AgentPage = () => {
       {/* Navbar */}
       <AgentNavbar agentName={agentName} />
 
-      {/* Header Section */}
+      {loading ? (
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <p className="text-lg text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      ) : (
+        <>
+          {/* Header Section */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
@@ -616,6 +638,8 @@ const AgentPage = () => {
           )}
         </div>
       </div>
+      </>
+      )}
 
       {/* Resolve Dialog */}
       <Dialog open={isResolveDialogOpen} onOpenChange={setIsResolveDialogOpen}>

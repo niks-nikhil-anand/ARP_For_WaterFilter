@@ -1,30 +1,45 @@
-import React from 'react'
+'use client'
+
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ArrowRight, Droplet, Shield, Star } from 'lucide-react'
 import { commonActions } from '@/actions'
+import BookingModal from '@/components/products/BookingModal'
 
-const ProductsSection = async () => {
-  // Fetch products from API
-  let featuredProducts: any[] = []
+const ProductsSection = () => {
+  const [featuredProducts, setFeaturedProducts] = useState<any[]>([])
+  const [showBookingModal, setShowBookingModal] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<any>(null)
 
-  try {
-    console.log('🏠 Homepage: Fetching products from API...')
-    const result = await commonActions.getPublicProducts()
-    console.log('📡 API Response:', result)
-    
-    if (result.success && result.data) {
-      console.log(`✅ Received ${result.data.length} products from API`)
-      // Get first 3 products for featured section
-      featuredProducts = result.data.slice(0, 3)
-      console.log(`🎯 Showing ${featuredProducts.length} featured products`)
-    } else {
-      console.log('❌ API call failed or no data:', result)
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        console.log('🏠 Homepage: Fetching products from API...')
+        const result = await commonActions.getPublicProducts()
+        console.log('📡 API Response:', result)
+        
+        if (result.success && result.data) {
+          console.log(`✅ Received ${result.data.length} products from API`)
+          // Get first 3 products for featured section
+          setFeaturedProducts(result.data.slice(0, 3))
+          console.log(`🎯 Showing ${result.data.length} featured products`)
+        } else {
+          console.log('❌ API call failed or no data:', result)
+        }
+      } catch (error) {
+        console.error('💥 Error fetching products:', error)
+      }
     }
-  } catch (error) {
-    console.error('💥 Error fetching products:', error)
+
+    fetchProducts()
+  }, [])
+
+  const handleBookNow = (product: any) => {
+    setSelectedProduct(product)
+    setShowBookingModal(true)
   }
 
   return (
@@ -119,12 +134,13 @@ const ProductsSection = async () => {
                   </div>
 
                   {/* CTA Button */}
-                  <Link href={`/products`}>
-                    <Button className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-sm py-2">
-                      Book Now
-                      <ArrowRight className="ml-2 h-3.5 w-3.5" />
-                    </Button>
-                  </Link>
+                  <Button 
+                    onClick={() => handleBookNow(product)}
+                    className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-sm py-2"
+                  >
+                    Book Now
+                    <ArrowRight className="ml-2 h-3.5 w-3.5" />
+                  </Button>
                 </CardContent>
               </Card>
             ))}
@@ -155,6 +171,13 @@ const ProductsSection = async () => {
           </Link>
         </div>
       </div>
+
+      {/* Booking Modal */}
+      <BookingModal
+        isOpen={showBookingModal}
+        onClose={() => setShowBookingModal(false)}
+        product={selectedProduct}
+      />
     </section>
   )
 }

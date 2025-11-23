@@ -44,7 +44,13 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
     email: '',
     phone: '',
     alternatePhone: '',
-    address: '',
+    apartmentNo: '',
+    locality: '',
+    landmark: '',
+    pincode: '',
+    state: '',
+    country: '',
+    addressType: 'home',
     additionalWarranty: 'none',
     amc: 'none',
     paymentOption: 'pay_later',
@@ -63,8 +69,13 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
     e.preventDefault()
     
     // Validation
-    if (!formData.name || !formData.email || !formData.phone || !formData.address) {
+    if (!formData.name || !formData.email || !formData.phone) {
       toast.error('Please fill in all required fields')
+      return
+    }
+
+    if (!formData.apartmentNo || !formData.locality || !formData.pincode || !formData.state || !formData.country) {
+      toast.error('Please fill in all address fields')
       return
     }
 
@@ -113,7 +124,13 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
         email: '',
         phone: '',
         alternatePhone: '',
-        address: '',
+        apartmentNo: '',
+        locality: '',
+        landmark: '',
+        pincode: '',
+        state: '',
+        country: '',
+        addressType: 'home',
         additionalWarranty: 'none',
         amc: 'none',
         paymentOption: 'pay_later',
@@ -256,8 +273,132 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
             </Select>
           </div>
 
+          {/* Address Section Header */}
+          <div className="col-span-2 pt-2">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white border-b pb-2">
+              Address Details
+            </h3>
+          </div>
+
+          {/* Address Type */}
+          <div className="space-y-2 col-span-2">
+            <Label htmlFor="addressType">Address Type</Label>
+            <Select
+              value={formData.addressType}
+              onValueChange={(value) => handleSelectChange('addressType', value)}
+              disabled={isSubmitting}
+            >
+              <SelectTrigger id="addressType">
+                <SelectValue placeholder="Select address type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="home">Home</SelectItem>
+                <SelectItem value="office">Office</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Address Fields - 2 Column Grid */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Apartment/House No */}
+            <div className="space-y-2">
+              <Label htmlFor="apartmentNo">
+                Apartment/House No <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="apartmentNo"
+                name="apartmentNo"
+                value={formData.apartmentNo}
+                onChange={handleInputChange}
+                placeholder="e.g., Flat 101, Building A"
+                disabled={isSubmitting}
+                required
+              />
+            </div>
+
+            {/* Locality */}
+            <div className="space-y-2">
+              <Label htmlFor="locality">
+                Locality/Area <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="locality"
+                name="locality"
+                value={formData.locality}
+                onChange={handleInputChange}
+                placeholder="e.g., Sector 21"
+                disabled={isSubmitting}
+                required
+              />
+            </div>
+
+            {/* Landmark */}
+            <div className="space-y-2">
+              <Label htmlFor="landmark">Landmark</Label>
+              <Input
+                id="landmark"
+                name="landmark"
+                value={formData.landmark}
+                onChange={handleInputChange}
+                placeholder="e.g., Near City Mall"
+                disabled={isSubmitting}
+              />
+            </div>
+
+            {/* Pincode */}
+            <div className="space-y-2">
+              <Label htmlFor="pincode">
+                Pincode <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="pincode"
+                name="pincode"
+                type="text"
+                value={formData.pincode}
+                onChange={handleInputChange}
+                placeholder="6-digit pincode"
+                maxLength={6}
+                disabled={isSubmitting}
+                required
+              />
+            </div>
+
+            {/* State */}
+            <div className="space-y-2">
+              <Label htmlFor="state">
+                State <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="state"
+                name="state"
+                value={formData.state}
+                onChange={handleInputChange}
+                placeholder="e.g., Maharashtra"
+                disabled={isSubmitting}
+                required
+              />
+            </div>
+
+            {/* Country */}
+            <div className="space-y-2">
+              <Label htmlFor="country">
+                Country <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="country"
+                name="country"
+                value={formData.country}
+                onChange={handleInputChange}
+                placeholder="e.g., India"
+                disabled={isSubmitting}
+                required
+              />
+            </div>
+          </div>
+
           {/* Payment Option */}
-          <div className="space-y-2">
+          <div className="space-y-2 col-span-2 pt-2">
             <Label>Payment Option</Label>
             <div className="flex gap-4">
               <label className="flex items-center space-x-2 cursor-pointer">
@@ -289,23 +430,6 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
                 </span>
               </label>
             </div>
-          </div>
-
-          {/* Address */}
-          <div className="space-y-2">
-            <Label htmlFor="address">
-              Complete Address <span className="text-red-500">*</span>
-            </Label>
-            <Textarea
-              id="address"
-              name="address"
-              value={formData.address}
-              onChange={handleInputChange}
-              placeholder="Enter your complete address including street, city, state, and PIN code"
-              rows={3}
-              required
-              disabled={isSubmitting}
-            />
           </div>
 
           {/* Submit Buttons */}

@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
+import { createOrder } from '@/actions/common/orders'
 
 type Product = {
   id: number
@@ -29,6 +30,7 @@ type Product = {
   company: string
   type: string
   price: number | null
+  shopId?: number
 }
 
 type BookingModalProps = {
@@ -98,47 +100,62 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
       return
     }
 
+    if (!product) {
+      toast.error('Product information is missing.')
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
-      // TODO: Replace with actual API call
-      // const response = await fetch('/api/bookings', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     ...formData,
-      //     productId: product?.id,
-      //   }),
-      // })
-
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500))
-
-      toast.success('Booking request submitted successfully!', {
-        description: 'Our executive will call you shortly to confirm your order.',
+      // Call server action to create order
+      const result = await createOrder({
+        productId: product.id,
+        shopId: product.shopId || 1, // Default to shop 1 if not specified
+        customerName: formData.name,
+        customerEmail: formData.email,
+        customerPhone: formData.phone,
+        customerAltPhone: formData.alternatePhone,
+        addressType: formData.addressType,
+        apartmentNo: formData.apartmentNo,
+        locality: formData.locality,
+        landmark: formData.landmark,
+        pincode: formData.pincode,
+        state: formData.state,
+        country: formData.country,
+        additionalWarranty: formData.additionalWarranty,
+        amc: formData.amc,
+        paymentOption: formData.paymentOption as 'pay_later' | 'pay_now',
       })
 
-      // Reset form
-      setFormData({
-        name: '',
-        email: '',
-        phone: '',
-        alternatePhone: '',
-        apartmentNo: '',
-        locality: '',
-        landmark: '',
-        pincode: '',
-        state: '',
-        country: '',
-        addressType: 'home',
-        additionalWarranty: 'none',
-        amc: 'none',
-        paymentOption: 'pay_later',
-      })
+      if (result.success) {
+        toast.success(result.message || 'Booking submitted successfully!')
+        
+        // Reset form
+        setFormData({
+          name: '',
+          email: '',
+          phone: '',
+          alternatePhone: '',
+          apartmentNo: '',
+          locality: '',
+          landmark: '',
+          pincode: '',
+          state: '',
+          country: '',
+          addressType: 'home',
+          additionalWarranty: 'none',
+          amc: 'none',
+          paymentOption: 'pay_later',
+        })
 
-      onClose()
+        onClose()
+      } else {
+        toast.error(result.error || 'Failed to submit booking')
+      }
     } catch (error) {
-      toast.error('Failed to submit booking request. Please try again.')
+      console.error('Booking error:', error)
+      toast.error('An unexpected error occurred. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -148,7 +165,7 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl">Book Your Water Purifier</DialogTitle>
           <DialogDescription className="space-y-2">
@@ -182,39 +199,42 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
             />
           </div>
 
-          {/* Email */}
-          <div className="space-y-2">
-            <Label htmlFor="email">
-              Email Address <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              placeholder="your.email@example.com"
-              required
-              disabled={isSubmitting}
-            />
-          </div>
+          {/* Email and Phone - Responsive Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Email */}
+            <div className="space-y-2">
+              <Label htmlFor="email">
+                Email Address <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                placeholder="your.email@example.com"
+                required
+                disabled={isSubmitting}
+              />
+            </div>
 
-          {/* Phone */}
-          <div className="space-y-2">
-            <Label htmlFor="phone">
-              Phone Number <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="phone"
-              name="phone"
-              type="tel"
-              value={formData.phone}
-              onChange={handleInputChange}
-              placeholder="10-digit mobile number"
-              maxLength={10}
-              required
-              disabled={isSubmitting}
-            />
+            {/* Phone */}
+            <div className="space-y-2">
+              <Label htmlFor="phone">
+                Phone Number <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="phone"
+                name="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={handleInputChange}
+                placeholder="10-digit mobile number"
+                maxLength={10}
+                required
+                disabled={isSubmitting}
+              />
+            </div>
           </div>
 
           {/* Alternate Phone */}
@@ -232,56 +252,59 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
             />
           </div>
 
-          {/* Additional Warranty */}
-          <div className="space-y-2">
-            <Label htmlFor="additionalWarranty">Additional Warranty</Label>
-            <Select
-              value={formData.additionalWarranty}
-              onValueChange={(value) => handleSelectChange('additionalWarranty', value)}
-              disabled={isSubmitting}
-            >
-              <SelectTrigger id="additionalWarranty">
-                <SelectValue placeholder="Select additional warranty" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No Additional Warranty</SelectItem>
-                <SelectItem value="1year">1 Year Extended Warranty</SelectItem>
-                <SelectItem value="2year">2 Years Extended Warranty</SelectItem>
-                <SelectItem value="3year">3 Years Extended Warranty</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Warranty and AMC - Responsive Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Additional Warranty */}
+            <div className="space-y-2">
+              <Label htmlFor="additionalWarranty">Additional Warranty</Label>
+              <Select
+                value={formData.additionalWarranty}
+                onValueChange={(value) => handleSelectChange('additionalWarranty', value)}
+                disabled={isSubmitting}
+              >
+                <SelectTrigger id="additionalWarranty">
+                  <SelectValue placeholder="Select additional warranty" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No Additional Warranty</SelectItem>
+                  <SelectItem value="1year">1 Year Extended Warranty</SelectItem>
+                  <SelectItem value="2year">2 Years Extended Warranty</SelectItem>
+                  <SelectItem value="3year">3 Years Extended Warranty</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-          {/* AMC (Annual Maintenance Contract) */}
-          <div className="space-y-2">
-            <Label htmlFor="amc">AMC (Annual Maintenance Contract)</Label>
-            <Select
-              value={formData.amc}
-              onValueChange={(value) => handleSelectChange('amc', value)}
-              disabled={isSubmitting}
-            >
-              <SelectTrigger id="amc">
-                <SelectValue placeholder="Select AMC plan" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No AMC</SelectItem>
-                <SelectItem value="1year">1 Year AMC</SelectItem>
-                <SelectItem value="2year">2 Years AMC</SelectItem>
-                <SelectItem value="3year">3 Years AMC</SelectItem>
-                <SelectItem value="5year">5 Years AMC</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* AMC (Annual Maintenance Contract) */}
+            <div className="space-y-2">
+              <Label htmlFor="amc">AMC (Annual Maintenance Contract)</Label>
+              <Select
+                value={formData.amc}
+                onValueChange={(value) => handleSelectChange('amc', value)}
+                disabled={isSubmitting}
+              >
+                <SelectTrigger id="amc">
+                  <SelectValue placeholder="Select AMC plan" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No AMC</SelectItem>
+                  <SelectItem value="1year">1 Year AMC</SelectItem>
+                  <SelectItem value="2year">2 Years AMC</SelectItem>
+                  <SelectItem value="3year">3 Years AMC</SelectItem>
+                  <SelectItem value="5year">5 Years AMC</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Address Section Header */}
-          <div className="col-span-2 pt-2">
+          <div className="pt-4">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white border-b pb-2">
               Address Details
             </h3>
           </div>
 
           {/* Address Type */}
-          <div className="space-y-2 col-span-2">
+          <div className="space-y-2">
             <Label htmlFor="addressType">Address Type</Label>
             <Select
               value={formData.addressType}
@@ -299,8 +322,8 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
             </Select>
           </div>
 
-          {/* Address Fields - 2 Column Grid */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Address Fields - Responsive Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Apartment/House No */}
             <div className="space-y-2">
               <Label htmlFor="apartmentNo">
@@ -398,9 +421,9 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
           </div>
 
           {/* Payment Option */}
-          <div className="space-y-2 col-span-2 pt-2">
+          <div className="space-y-2 pt-4">
             <Label>Payment Option</Label>
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <label className="flex items-center space-x-2 cursor-pointer">
                 <input
                   type="radio"
@@ -433,7 +456,7 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
           </div>
 
           {/* Submit Buttons */}
-          <div className="flex gap-3 pt-4">
+          <div className="flex flex-col sm:flex-row gap-3 pt-4">
             <Button
               type="button"
               variant="outline"

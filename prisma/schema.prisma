@@ -64,6 +64,21 @@ enum TicketPriority {
   URGENT
 }
 
+enum PaymentMethod {
+  CASH
+  ONLINE
+  UPI
+  CARD
+  NET_BANKING
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
 // -------------------- MODELS --------------------
 
 // User model is the core model for all roles
@@ -224,17 +239,21 @@ model ServiceEvent {
 }
 
 model Order {
-  id            Int            @id @default(autoincrement())
-  product       Product        @relation(fields: [productId], references: [id])
-  productId     Int
-  shop          Shop           @relation(fields: [shopId], references: [id])
-  shopId        Int
-  customerName  String
-  customerEmail String?
-  customerPhone String?
-  serviceEvents ServiceEvent[]
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id              Int            @id @default(autoincrement())
+  product         Product        @relation(fields: [productId], references: [id])
+  productId       Int
+  shop            Shop           @relation(fields: [shopId], references: [id])
+  shopId          Int
+  customerName    String
+  customerEmail   String?
+  customerPhone   String?
+  paymentMethod   PaymentMethod  @default(CASH)
+  paymentStatus   PaymentStatus  @default(PENDING)
+  transactionId   String?        // For online payments
+  amountPaid      Float?
+  serviceEvents   ServiceEvent[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 }
 
 model Notification {

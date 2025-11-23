@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +33,7 @@ import {
   EyeOff,
 } from "lucide-react";
 
-const AdminLogin = () => {
+const AdminLoginContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [role, setRole] = useState("");
@@ -345,5 +345,15 @@ const AdminLogin = () => {
     </div>
   );
 };
+
+const AdminLogin = () => (
+  <Suspense fallback={
+    <div className="min-h-screen flex items-center justify-center">
+      <Loader2 className="h-8 w-8 animate-spin" />
+    </div>
+  }>
+    <AdminLoginContent />
+  </Suspense>
+);
 
 export default AdminLogin;

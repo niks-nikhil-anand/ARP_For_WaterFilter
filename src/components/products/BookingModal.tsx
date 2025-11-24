@@ -30,6 +30,7 @@ type Product = {
   company: string
   type: string
   price: number | null
+  warrantyPeriod: string | null
   shopId?: number
 }
 
@@ -57,6 +58,23 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
     amc: 'none',
     paymentOption: 'pay_later',
   })
+
+  // Parse base warranty from product (e.g., "12 months", "1 year", "24 months")
+  const getBaseWarrantyMonths = (): number => {
+    if (!product?.warrantyPeriod) return 0
+    const warranty = product.warrantyPeriod.toLowerCase()
+
+    // Extract numbers from the string
+    const match = warranty.match(/(\d+)\s*(month|year)/i)
+    if (!match) return 0
+
+    const value = parseInt(match[1])
+    const unit = match[2].toLowerCase()
+
+    return unit.startsWith('year') ? value * 12 : value
+  }
+
+  const baseWarrantyMonths = getBaseWarrantyMonths()
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -295,6 +313,68 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
               </Select>
             </div>
           </div>
+
+          {/* Warranty and AMC Summary */}
+          {(baseWarrantyMonths > 0 || formData.additionalWarranty !== 'none' || formData.amc !== 'none') && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-2">
+                Coverage Summary
+              </h4>
+              <div className="space-y-1 text-sm text-blue-800 dark:text-blue-400">
+                {baseWarrantyMonths > 0 && (
+                  <p>
+                    ✓ Base Warranty: {baseWarrantyMonths} months (Free with product)
+                  </p>
+                )}
+                {formData.additionalWarranty !== 'none' && (
+                  <p>
+                    ✓ Extended Warranty: {
+                      formData.additionalWarranty === '1year' ? '12 months' :
+                      formData.additionalWarranty === '2year' ? '24 months' :
+                      formData.additionalWarranty === '3year' ? '36 months' : ''
+                    }
+                  </p>
+                )}
+                {formData.amc !== 'none' && (
+                  <p>
+                    ✓ AMC Coverage: {
+                      formData.amc === '1year' ? '12 months' :
+                      formData.amc === '2year' ? '24 months' :
+                      formData.amc === '3year' ? '36 months' :
+                      formData.amc === '5year' ? '60 months' : ''
+                    }
+                  </p>
+                )}
+                {(baseWarrantyMonths > 0 || formData.additionalWarranty !== 'none' || formData.amc !== 'none') && (
+                  <p className="font-semibold text-blue-900 dark:text-blue-200 mt-2 pt-2 border-t border-blue-200 dark:border-blue-700">
+                    {(() => {
+                      const additionalWarrantyMonths =
+                        formData.additionalWarranty === '1year' ? 12 :
+                        formData.additionalWarranty === '2year' ? 24 :
+                        formData.additionalWarranty === '3year' ? 36 : 0
+                      const amcMonths =
+                        formData.amc === '1year' ? 12 :
+                        formData.amc === '2year' ? 24 :
+                        formData.amc === '3year' ? 36 :
+                        formData.amc === '5year' ? 60 : 0
+
+                      const totalWarrantyMonths = baseWarrantyMonths + additionalWarrantyMonths
+
+                      const parts = []
+                      if (totalWarrantyMonths > 0) {
+                        parts.push(`${totalWarrantyMonths} months warranty`)
+                      }
+                      if (amcMonths > 0) {
+                        parts.push(`${amcMonths} months AMC`)
+                      }
+
+                      return `Total Coverage: ${parts.join(' + ')}`
+                    })()}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Address Section Header */}
           <div className="pt-4">

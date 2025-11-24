@@ -28,7 +28,7 @@ const AdminSignup = () => {
   const [role, setRole] = useState('')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
-  const [mobile, setMobile] = useState('')
+  const [mobile, setMobile] = useState('+91 ')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -36,6 +36,21 @@ const AdminSignup = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+
+  // Handle phone input with +91 prefix
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const prefix = '+91 '
+    const raw = e.target.value || ''
+    // Extract digits only
+    let digits = raw.replace(/\D/g, '')
+    // If user pasted full international like '919876543210' or '+919876543210', strip leading country code
+    if (digits.startsWith('91')) {
+      digits = digits.replace(/^91/, '')
+    }
+    // Limit to 10 digits
+    digits = digits.slice(0, 10)
+    setMobile(prefix + digits)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -69,12 +84,12 @@ const AdminSignup = () => {
       }
 
       // Mobile validation (optional but if provided, must be valid)
-      if (mobile) {
-        const mobileRegex = /^[0-9]{10}$/
-        if (!mobileRegex.test(mobile.replace(/[\s-]/g, ''))) {
-          setError('Please enter a valid 10-digit mobile number')
-          return
-        }
+      const allDigits = mobile.replace(/\D/g, '')
+      const localDigits = allDigits.replace(/^91/, '')
+
+      if (mobile.trim() !== '+91' && localDigits.length !== 10) {
+        setError('Please enter a valid 10-digit mobile number or leave it empty')
+        return
       }
 
       // Password validation
@@ -100,7 +115,7 @@ const AdminSignup = () => {
         name: name.trim(),
         email: email.trim(),
         password: password,
-        mobile: mobile.trim() || undefined,
+        mobile: localDigits.length === 10 ? `+91${localDigits}` : undefined,
         role: roleMap[role],
       })
 
@@ -226,9 +241,9 @@ const AdminSignup = () => {
               <Input
                 id="mobile"
                 type="tel"
-                placeholder="1234567890"
+                placeholder="+91 XXXXX XXXXX"
                 value={mobile}
-                onChange={(e) => setMobile(e.target.value)}
+                onChange={handlePhoneChange}
                 disabled={isSubmitting}
                 autoComplete="tel"
                 className="h-11"

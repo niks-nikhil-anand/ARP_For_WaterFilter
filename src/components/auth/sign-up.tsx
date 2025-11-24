@@ -24,11 +24,26 @@ const SignUp = () => {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
-  const [mobile, setMobile] = useState("")
+  const [mobile, setMobile] = useState("+91 ")
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+
+  // Handle phone input with +91 prefix
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const prefix = '+91 '
+    const raw = e.target.value || ''
+    // Extract digits only
+    let digits = raw.replace(/\D/g, '')
+    // If user pasted full international like '919876543210' or '+919876543210', strip leading country code
+    if (digits.startsWith('91')) {
+      digits = digits.replace(/^91/, '')
+    }
+    // Limit to 10 digits
+    digits = digits.slice(0, 10)
+    setMobile(prefix + digits)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -51,13 +66,24 @@ const SignUp = () => {
 
     setIsSubmitting(true)
 
+    // Normalize and validate phone: extract digits and ensure 10-digit local number
+    const allDigits = mobile.replace(/\D/g, '')
+    const localDigits = allDigits.replace(/^91/, '')
+
+    // Validate mobile if provided
+    if (mobile.trim() !== '+91' && localDigits.length !== 10) {
+      setError('Please enter a valid 10-digit phone number or leave it empty.')
+      setIsSubmitting(false)
+      return
+    }
+
     try {
       // Call signup API with SUPERADMIN role
       const result = await authActions.signup({
         name,
         email,
         password,
-        mobile: mobile || undefined,
+        mobile: localDigits.length === 10 ? `+91${localDigits}` : undefined,
         role: 'SUPERADMIN'
       })
 
@@ -69,7 +95,7 @@ const SignUp = () => {
         setEmail("")
         setPassword("")
         setConfirmPassword("")
-        setMobile("")
+        setMobile("+91 ")
 
         // Redirect to sign-in page after 2 seconds
         setTimeout(() => {
@@ -147,9 +173,9 @@ const SignUp = () => {
               <Input
                 id="mobile"
                 type="tel"
-                placeholder="Enter mobile number (optional)"
+                placeholder="+91 XXXXX XXXXX"
                 value={mobile}
-                onChange={(e) => setMobile(e.target.value)}
+                onChange={handlePhoneChange}
                 disabled={isSubmitting}
               />
             </div>

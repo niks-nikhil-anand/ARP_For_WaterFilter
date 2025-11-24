@@ -15,10 +15,11 @@ export async function getPublicProducts() {
         status: 'ACTIVE', // Only show active products to public
       },
       include: {
-        shop: {
+        createdBy: {
           select: {
             id: true,
             name: true,
+            role: true,
           },
         },
       },
@@ -44,10 +45,11 @@ export async function getPublicProductById(id: number) {
         status: 'ACTIVE',
       },
       include: {
-        shop: {
+        createdBy: {
           select: {
             id: true,
             name: true,
+            role: true,
           },
         },
       },

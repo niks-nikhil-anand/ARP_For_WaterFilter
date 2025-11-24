@@ -15,16 +15,17 @@ export async function GET(request: NextRequest) {
     // Public endpoint for homepage - no authentication required
     if (publicView) {
       console.log('🔍 Fetching public products with status ACTIVE...')
-      
+
       const products = await prisma.product.findMany({
         where: {
           status: 'ACTIVE', // Only show active products to public
         },
         include: {
-          shop: {
+          createdBy: {
             select: {
               id: true,
               name: true,
+              role: true,
             },
           },
         },
@@ -47,132 +48,42 @@ export async function GET(request: NextRequest) {
       return unauthorizedResponse('Not authenticated');
     }
 
+    // For authenticated users, admins can see all products
+    // Other users can only see their own created products
     let products;
 
-    // Agent-specific products (products from agent's shop)
-    if (agentId) {
-      const agentIdNum = parseInt(agentId);
-
-      // Verify user is the agent or admin
-      const agent = await prisma.agent.findUnique({
-        where: { id: agentIdNum },
-        include: { shop: true },
-      });
-
-      if (!agent) {
-        return errorResponse('Agent not found', 404);
-      }
-
-      // Check permission - agent must be current user or user must be admin
-      if (agent.userId !== currentUser.id &&
-          currentUser.role !== UserRole.ADMIN &&
-          currentUser.role !== UserRole.SUPERADMIN) {
-        return forbiddenResponse('You do not have permission to view this agent\'s products');
-      }
-
-      products = await prisma.product.findMany({
-        where: {
-          shopId: agent.shopId,
-        },
-        include: {
-          shop: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          productDetail: true,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      });
-    } else if (shopId) {
-      // Get products for specific shop
-      const shopIdNum = parseInt(shopId);
-      products = await prisma.product.findMany({
-        where: {
-          shopId: shopIdNum,
-        },
-        include: {
-          shop: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          productDetail: true,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      });
-    } else if (currentUser.role === UserRole.SUPERADMIN || currentUser.role === UserRole.ADMIN) {
+    if (currentUser.role === UserRole.SUPERADMIN || currentUser.role === UserRole.ADMIN) {
       // SUPERADMIN/ADMIN can see all products
       products = await prisma.product.findMany({
         include: {
-          shop: {
+          createdBy: {
             select: {
               id: true,
               name: true,
+              email: true,
+              role: true,
             },
           },
-          productDetail: true,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      });
-    } else if (currentUser.role === UserRole.AGENT) {
-      // Agents see products from their shop
-      const agent = await prisma.agent.findUnique({
-        where: { userId: currentUser.id },
-        include: { shop: true },
-      });
-
-      if (!agent) {
-        return forbiddenResponse('Agent profile not found');
-      }
-
-      products = await prisma.product.findMany({
-        where: {
-          shopId: agent.shopId,
-        },
-        include: {
-          shop: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          productDetail: true,
         },
         orderBy: {
           createdAt: 'desc',
         },
       });
     } else {
-      // Get products for user's shop (shop owners)
-      const userShop = await prisma.shop.findUnique({
-        where: { userId: currentUser.id },
-      });
-
-      if (!userShop) {
-        return forbiddenResponse('You do not have a shop');
-      }
-
+      // Regular users see only products they created
       products = await prisma.product.findMany({
         where: {
-          shopId: userShop.id,
+          createdById: currentUser.id,
         },
         include: {
-          shop: {
+          createdBy: {
             select: {
               id: true,
               name: true,
+              email: true,
+              role: true,
             },
           },
-          productDetail: true,
         },
         orderBy: {
           createdAt: 'desc',
@@ -196,62 +107,64 @@ export async function POST(request: NextRequest) {
       return unauthorizedResponse('Not authenticated');
     }
 
-    const body = await request.json();
-    const { name, company, type, color, offer, warrantyPeriod, shopId } = body;
-
-    // Validation
-    if (!name || !company || !type) {
-      return errorResponse('Name, company, and type are required');
+    // Check if user has admin or superadmin role
+    if (currentUser.role !== UserRole.SUPERADMIN && currentUser.role !== UserRole.ADMIN) {
+      return forbiddenResponse('Only admins can create products');
     }
 
-    // Determine shop ID
-    let productShopId = shopId;
+    const body = await request.json();
+    const {
+      uniqueId,
+      productName,
+      description,
+      company,
+      type,
+      color,
+      price,
+      images,
+      featuredImageUrl,
+      offer,
+      discount,
+      discountType,
+      warrantyPeriod,
+      status
+    } = body;
 
-    if (!shopId) {
-      // If no shopId provided, use current user's shop
-      const userShop = await prisma.shop.findUnique({
-        where: { userId: currentUser.id },
-      });
-
-      if (!userShop) {
-        return errorResponse('You must have a shop to create products');
-      }
-
-      productShopId = userShop.id;
-    } else {
-      // Verify user owns the shop or is SUPERADMIN
-      const shop = await prisma.shop.findUnique({
-        where: { id: shopId },
-      });
-
-      if (!shop) {
-        return errorResponse('Shop not found', 404);
-      }
-
-      if (shop.userId !== currentUser.id && currentUser.role !== UserRole.SUPERADMIN) {
-        return forbiddenResponse('You do not have permission to create products for this shop');
-      }
+    // Validation
+    if (!uniqueId || !company || !type) {
+      return errorResponse('uniqueId, company, and type are required');
     }
 
     // Create product
     const product = await prisma.product.create({
       data: {
-        name,
+        uniqueId,
+        productName,
+        description,
         company,
         type,
         color,
+        price,
+        images: images || [],
+        featuredImageUrl,
         offer,
+        discount,
+        discountType,
         warrantyPeriod,
-        shopId: productShopId,
+        status: status || 'PENDING',
+        createdBy: {
+          connect: { id: currentUser.id },
+        },
       },
       include: {
-        shop: {
+        createdBy: {
           select: {
             id: true,
             name: true,
+            email: true,
+            role: true,
           },
         },
-        productDetail: true,
       },
     });
 

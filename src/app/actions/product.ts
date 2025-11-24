@@ -3,10 +3,11 @@
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { Prisma } from '@/generated/prisma'
+import { getCurrentUser } from '@/lib/auth'
 
 export type Product = Prisma.ProductGetPayload<{
   include: {
-    shop: true
+    createdBy: true
   }
 }>
 
@@ -14,7 +15,14 @@ export async function getProducts() {
   try {
     const products = await prisma.product.findMany({
       include: {
-        shop: true,
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
       },
       orderBy: {
         createdAt: 'desc',
@@ -32,7 +40,14 @@ export async function getProductById(id: number) {
     const product = await prisma.product.findUnique({
       where: { id },
       include: {
-        shop: true,
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
       },
     })
     return { success: true, data: product }
@@ -44,8 +59,6 @@ export async function getProductById(id: number) {
 
 export async function createProduct(data: {
   uniqueId: string
-  invoiceNo?: string
-  name: string
   productName?: string
   description?: string
   company: string
@@ -59,14 +72,24 @@ export async function createProduct(data: {
   discountType?: 'PERCENTAGE' | 'FLAT_RATE'
   warrantyPeriod?: string
   status?: 'ACTIVE' | 'BLOCKED' | 'PENDING'
-  shopId: number
 }) {
   try {
+    // Get current user
+    const currentUser = await getCurrentUser()
+
+    // Check if user is authenticated
+    if (!currentUser) {
+      return { success: false, error: 'Unauthorized. Please login.' }
+    }
+
+    // Check if user has admin or superadmin role
+    if (currentUser.role !== 'SUPERADMIN' && currentUser.role !== 'ADMIN') {
+      return { success: false, error: 'Forbidden. Only admins can add products.' }
+    }
+
     const product = await prisma.product.create({
       data: {
         uniqueId: data.uniqueId,
-        invoiceNo: data.invoiceNo,
-        name: data.name,
         productName: data.productName,
         description: data.description,
         company: data.company,
@@ -80,12 +103,19 @@ export async function createProduct(data: {
         discountType: data.discountType,
         warrantyPeriod: data.warrantyPeriod,
         status: data.status || 'PENDING',
-        shop: {
-          connect: { id: data.shopId },
+        createdBy: {
+          connect: { id: currentUser.id },
         },
       },
       include: {
-        shop: true,
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
       },
     })
 
@@ -101,8 +131,6 @@ export async function updateProduct(
   id: number,
   data: {
     uniqueId?: string
-    invoiceNo?: string
-    name?: string
     productName?: string
     description?: string
     company?: string
@@ -119,11 +147,31 @@ export async function updateProduct(
   }
 ) {
   try {
+    // Get current user
+    const currentUser = await getCurrentUser()
+
+    // Check if user is authenticated
+    if (!currentUser) {
+      return { success: false, error: 'Unauthorized. Please login.' }
+    }
+
+    // Check if user has admin or superadmin role
+    if (currentUser.role !== 'SUPERADMIN' && currentUser.role !== 'ADMIN') {
+      return { success: false, error: 'Forbidden. Only admins can update products.' }
+    }
+
     const product = await prisma.product.update({
       where: { id },
       data,
       include: {
-        shop: true,
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
       },
     })
 
@@ -137,6 +185,19 @@ export async function updateProduct(
 
 export async function deleteProduct(id: number) {
   try {
+    // Get current user
+    const currentUser = await getCurrentUser()
+
+    // Check if user is authenticated
+    if (!currentUser) {
+      return { success: false, error: 'Unauthorized. Please login.' }
+    }
+
+    // Check if user has admin or superadmin role
+    if (currentUser.role !== 'SUPERADMIN' && currentUser.role !== 'ADMIN') {
+      return { success: false, error: 'Forbidden. Only admins can delete products.' }
+    }
+
     await prisma.product.delete({
       where: { id },
     })
@@ -155,10 +216,12 @@ export async function generateInvoice(productId: number) {
     const product = await prisma.product.findUnique({
       where: { id: productId },
       include: {
-        shop: {
-          include: {
-            user: true,
-            addresses: true,
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
           },
         },
       },

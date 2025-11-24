@@ -61,17 +61,24 @@ import { Checkbox } from '@/components/ui/checkbox'
 type Product = {
   id: number
   uniqueId: string
-  invoiceNo: string | null
-  name: string
   productName: string | null
   description: string | null
   company: string
   type: string
   color: string | null
   price: number | null
+  images: string[]
+  featuredImageUrl: string | null
   discount: number | null
   discountType: string | null
+  warrantyPeriod: string | null
   status: string
+  createdBy?: {
+    id: number
+    name: string
+    email: string
+    role: string
+  }
   createdAt: Date
   updatedAt: Date
 }
@@ -87,7 +94,6 @@ const ProductManagementPage = () => {
   const [currentStep, setCurrentStep] = useState(1)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [editForm, setEditForm] = useState({
-    name: '',
     productName: '',
     description: '',
     company: '',
@@ -138,7 +144,6 @@ const ProductManagementPage = () => {
   const handleEdit = (product: Product) => {
     setSelectedProduct(product)
     setEditForm({
-      name: product.name || '',
       productName: product.productName || '',
       description: product.description || '',
       company: product.company || '',
@@ -175,7 +180,6 @@ const ProductManagementPage = () => {
     if (!selectedProduct) return
 
     const result = await updateProduct(selectedProduct.id, {
-      name: editForm.name,
       productName: editForm.productName,
       description: editForm.description,
       company: editForm.company,
@@ -193,7 +197,7 @@ const ProductManagementPage = () => {
       setSelectedProduct(null)
       toast.success('Product updated successfully')
     } else {
-      toast.error('Failed to update product')
+      toast.error(result.error || 'Failed to update product')
     }
   }
 
@@ -315,7 +319,6 @@ const ProductManagementPage = () => {
       // Create product
       const result = await createProduct({
         uniqueId,
-        name: addForm.productName,
         productName: addForm.productName,
         description: addForm.description,
         company: 'Default Company', // You can add this to the form if needed
@@ -328,7 +331,6 @@ const ProductManagementPage = () => {
         featuredImageUrl,
         images: imageUrls,
         status: 'PENDING',
-        shopId: 1, // You should get this from the logged-in user's shop
       })
 
       if (result.success) {
@@ -336,7 +338,7 @@ const ProductManagementPage = () => {
         setAddDialogOpen(false)
         toast.success('Product added successfully')
       } else {
-        toast.error('Failed to add product')
+        toast.error(result.error || 'Failed to add product')
       }
     } catch (error) {
       console.error('Error adding product:', error)
@@ -347,7 +349,7 @@ const ProductManagementPage = () => {
   }
 
   const filteredProducts = products.filter((product) =>
-    product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    product.productName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     product.uniqueId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     product.company?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     product.type?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -459,9 +461,9 @@ const ProductManagementPage = () => {
                     <TableRow key={product.id}>
                       <TableCell className="font-medium">{product.uniqueId}</TableCell>
                       <TableCell>
-                        <div className="font-medium">{product.name}</div>
-                        {product.productName && (
-                          <div className="text-sm text-muted-foreground">{product.productName}</div>
+                        <div className="font-medium">{product.productName || '-'}</div>
+                        {product.createdBy && (
+                          <div className="text-xs text-muted-foreground">By: {product.createdBy.name}</div>
                         )}
                       </TableCell>
                       <TableCell>{product.type}</TableCell>
@@ -538,21 +540,18 @@ const ProductManagementPage = () => {
                   <Label className="text-muted-foreground">Product ID</Label>
                   <p className="font-medium">{selectedProduct.uniqueId}</p>
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">Invoice No.</Label>
-                  <p className="font-medium">{selectedProduct.invoiceNo || '-'}</p>
-                </div>
+                {selectedProduct.createdBy && (
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Created By</Label>
+                    <p className="font-medium">{selectedProduct.createdBy.name}</p>
+                    <p className="text-xs text-muted-foreground">{selectedProduct.createdBy.role}</p>
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
-                <Label className="text-muted-foreground">Name</Label>
-                <p className="font-medium">{selectedProduct.name}</p>
+                <Label className="text-muted-foreground">Product Name</Label>
+                <p className="font-medium">{selectedProduct.productName || '-'}</p>
               </div>
-              {selectedProduct.productName && (
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">Product Name</Label>
-                  <p className="font-medium">{selectedProduct.productName}</p>
-                </div>
-              )}
               {selectedProduct.description && (
                 <div className="space-y-2">
                   <Label className="text-muted-foreground">Description</Label>
@@ -627,15 +626,6 @@ const ProductManagementPage = () => {
             <DialogDescription>Update product information</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-name">Name</Label>
-              <Input
-                id="edit-name"
-                value={editForm.name}
-                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                placeholder="Enter product name"
-              />
-            </div>
             <div className="space-y-2">
               <Label htmlFor="edit-productName">Product Name</Label>
               <Input
@@ -756,7 +746,7 @@ const ProductManagementPage = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the product "{selectedProduct?.name}". This action cannot be undone.
+              This will permanently delete the product "{selectedProduct?.productName}". This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

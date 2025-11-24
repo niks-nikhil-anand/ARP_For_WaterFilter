@@ -25,13 +25,13 @@ export async function GET(
       const product = await prisma.product.findUnique({
         where: { id: productId },
         include: {
-          shop: {
+          createdBy: {
             select: {
               id: true,
               name: true,
+              role: true,
             },
           },
-          productDetail: true,
         },
       });
 
@@ -52,15 +52,14 @@ export async function GET(
     const product = await prisma.product.findUnique({
       where: { id: productId },
       include: {
-        shop: {
+        createdBy: {
           select: {
             id: true,
             name: true,
-            address: true,
-            userId: true,
+            email: true,
+            role: true,
           },
         },
-        productDetail: true,
         orders: {
           select: {
             id: true,
@@ -76,24 +75,13 @@ export async function GET(
       return notFoundResponse('Product not found');
     }
 
-    // Check permission
+    // Check permission - only creator or admin can view detailed product
     if (
-      product.shop.userId !== currentUser.id &&
+      product.createdById !== currentUser.id &&
       currentUser.role !== UserRole.SUPERADMIN &&
       currentUser.role !== UserRole.ADMIN
     ) {
-      // If user is an agent, check if product belongs to their shop
-      if (currentUser.role === UserRole.AGENT) {
-        const agent = await prisma.agent.findUnique({
-          where: { userId: currentUser.id },
-        });
-
-        if (!agent || agent.shopId !== product.shopId) {
-          return forbiddenResponse('You do not have permission to access this resource');
-        }
-      } else {
-        return forbiddenResponse('You do not have permission to access this resource');
-      }
+      return forbiddenResponse('You do not have permission to access this resource');
     }
 
     return successResponse(product);
@@ -115,6 +103,11 @@ export async function PATCH(
       return unauthorizedResponse('Not authenticated');
     }
 
+    // Check if user has admin or superadmin role
+    if (currentUser.role !== UserRole.SUPERADMIN && currentUser.role !== UserRole.ADMIN) {
+      return forbiddenResponse('Only admins can update products');
+    }
+
     const { id } = await params;
     const productId = parseInt(id);
 
@@ -127,19 +120,10 @@ export async function PATCH(
     // Check if product exists
     const existingProduct = await prisma.product.findUnique({
       where: { id: productId },
-      include: { shop: true },
     });
 
     if (!existingProduct) {
       return notFoundResponse('Product not found');
-    }
-
-    // Check permission
-    if (
-      existingProduct.shop.userId !== currentUser.id &&
-      currentUser.role !== UserRole.SUPERADMIN
-    ) {
-      return forbiddenResponse('You do not have permission to update this resource');
     }
 
     // Update product
@@ -147,13 +131,14 @@ export async function PATCH(
       where: { id: productId },
       data: body,
       include: {
-        shop: {
+        createdBy: {
           select: {
             id: true,
             name: true,
+            email: true,
+            role: true,
           },
         },
-        productDetail: true,
       },
     });
 
@@ -176,6 +161,11 @@ export async function PUT(
       return unauthorizedResponse('Not authenticated');
     }
 
+    // Check if user has admin or superadmin role
+    if (currentUser.role !== UserRole.SUPERADMIN && currentUser.role !== UserRole.ADMIN) {
+      return forbiddenResponse('Only admins can update products');
+    }
+
     const { id } = await params;
     const productId = parseInt(id);
 
@@ -184,50 +174,65 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name, company, type, color, offer, warrantyPeriod } = body;
+    const {
+      uniqueId,
+      productName,
+      description,
+      company,
+      type,
+      color,
+      price,
+      images,
+      featuredImageUrl,
+      offer,
+      discount,
+      discountType,
+      warrantyPeriod,
+      status
+    } = body;
 
     // Validation
-    if (!name || !company || !type) {
-      return errorResponse('Name, company, and type are required');
+    if (!company || !type) {
+      return errorResponse('Company and type are required');
     }
 
     // Check if product exists
     const existingProduct = await prisma.product.findUnique({
       where: { id: productId },
-      include: { shop: true },
     });
 
     if (!existingProduct) {
       return notFoundResponse('Product not found');
     }
 
-    // Check permission
-    if (
-      existingProduct.shop.userId !== currentUser.id &&
-      currentUser.role !== UserRole.SUPERADMIN
-    ) {
-      return forbiddenResponse('You do not have permission to update this resource');
-    }
-
     // Update product
     const updatedProduct = await prisma.product.update({
       where: { id: productId },
       data: {
-        name,
+        uniqueId,
+        productName,
+        description,
         company,
         type,
         color,
+        price,
+        images,
+        featuredImageUrl,
         offer,
+        discount,
+        discountType,
         warrantyPeriod,
+        status,
       },
       include: {
-        shop: {
+        createdBy: {
           select: {
             id: true,
             name: true,
+            email: true,
+            role: true,
           },
         },
-        productDetail: true,
       },
     });
 
@@ -250,6 +255,11 @@ export async function DELETE(
       return unauthorizedResponse('Not authenticated');
     }
 
+    // Check if user has admin or superadmin role
+    if (currentUser.role !== UserRole.SUPERADMIN && currentUser.role !== UserRole.ADMIN) {
+      return forbiddenResponse('Only admins can delete products');
+    }
+
     const { id } = await params;
     const productId = parseInt(id);
 
@@ -260,19 +270,10 @@ export async function DELETE(
     // Check if product exists
     const existingProduct = await prisma.product.findUnique({
       where: { id: productId },
-      include: { shop: true },
     });
 
     if (!existingProduct) {
       return notFoundResponse('Product not found');
-    }
-
-    // Check permission
-    if (
-      existingProduct.shop.userId !== currentUser.id &&
-      currentUser.role !== UserRole.SUPERADMIN
-    ) {
-      return forbiddenResponse('You do not have permission to delete this resource');
     }
 
     // Delete product

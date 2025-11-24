@@ -552,6 +552,48 @@ const ProductManagementPage = () => {
                 <Label className="text-muted-foreground">Product Name</Label>
                 <p className="font-medium">{selectedProduct.productName || '-'}</p>
               </div>
+
+              {/* Featured Image */}
+              {selectedProduct.featuredImageUrl && (
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Featured Image</Label>
+                  <div className="relative w-32 h-32 border-2 rounded-md overflow-hidden">
+                    <img
+                      src={selectedProduct.featuredImageUrl}
+                      alt="Featured"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs text-center py-1">
+                      Featured
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Additional Images */}
+              {selectedProduct.images && selectedProduct.images.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground">Additional Images</Label>
+                    <Badge variant="secondary">{selectedProduct.images.length} image{selectedProduct.images.length > 1 ? 's' : ''}</Badge>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedProduct.images.map((imageUrl, index) => (
+                      <div key={index} className="relative w-20 h-20 border-2 rounded-md overflow-hidden">
+                        <img
+                          src={imageUrl}
+                          alt={`Image ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs text-center py-0.5">
+                          {index + 1}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {selectedProduct.description && (
                 <div className="space-y-2">
                   <Label className="text-muted-foreground">Description</Label>

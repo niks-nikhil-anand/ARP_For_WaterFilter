@@ -31,6 +31,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -795,11 +796,13 @@ const ProductManagementPage = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="add-description">Description</Label>
-                  <Input
+                  <Textarea
                     id="add-description"
                     value={addForm.description}
                     onChange={(e) => setAddForm({ ...addForm, description: e.target.value })}
                     placeholder="Enter product description"
+                    rows={5}
+                    className="resize-none"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -823,7 +826,7 @@ const ProductManagementPage = () => {
                     />
                   </div>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label htmlFor="add-warranty">Warranty Period</Label>
                   <Select
                     value={addForm.warrantyPeriod}
@@ -842,16 +845,50 @@ const ProductManagementPage = () => {
                       <SelectItem value="60">60 Months (5 Years)</SelectItem>
                     </SelectContent>
                   </Select>
+                  {addForm.warrantyPeriod && (
+                    <div className="p-4 border-2 border-primary/30 bg-primary/5 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="default">Free Warranty</Badge>
+                        <span className="font-semibold">
+                          {addForm.warrantyPeriod === '6' && '6 Months'}
+                          {addForm.warrantyPeriod === '12' && '1 Year'}
+                          {addForm.warrantyPeriod === '18' && '18 Months'}
+                          {addForm.warrantyPeriod === '24' && '2 Years'}
+                          {addForm.warrantyPeriod === '36' && '3 Years'}
+                          {addForm.warrantyPeriod === '48' && '4 Years'}
+                          {addForm.warrantyPeriod === '60' && '5 Years'}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Includes manufacturer warranty coverage
+                      </p>
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="add-freeInstallation"
-                    checked={addForm.freeInstallation}
-                    onCheckedChange={(checked) => setAddForm({ ...addForm, freeInstallation: checked as boolean })}
-                  />
-                  <Label htmlFor="add-freeInstallation" className="cursor-pointer">
-                    Free Installation
-                  </Label>
+                <div className="space-y-2">
+                  <Label>Additional Features</Label>
+                  <div
+                    onClick={() => setAddForm({ ...addForm, freeInstallation: !addForm.freeInstallation })}
+                    className={`
+                      p-4 border-2 rounded-lg cursor-pointer transition-all
+                      ${addForm.freeInstallation
+                        ? 'border-primary bg-primary/10 shadow-md'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      }
+                    `}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <Checkbox
+                        id="add-freeInstallation"
+                        checked={addForm.freeInstallation}
+                        onCheckedChange={(checked) => setAddForm({ ...addForm, freeInstallation: checked as boolean })}
+                      />
+                      <div>
+                        <div className="font-semibold">Free Installation</div>
+                        <div className="text-sm text-muted-foreground">Professional installation included</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -898,17 +935,58 @@ const ProductManagementPage = () => {
                   </div>
                 </div>
                 {addForm.price && (
-                  <div className="p-4 border rounded-md bg-muted/50">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Final Price:</span>
-                      <span className="text-2xl font-bold text-green-600">
+                  <div className="space-y-3 p-5 border-2 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50">
+                    <h3 className="font-semibold text-lg">Price Summary</h3>
+
+                    {/* Original Price */}
+                    <div className="flex justify-between items-center pb-2">
+                      <span className="text-sm text-muted-foreground">Original Price:</span>
+                      <span className="text-lg font-semibold">
+                        ₹{parseFloat(addForm.price).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+
+                    {/* Discount */}
+                    {addForm.discount && parseFloat(addForm.discount) > 0 && (
+                      <div className="space-y-2 pb-2 border-b">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Discount:</span>
+                          <span className="text-md font-medium text-red-600">
+                            - ₹{(parseFloat(addForm.price) - calculateFinalPrice()).toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-muted-foreground">Discount Type:</span>
+                          <Badge variant="destructive" className="text-xs">
+                            {addForm.discountType === 'PERCENTAGE'
+                              ? `${addForm.discount}% OFF`
+                              : `₹${addForm.discount} OFF`}
+                          </Badge>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Final Price */}
+                    <div className="flex justify-between items-center pt-2">
+                      <span className="text-base font-semibold">Final Price:</span>
+                      <span className="text-3xl font-bold text-green-600">
                         ₹{calculateFinalPrice().toLocaleString('en-IN')}
                       </span>
                     </div>
-                    {addForm.discount && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        You save: ₹{(parseFloat(addForm.price) - calculateFinalPrice()).toLocaleString('en-IN')}
-                      </p>
+
+                    {/* Savings */}
+                    {addForm.discount && parseFloat(addForm.discount) > 0 && (
+                      <div className="flex items-center justify-center gap-2 p-2 bg-green-100 rounded-md">
+                        <Badge variant="secondary" className="bg-green-600 text-white">
+                          You Save
+                        </Badge>
+                        <span className="font-bold text-green-700">
+                          ₹{(parseFloat(addForm.price) - calculateFinalPrice()).toLocaleString('en-IN')}
+                        </span>
+                        <span className="text-sm text-green-700">
+                          ({((parseFloat(addForm.price) - calculateFinalPrice()) / parseFloat(addForm.price) * 100).toFixed(0)}%)
+                        </span>
+                      </div>
                     )}
                   </div>
                 )}
@@ -921,51 +999,79 @@ const ProductManagementPage = () => {
                 <div className="space-y-2">
                   <Label htmlFor="add-featuredImage">Featured Image</Label>
                   <div className="flex items-center gap-4">
+                    <label
+                      htmlFor="add-featuredImage"
+                      className="flex items-center justify-center gap-2 w-full p-4 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
+                    >
+                      <Upload className="h-5 w-5 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">
+                        Click to upload featured image
+                      </span>
+                    </label>
                     <Input
                       id="add-featuredImage"
                       type="file"
                       accept="image/*"
                       onChange={handleFeaturedImageChange}
-                      className="flex-1"
+                      className="hidden"
                     />
                   </div>
                   {imagePreview && (
-                    <div className="relative w-full h-48 border rounded-md overflow-hidden">
-                      <img
-                        src={imagePreview}
-                        alt="Featured preview"
-                        className="w-full h-full object-cover"
-                      />
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        className="absolute top-2 right-2"
-                        onClick={() => {
-                          setAddForm({ ...addForm, featuredImage: null })
-                          setImagePreview(null)
-                        }}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+                    <div className="flex gap-2">
+                      <div className="relative w-20 h-20 border-2 rounded-md overflow-hidden group">
+                        <img
+                          src={imagePreview}
+                          alt="Featured preview"
+                          className="w-full h-full object-cover"
+                        />
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="absolute top-0.5 right-0.5 h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => {
+                            setAddForm({ ...addForm, featuredImage: null })
+                            setImagePreview(null)
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs text-center py-0.5">
+                          Featured
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="add-images">Additional Images</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="add-images">Additional Images</Label>
+                    {imagePreviews.length > 0 && (
+                      <Badge variant="secondary">{imagePreviews.length} image{imagePreviews.length > 1 ? 's' : ''}</Badge>
+                    )}
+                  </div>
                   <div className="flex items-center gap-4">
+                    <label
+                      htmlFor="add-images"
+                      className="flex items-center justify-center gap-2 w-full p-4 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
+                    >
+                      <Upload className="h-5 w-5 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">
+                        Click to upload images
+                      </span>
+                    </label>
                     <Input
                       id="add-images"
                       type="file"
                       accept="image/*"
                       multiple
                       onChange={handleImagesChange}
-                      className="flex-1"
+                      className="hidden"
                     />
                   </div>
                   {imagePreviews.length > 0 && (
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="flex flex-wrap gap-2">
                       {imagePreviews.map((preview, index) => (
-                        <div key={index} className="relative aspect-square border rounded-md overflow-hidden">
+                        <div key={index} className="relative w-20 h-20 border-2 rounded-md overflow-hidden group">
                           <img
                             src={preview}
                             alt={`Preview ${index + 1}`}
@@ -974,11 +1080,14 @@ const ProductManagementPage = () => {
                           <Button
                             variant="destructive"
                             size="icon"
-                            className="absolute top-1 right-1 h-6 w-6"
+                            className="absolute top-0.5 right-0.5 h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
                             onClick={() => removeImage(index)}
                           >
                             <X className="h-3 w-3" />
                           </Button>
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs text-center py-0.5">
+                            {index + 1}
+                          </div>
                         </div>
                       ))}
                     </div>

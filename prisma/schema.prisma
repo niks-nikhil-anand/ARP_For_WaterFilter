@@ -101,6 +101,7 @@ model User {
   addresses             Address[]
   shops                 Shop[]
   agents                Agent[]
+  productsCreated       Product[]
   receivedNotifications Notification[]
   serviceEvents         ServiceEvent[]
   createdAt             DateTime       @default(now())
@@ -137,7 +138,6 @@ model Shop {
   user            User           @relation(fields: [userId], references: [id])
   userId          Int            @unique
   addresses       Address[]
-  products        Product[]
   orders          Order[]
   agents          Agent[]
   amcContracts    AMCContract[]
@@ -165,7 +165,6 @@ model Agent {
 model Product {
   id               Int            @id @default(autoincrement())
   uniqueId         String         @unique
-  name             String
   productName      String?
   description      String?
   company          String
@@ -179,8 +178,8 @@ model Product {
   discountType     DiscountType?
   warrantyPeriod   String?
   status           UserStatus     @default(PENDING)
-  shop             Shop           @relation(fields: [shopId], references: [id])
-  shopId           Int
+  createdBy        User           @relation(fields: [createdById], references: [id])
+  createdById      Int
   orders           Order[]
   serviceEvents    ServiceEvent[] // Includes warranty, AMC, repairs, tickets
   createdAt        DateTime       @default(now())
@@ -248,21 +247,21 @@ model ServiceEvent {
 }
 
 model Order {
-  id              Int            @id @default(autoincrement())
-  product         Product        @relation(fields: [productId], references: [id])
-  productId       Int
-  shop            Shop           @relation(fields: [shopId], references: [id])
-  shopId          Int
-  customerName    String
-  customerEmail   String?
-  customerPhone   String?
-  paymentMethod   PaymentMethod  @default(CASH)
-  paymentStatus   PaymentStatus  @default(PENDING)
-  transactionId   String?        // For online payments
-  amountPaid      Float?
-  serviceEvents   ServiceEvent[]
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  id            Int            @id @default(autoincrement())
+  product       Product        @relation(fields: [productId], references: [id])
+  productId     Int
+  shop          Shop           @relation(fields: [shopId], references: [id])
+  shopId        Int
+  customerName  String
+  customerEmail String?
+  customerPhone String?
+  paymentMethod PaymentMethod  @default(CASH)
+  paymentStatus PaymentStatus  @default(PENDING)
+  transactionId String? // For online payments
+  amountPaid    Float?
+  serviceEvents ServiceEvent[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 }
 
 model Notification {

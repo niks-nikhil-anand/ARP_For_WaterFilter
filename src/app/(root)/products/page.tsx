@@ -4,6 +4,8 @@ import Footer from '@/components/website/Footer'
 import { commonActions } from '@/actions'
 import ProductFilters from '@/components/products/ProductFilters'
 
+export const dynamic = 'force-dynamic'
+
 const ProductsPage = async () => {
   // Fetch products from API
   let products: any[] = []

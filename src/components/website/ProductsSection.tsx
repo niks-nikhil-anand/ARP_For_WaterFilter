@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { ArrowRight, Droplet, Shield, Star } from 'lucide-react'
+import { ArrowRight, Droplet, Shield, Star, Loader2 } from 'lucide-react'
 import { commonActions } from '@/actions'
 import BookingModal from '@/components/products/BookingModal'
 
@@ -13,6 +13,7 @@ const ProductsSection = () => {
   const [featuredProducts, setFeaturedProducts] = useState<any[]>([])
   const [showBookingModal, setShowBookingModal] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -31,6 +32,8 @@ const ProductsSection = () => {
         }
       } catch (error) {
         console.error('💥 Error fetching products:', error)
+      } finally {
+        setLoading(false)
       }
     }
 
@@ -62,7 +65,11 @@ const ProductsSection = () => {
         </div>
 
         {/* Products Grid */}
-        {featuredProducts.length > 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
+          </div>
+        ) : featuredProducts.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
             {featuredProducts.map((product) => (
               <Card

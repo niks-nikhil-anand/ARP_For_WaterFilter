@@ -75,7 +75,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
 
         <div className="flex gap-2">
           {order.status !== 'ACTIVE' && (
-            <ActivateOrderButton orderId={order.id} />
+            <ActivateOrderButton order={order} />
           )}
           <EditOrderDialog order={order} />
         </div>

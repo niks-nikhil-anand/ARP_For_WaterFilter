@@ -19,6 +19,9 @@ import {
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { EditOrderDialog } from '@/components/admin/orders/EditOrderDialog'
+import { activateOrder } from '@/actions/common/orders'
+import { toast } from 'sonner'
+import { ActivateOrderButton } from '@/components/admin/orders/ActivateOrderButton'
 
 export default async function OrderDetailPage({ params }: { params: { id: string } }) {
   const orderId = parseInt(params.id)
@@ -69,7 +72,13 @@ export default async function OrderDetailPage({ params }: { params: { id: string
             </p>
           </div>
         </div>
-        <EditOrderDialog order={order} />
+
+        <div className="flex gap-2">
+          {order.status !== 'ACTIVE' && (
+            <ActivateOrderButton orderId={order.id} />
+          )}
+          <EditOrderDialog order={order} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -96,6 +105,60 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                 <div className="text-right">
                   <p className="text-2xl font-bold">
                     ₹{order.amountPaid?.toLocaleString('en-IN') || '0'}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Order Configuration */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5" />
+                Order Configuration
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Status</p>
+                  <Badge variant={order.status === 'ACTIVE' ? 'default' : 'secondary'}>
+                    {order.status}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Free Installation</p>
+                  <p className="font-medium">{order.freeInstallation ? 'Yes' : 'No'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Installation Completed</p>
+                  <p className="font-medium">{order.installationCompleted ? 'Yes' : 'No'}</p>
+                </div>
+                {order.installationDate && (
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Installation Date</p>
+                    <p className="font-medium">{new Date(order.installationDate).toLocaleDateString('en-IN')}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Free Warranty</p>
+                  <p className="font-medium">{order.freeWarranty ? 'Yes' : 'No'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Additional Warranty</p>
+                  <p className="font-medium">
+                    {order.selectedAdditionalWarranty 
+                      ? `${order.selectedAdditionalWarranty} (Purchased)` 
+                      : order.additionalWarranty ? 'Yes' : 'None'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">AMC</p>
+                  <p className="font-medium">
+                    {order.selectedAMC 
+                      ? `${order.selectedAMC} (Purchased)` 
+                      : order.amcPurchased ? 'Yes' : 'None'}
                   </p>
                 </div>
               </div>

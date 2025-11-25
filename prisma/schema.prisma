@@ -190,6 +190,7 @@ model Product {
   createdById      Int
   orders           Order[]
   warranties       Warranty[]
+  amcs             AMC[]
   serviceEvents    ServiceEvent[] // Includes warranty, AMC, repairs, tickets
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
@@ -265,6 +266,14 @@ model Order {
   customerName          String
   customerEmail         String?
   customerPhone         String?
+  customerAltPhone      String?
+  addressType           String?
+  apartmentNo           String?
+  locality              String?
+  landmark              String?
+  pincode               String?
+  state                 String?
+  country               String?
   status                OrderStatus    @default(PENDING) // PENDING when created, ACTIVE when payment completed
   paymentMethod         PaymentMethod  @default(CASH)
   paymentStatus         PaymentStatus  @default(PENDING)
@@ -278,6 +287,9 @@ model Order {
   amcPurchased          Boolean        @default(false) // If AMC was purchased with order
   serviceEvents         ServiceEvent[]
   warranties            Warranty[]
+  amcs                  AMC[]
+  selectedAdditionalWarranty String? // e.g., "1year", "2year"
+  selectedAMC           String?        // e.g., "1year", "2year"
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt
 }
@@ -301,6 +313,23 @@ model Warranty {
   claimDescription    String?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
+}
+
+// AMC tracking model (Purchased AMC)
+model AMC {
+  id              Int       @id @default(autoincrement())
+  product         Product   @relation(fields: [productId], references: [id])
+  productId       Int
+  order           Order     @relation(fields: [orderId], references: [id])
+  orderId         Int
+  startDate       DateTime
+  endDate         DateTime
+  durationMonths  Int
+  isActive        Boolean   @default(true)
+  amountPaid      Float?
+  status          AMCStatus @default(ACTIVE)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
 
 model Notification {

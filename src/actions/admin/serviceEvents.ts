@@ -10,7 +10,7 @@ export async function getServiceEvents() {
         product: {
           select: {
             id: true,
-            name: true,
+            productName: true,
           }
         },
         customer: {
@@ -85,7 +85,7 @@ export async function createServiceEvent(data: {
       include: {
         product: {
           select: {
-            name: true,
+            productName: true,
           }
         },
         customer: {
@@ -147,10 +147,10 @@ export async function getProducts() {
     const products = await prisma.product.findMany({
       select: {
         id: true,
-        name: true,
+        productName: true,
       },
       orderBy: {
-        name: 'asc'
+        productName: 'asc'
       }
     })
 
@@ -221,6 +221,39 @@ export async function getAMCContracts() {
     return { success: true, data: contracts }
   } catch (error: any) {
     console.error('Get AMC contracts error:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+export async function getAllAMCs() {
+  try {
+    const amcs = await prisma.aMC.findMany({
+      include: {
+        product: {
+          select: {
+            id: true,
+            productName: true,
+            company: true,
+            type: true,
+          }
+        },
+        order: {
+          select: {
+            id: true,
+            customerName: true,
+            customerEmail: true,
+            customerPhone: true,
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    })
+
+    return { success: true, data: amcs }
+  } catch (error: any) {
+    console.error('Get all AMCs error:', error)
     return { success: false, error: error.message }
   }
 }

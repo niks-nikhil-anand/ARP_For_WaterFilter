@@ -243,17 +243,40 @@ export async function updateOrderPaymentStatus(
 
 export async function activateOrder(orderId: number) {
   try {
+    console.log(`Activating order ${orderId}...`)
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       include: { product: true }
     })
 
     if (!order) {
+      console.error(`Order ${orderId} not found`)
       return { success: false, error: 'Order not found' }
     }
 
     if (order.status === 'ACTIVE') {
+      console.warn(`Order ${orderId} is already active`)
       return { success: false, error: 'Order is already active' }
+    }
+
+    // Helper to parse duration string
+    const parseDuration = (durationStr: string | null | undefined): number => {
+      if (!durationStr || durationStr === 'none') return 0
+      
+      const match = durationStr.toLowerCase().match(/(\d+)\s*(month|year)/i)
+      if (match) {
+        const value = parseInt(match[1])
+        const unit = match[2].toLowerCase()
+        return unit.startsWith('year') ? value * 12 : value
+      }
+      
+      // Fallback for simple "1year", "2year" keys if they don't match regex (though regex handles them)
+      if (durationStr === '1year') return 12
+      if (durationStr === '2year') return 24
+      if (durationStr === '3year') return 36
+      if (durationStr === '5year') return 60
+      
+      return 0
     }
 
     // 1. Update Order Status and Payment Status
@@ -268,16 +291,8 @@ export async function activateOrder(orderId: number) {
     })
 
     // 2. Create Free Warranty (if applicable)
-    // Assuming product has warrantyPeriod like "12 months" or "1 year"
-    let baseWarrantyMonths = 0
-    if (order.product.warrantyPeriod) {
-      const match = order.product.warrantyPeriod.toLowerCase().match(/(\d+)\s*(month|year)/i)
-      if (match) {
-        const value = parseInt(match[1])
-        const unit = match[2].toLowerCase()
-        baseWarrantyMonths = unit.startsWith('year') ? value * 12 : value
-      }
-    }
+    const baseWarrantyMonths = parseDuration(order.product.warrantyPeriod)
+    console.log(`Base warranty months: ${baseWarrantyMonths}`)
 
     if (baseWarrantyMonths > 0) {
       const startDate = new Date()
@@ -299,63 +314,53 @@ export async function activateOrder(orderId: number) {
     }
 
     // 3. Create Additional Warranty (if purchased)
-    if (order.selectedAdditionalWarranty && order.selectedAdditionalWarranty !== 'none') {
-      let additionalMonths = 0
-      if (order.selectedAdditionalWarranty === '1year') additionalMonths = 12
-      else if (order.selectedAdditionalWarranty === '2year') additionalMonths = 24
-      else if (order.selectedAdditionalWarranty === '3year') additionalMonths = 36
+    const additionalMonths = parseDuration(order.selectedAdditionalWarranty)
+    console.log(`Additional warranty months: ${additionalMonths} (Selected: ${order.selectedAdditionalWarranty})`)
 
-      if (additionalMonths > 0) {
-        // Starts after base warranty ends? Or concurrently? Usually extends.
-        // Let's assume it starts after base warranty.
-        const startDate = new Date()
-        startDate.setMonth(startDate.getMonth() + baseWarrantyMonths)
-        
-        const endDate = new Date(startDate)
-        endDate.setMonth(endDate.getMonth() + additionalMonths)
+    if (additionalMonths > 0) {
+      // Starts after base warranty ends
+      const startDate = new Date()
+      startDate.setMonth(startDate.getMonth() + baseWarrantyMonths)
+      
+      const endDate = new Date(startDate)
+      endDate.setMonth(endDate.getMonth() + additionalMonths)
 
-        await prisma.warranty.create({
-          data: {
-            productId: order.productId,
-            orderId: order.id,
-            warrantyType: 'EXTENDED',
-            startDate: startDate,
-            endDate: endDate,
-            durationMonths: additionalMonths,
-            isActive: true,
-            additionalWarranty: true,
-            warrantyAmount: 0, // Should be calculated based on plan price
-          }
-        })
-      }
+      await prisma.warranty.create({
+        data: {
+          productId: order.productId,
+          orderId: order.id,
+          warrantyType: 'EXTENDED',
+          startDate: startDate,
+          endDate: endDate,
+          durationMonths: additionalMonths,
+          isActive: true,
+          additionalWarranty: true,
+          warrantyAmount: 0, // Should be calculated based on plan price
+        }
+      })
     }
 
     // 4. Create AMC (if purchased)
-    if (order.selectedAMC && order.selectedAMC !== 'none') {
-      let amcMonths = 0
-      if (order.selectedAMC === '1year') amcMonths = 12
-      else if (order.selectedAMC === '2year') amcMonths = 24
-      else if (order.selectedAMC === '3year') amcMonths = 36
-      else if (order.selectedAMC === '5year') amcMonths = 60
+    const amcMonths = parseDuration(order.selectedAMC)
+    console.log(`AMC months: ${amcMonths} (Selected: ${order.selectedAMC})`)
 
-      if (amcMonths > 0) {
-        const startDate = new Date()
-        const endDate = new Date(startDate)
-        endDate.setMonth(endDate.getMonth() + amcMonths)
+    if (amcMonths > 0) {
+      const startDate = new Date()
+      const endDate = new Date(startDate)
+      endDate.setMonth(endDate.getMonth() + amcMonths)
 
-        await prisma.aMC.create({
-          data: {
-            productId: order.productId,
-            orderId: order.id,
-            startDate: startDate,
-            endDate: endDate,
-            durationMonths: amcMonths,
-            isActive: true,
-            status: 'ACTIVE',
-            amountPaid: 0, // Should be calculated
-          }
-        })
-      }
+      await prisma.aMC.create({
+        data: {
+          productId: order.productId,
+          orderId: order.id,
+          startDate: startDate,
+          endDate: endDate,
+          durationMonths: amcMonths,
+          isActive: true,
+          status: 'ACTIVE',
+          amountPaid: 0, // Should be calculated
+        }
+      })
     }
 
     return {
@@ -363,9 +368,9 @@ export async function activateOrder(orderId: number) {
       message: 'Order activated successfully. Warranties and AMC created.'
     }
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error activating order:', error)
-    return { success: false, error: 'Failed to activate order' }
+    return { success: false, error: error.message || 'Failed to activate order' }
   }
 }
 
@@ -385,6 +390,7 @@ export async function updateOrderDetails(orderId: number, data: any) {
         pincode: data.pincode,
         state: data.state,
         country: data.country,
+        paymentMethod: data.paymentMethod,
         paymentStatus: data.paymentStatus,
         transactionId: data.transactionId,
         freeInstallation: data.freeInstallation,

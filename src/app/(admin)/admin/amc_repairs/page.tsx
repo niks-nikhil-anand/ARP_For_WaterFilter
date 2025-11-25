@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
-import { Plus, Wrench, Eye, Pencil, Trash2, Calendar, Package } from 'lucide-react'
+import { Plus, Wrench, Eye, Pencil, Trash2, Calendar, Package, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   getServiceEvents,
@@ -19,20 +19,21 @@ import {
   getProducts,
   getCustomers,
   getAgents,
-  getAMCContracts
+  getAMCContracts,
+  getAllAMCs
 } from '@/actions/admin/serviceEvents'
 
 type ServiceEvent = {
   id: number
-  type: 'REPAIR' | 'AMC' | 'WARRANTY'
+  type: 'REPAIR' | 'AMC' | 'WARRANTY' | 'AMC_CONTRACT'
   product: {
     id: number
-    name: string
+    productName: string | null
   }
   customer?: {
     id: number
     name: string
-    email: string
+    email: string | null
   } | null
   assignedTo?: {
     id: number
@@ -60,7 +61,7 @@ type ServiceEvent = {
 
 const AMCRepairsPage = () => {
   const [events, setEvents] = useState<ServiceEvent[]>([])
-  const [products, setProducts] = useState<{id: number, name: string}[]>([])
+  const [products, setProducts] = useState<{id: number, productName: string | null}[]>([])
   const [customers, setCustomers] = useState<{id: number, name: string, email: string}[]>([])
   const [agents, setAgents] = useState<{id: number, user: {name: string}}[]>([])
   const [amcContracts, setAmcContracts] = useState<{id: number, name: string, duration: string, price: number, status: string}[]>([])
@@ -91,15 +92,53 @@ const AMCRepairsPage = () => {
 
   const loadData = async () => {
     setLoading(true)
-    const [eventsRes, productsRes, customersRes, agentsRes, contractsRes] = await Promise.all([
+    const [eventsRes, amcsRes, productsRes, customersRes, agentsRes, contractsRes] = await Promise.all([
       getServiceEvents(),
+      getAllAMCs(),
       getProducts(),
       getCustomers(),
       getAgents(),
       getAMCContracts()
     ])
 
-    if (eventsRes.success && eventsRes.data) setEvents(eventsRes.data)
+    let allEvents: ServiceEvent[] = []
+
+    if (eventsRes.success && eventsRes.data) {
+      allEvents = [...eventsRes.data] as ServiceEvent[]
+    }
+
+    if (amcsRes.success && amcsRes.data) {
+      const mappedAMCs = amcsRes.data.map((amc: any) => ({
+        id: amc.id,
+        type: 'AMC_CONTRACT' as const,
+        product: {
+          id: amc.product.id,
+          productName: amc.product.productName
+        },
+        customer: {
+          id: amc.order.id, // Using order ID as proxy since we don't have direct customer ID here easily without more queries
+          name: amc.order.customerName,
+          email: amc.order.customerEmail
+        },
+        assignedTo: null,
+        amcContract: null,
+        description: `AMC Contract (${amc.durationMonths} months)`,
+        remarks: null,
+        parts: null,
+        feedback: null,
+        pricePaid: amc.amountPaid,
+        startDate: amc.startDate,
+        endDate: amc.endDate,
+        createdAt: amc.createdAt,
+        updatedAt: amc.updatedAt
+      }))
+      allEvents = [...allEvents, ...mappedAMCs]
+    }
+
+    // Sort by createdAt desc
+    allEvents.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
+    setEvents(allEvents)
     if (productsRes.success && productsRes.data) setProducts(productsRes.data)
     if (customersRes.success && customersRes.data) setCustomers(customersRes.data)
     if (agentsRes.success && agentsRes.data) setAgents(agentsRes.data)
@@ -175,12 +214,13 @@ const AMCRepairsPage = () => {
       REPAIR: 'bg-orange-100 text-orange-800',
       AMC: 'bg-blue-100 text-blue-800',
       WARRANTY: 'bg-green-100 text-green-800',
+      AMC_CONTRACT: 'bg-purple-100 text-purple-800',
     }
-    return <Badge className={variants[type]}>{type}</Badge>
+    return <Badge className={variants[type] || 'bg-gray-100'}>{type.replace('_', ' ')}</Badge>
   }
 
   const repairEvents = events.filter(e => e.type === 'REPAIR')
-  const amcEvents = events.filter(e => e.type === 'AMC')
+  const amcEvents = events.filter(e => e.type === 'AMC' || e.type === 'AMC_CONTRACT')
 
   return (
     <div className="h-[90vh] max-h-[92vh] overflow-y-auto">
@@ -205,7 +245,7 @@ const AMCRepairsPage = () => {
             <div className="border rounded-lg p-4">
               <div className="flex items-center gap-2 text-muted-foreground mb-2">
                 <Wrench className="h-4 w-4" />
-                <span className="text-sm font-medium">Total Events</span>
+                <span className="text-sm font-medium">Total Records</span>
               </div>
               <p className="text-2xl font-bold">{events.length}</p>
             </div>
@@ -220,8 +260,8 @@ const AMCRepairsPage = () => {
             </div>
             <div className="border rounded-lg p-4 border-blue-200 bg-blue-50 dark:bg-blue-950/20">
               <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400 mb-2">
-                <Calendar className="h-4 w-4" />
-                <span className="text-sm font-medium">AMC</span>
+                <FileText className="h-4 w-4" />
+                <span className="text-sm font-medium">AMC Contracts</span>
               </div>
               <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">
                 {amcEvents.length}
@@ -265,18 +305,18 @@ const AMCRepairsPage = () => {
                     <TableCell colSpan={8} className="text-center py-10">
                       <div className="flex flex-col items-center gap-2">
                         <Wrench className="h-10 w-10 text-muted-foreground" />
-                        <p className="text-muted-foreground">No service events found</p>
+                        <p className="text-muted-foreground">No records found</p>
                       </div>
                     </TableCell>
                   </TableRow>
                 ) : (
                   events.map((event) => (
-                    <TableRow key={event.id}>
+                    <TableRow key={`${event.type}-${event.id}`}>
                       <TableCell className="font-medium">#{event.id}</TableCell>
                       <TableCell>{getTypeBadge(event.type)}</TableCell>
-                      <TableCell>{event.product.name}</TableCell>
+                      <TableCell>{event.product.productName || 'Unknown Product'}</TableCell>
                       <TableCell>{event.customer?.name || 'N/A'}</TableCell>
-                      <TableCell>{event.assignedTo?.user.name || 'Unassigned'}</TableCell>
+                      <TableCell>{event.assignedTo?.user.name || 'N/A'}</TableCell>
                       <TableCell className="max-w-xs truncate">{event.description || 'N/A'}</TableCell>
                       <TableCell>{formatDate(event.createdAt)}</TableCell>
                       <TableCell className="text-right">
@@ -325,7 +365,7 @@ const AMCRepairsPage = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="REPAIR">Repair</SelectItem>
-                    <SelectItem value="AMC">AMC</SelectItem>
+                    <SelectItem value="AMC">AMC Visit</SelectItem>
                     <SelectItem value="WARRANTY">Warranty</SelectItem>
                   </SelectContent>
                 </Select>
@@ -343,7 +383,7 @@ const AMCRepairsPage = () => {
                   <SelectContent>
                     {products.map((product) => (
                       <SelectItem key={product.id} value={product.id.toString()}>
-                        {product.name}
+                        {product.productName || `Product #${product.id}`}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -510,7 +550,7 @@ const AMCRepairsPage = () => {
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Product</Label>
-                  <p>{selectedEvent.product.name}</p>
+                  <p>{selectedEvent.product.productName}</p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Customer</Label>
@@ -564,4 +604,3 @@ const AMCRepairsPage = () => {
 }
 
 export default AMCRepairsPage
-

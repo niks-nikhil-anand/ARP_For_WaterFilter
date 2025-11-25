@@ -23,7 +23,15 @@ export async function GET(request: NextRequest) {
     if (productId) whereClause.productId = parseInt(productId);
 
     if (shopId) {
-      whereClause.shopId = parseInt(shopId);
+      whereClause.product = {
+        createdBy: {
+          shops: {
+            some: {
+              id: parseInt(shopId)
+            }
+          }
+        }
+      };
       orders = await prisma.order.findMany({
         where: whereClause,
         include: {
@@ -35,12 +43,7 @@ export async function GET(request: NextRequest) {
               type: true,
             },
           },
-          shop: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
+
           serviceEvents: {
             select: {
               id: true,
@@ -65,12 +68,7 @@ export async function GET(request: NextRequest) {
               type: true,
             },
           },
-          shop: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
+
           serviceEvents: {
             select: {
               id: true,
@@ -92,7 +90,15 @@ export async function GET(request: NextRequest) {
         return forbiddenResponse('You do not have a shop');
       }
 
-      whereClause.shopId = userShop.id;
+      whereClause.product = {
+        createdBy: {
+          shops: {
+            some: {
+              id: userShop.id
+            }
+          }
+        }
+      };
       orders = await prisma.order.findMany({
         where: whereClause,
         include: {
@@ -104,12 +110,7 @@ export async function GET(request: NextRequest) {
               type: true,
             },
           },
-          shop: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
+
           serviceEvents: {
             select: {
               id: true,
@@ -141,15 +142,34 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { productId, shopId, customerName, customerEmail, customerPhone } = body;
+    const { productId, customerName, customerEmail, customerPhone } = body;
 
     if (!productId || !customerName) {
       return errorResponse('Product ID and customer name are required');
     }
 
-    let orderShopId = shopId;
 
-    if (!shopId) {
+
+    // Verify product exists and belongs to the shop
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      include: {
+        createdBy: {
+          include: {
+            shops: true
+          }
+        }
+      }
+    });
+
+    if (!product) {
+      return errorResponse('Product not found', 404);
+    }
+
+    const productShop = product.createdBy.shops[0];
+    
+    // If user is a shop owner, ensure they are creating order for their own product
+    if (currentUser.role !== UserRole.SUPERADMIN) {
       const userShop = await prisma.shop.findUnique({
         where: { userId: currentUser.id },
       });
@@ -158,38 +178,17 @@ export async function POST(request: NextRequest) {
         return errorResponse('You must have a shop to create orders');
       }
 
-      orderShopId = userShop.id;
-    } else {
-      const shop = await prisma.shop.findUnique({
-        where: { id: shopId },
-      });
-
-      if (!shop) {
-        return errorResponse('Shop not found', 404);
-      }
-
-      if (shop.userId !== currentUser.id && currentUser.role !== UserRole.SUPERADMIN) {
-        return forbiddenResponse('You do not have permission to create orders for this shop');
+      if (!productShop || productShop.id !== userShop.id) {
+        return errorResponse('Product does not belong to your shop', 400);
       }
     }
 
-    // Verify product exists and belongs to the shop
-    const product = await prisma.product.findUnique({
-      where: { id: productId },
-    });
 
-    if (!product) {
-      return errorResponse('Product not found', 404);
-    }
-
-    if (product.shopId !== orderShopId) {
-      return errorResponse('Product does not belong to this shop', 400);
-    }
 
     const order = await prisma.order.create({
       data: {
         productId,
-        shopId: orderShopId,
+
         customerName,
         customerEmail,
         customerPhone,
@@ -203,12 +202,7 @@ export async function POST(request: NextRequest) {
             type: true,
           },
         },
-        shop: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
+
       },
     });
 

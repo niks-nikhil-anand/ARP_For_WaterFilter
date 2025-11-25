@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 
 export type CreateOrderInput = {
   productId: number
-  shopId: number
+
   customerName: string
   customerEmail: string
   customerPhone: string
@@ -46,7 +46,7 @@ export async function createOrder(data: CreateOrderInput) {
     const order = await prisma.order.create({
       data: {
         productId: data.productId,
-        shopId: data.shopId,
+
         customerName: data.customerName,
         customerEmail: data.customerEmail,
         customerPhone: data.customerPhone,
@@ -88,8 +88,15 @@ export async function getOrderById(orderId: number) {
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       include: {
-        product: true,
-        shop: true,
+        product: {
+          include: {
+            createdBy: {
+              include: {
+                shops: true
+              }
+            }
+          }
+        },
         serviceEvents: true
       }
     })
@@ -152,15 +159,19 @@ export async function getAllOrders(
               productName: true,
               company: true,
               type: true,
-              price: true
+              price: true,
+              createdBy: {
+                include: {
+                  shops: {
+                    select: {
+                      name: true,
+                      shopName: true
+                    }
+                  }
+                }
+              }
             }
           },
-          shop: {
-            select: {
-              name: true,
-              shopName: true
-            }
-          }
         },
         orderBy: {
           createdAt: 'desc'

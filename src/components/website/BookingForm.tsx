@@ -28,6 +28,21 @@ const BookingForm = () => {
     type: 'success' | 'error' | null;
     message: string;
   }>({ type: null, message: '' })
+  const [showThankYouCard, setShowThankYouCard] = useState(false)
+  const [countdown, setCountdown] = useState(5)
+
+  // Countdown effect for thank you card
+  React.useEffect(() => {
+    if (showThankYouCard && countdown > 0) {
+      const timer = setTimeout(() => {
+        setCountdown(countdown - 1)
+      }, 1000)
+      return () => clearTimeout(timer)
+    } else if (showThankYouCard && countdown === 0) {
+      setShowThankYouCard(false)
+      setCountdown(5)
+    }
+  }, [showThankYouCard, countdown])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
@@ -105,15 +120,9 @@ const BookingForm = () => {
           message: ''
         })
 
-        setSubmitStatus({
-          type: 'success',
-          message: result.message || 'Booking request submitted successfully! We will contact you soon.'
-        })
-
-        // Auto-hide success message after 5 seconds
-        setTimeout(() => {
-          setSubmitStatus({ type: null, message: '' })
-        }, 5000)
+        // Show thank you card instead of inline message
+        setShowThankYouCard(true)
+        setCountdown(5)
       } else {
         // Error
         setSubmitStatus({
@@ -142,6 +151,49 @@ const BookingForm = () => {
             Schedule your water purifier installation, repair, or maintenance service
           </p>
         </div>
+
+        {/* Thank You Card Modal Overlay */}
+        {showThankYouCard && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <Card className="max-w-md w-full bg-white dark:bg-gray-900 border-2 border-green-500 dark:border-green-600 shadow-2xl">
+              <CardHeader className="text-center pb-4">
+                <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4">
+                  <svg className="w-10 h-10 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">
+                  Thank You!
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-center space-y-4">
+                <div className="space-y-2">
+                  <p className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                    Your booking request has been submitted successfully!
+                  </p>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    We appreciate your interest in our services. Our team will contact you shortly to confirm your appointment and discuss the details.
+                  </p>
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mt-4">
+                    <p className="text-sm text-blue-800 dark:text-blue-300">
+                      <strong>What happens next?</strong>
+                    </p>
+                    <ul className="text-sm text-blue-700 dark:text-blue-400 mt-2 space-y-1 text-left">
+                      <li>• Our executive will call you within 24 hours</li>
+                      <li>• We'll confirm your preferred date and time</li>
+                      <li>• Our technician will arrive at your scheduled time</li>
+                    </ul>
+                  </div>
+                </div>
+                <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    This window will close automatically in <span className="font-bold text-blue-600 dark:text-blue-400">{countdown}</span> seconds
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Form */}

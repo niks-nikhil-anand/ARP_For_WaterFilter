@@ -8,7 +8,7 @@ interface OrderReceiptProps {
     id: number;
     productId: number;
     productName: string;
-    shopId: number;
+
     shopName: string;
     customerName: string;
     customerEmail?: string;

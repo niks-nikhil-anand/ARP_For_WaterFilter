@@ -26,15 +26,19 @@ export async function GET(
       include: {
         product: {
           include: {
-            productDetail: true,
-          },
-        },
-        shop: {
-          select: {
-            id: true,
-            name: true,
-            address: true,
-            userId: true,
+            createdBy: {
+              include: {
+                shops: {
+                  select: {
+                    id: true,
+                    name: true,
+                    addresses: true,
+                    userId: true,
+                  },
+                },
+              },
+            },
+            // productDetail: true, // Removed as it might not exist or cause issues if not defined in schema
           },
         },
         serviceEvents: {
@@ -64,11 +68,18 @@ export async function GET(
       return notFoundResponse('Order not found');
     }
 
-    if (order.shop.userId !== currentUser.id && currentUser.role !== UserRole.SUPERADMIN) {
+    const shop = order.product.createdBy.shops[0];
+    if ((!shop || shop.userId !== currentUser.id) && currentUser.role !== UserRole.SUPERADMIN) {
       return forbiddenResponse('You do not have permission to access this resource');
     }
 
-    return successResponse(order);
+    // Transform response to include shop details at top level if needed by frontend
+    const responseData = {
+      ...order,
+      shop: shop
+    };
+
+    return successResponse(responseData);
   } catch (error: any) {
     console.error('Get order error:', error);
     return serverErrorResponse(error.message || 'Failed to get order');
@@ -96,14 +107,25 @@ export async function PATCH(
 
     const existingOrder = await prisma.order.findUnique({
       where: { id: orderId },
-      include: { shop: true },
+      include: {
+        product: {
+          include: {
+            createdBy: {
+              include: {
+                shops: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!existingOrder) {
       return notFoundResponse('Order not found');
     }
 
-    if (existingOrder.shop.userId !== currentUser.id && currentUser.role !== UserRole.SUPERADMIN) {
+    const shop = existingOrder.product.createdBy.shops[0];
+    if ((!shop || shop.userId !== currentUser.id) && currentUser.role !== UserRole.SUPERADMIN) {
       return forbiddenResponse('You do not have permission to update this resource');
     }
 
@@ -114,15 +136,9 @@ export async function PATCH(
         product: {
           select: {
             id: true,
-            name: true,
+            productName: true,
             company: true,
             type: true,
-          },
-        },
-        shop: {
-          select: {
-            id: true,
-            name: true,
           },
         },
       },
@@ -161,14 +177,25 @@ export async function PUT(
 
     const existingOrder = await prisma.order.findUnique({
       where: { id: orderId },
-      include: { shop: true },
+      include: {
+        product: {
+          include: {
+            createdBy: {
+              include: {
+                shops: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!existingOrder) {
       return notFoundResponse('Order not found');
     }
 
-    if (existingOrder.shop.userId !== currentUser.id && currentUser.role !== UserRole.SUPERADMIN) {
+    const shop = existingOrder.product.createdBy.shops[0];
+    if ((!shop || shop.userId !== currentUser.id) && currentUser.role !== UserRole.SUPERADMIN) {
       return forbiddenResponse('You do not have permission to update this resource');
     }
 
@@ -183,15 +210,9 @@ export async function PUT(
         product: {
           select: {
             id: true,
-            name: true,
+            productName: true,
             company: true,
             type: true,
-          },
-        },
-        shop: {
-          select: {
-            id: true,
-            name: true,
           },
         },
       },
@@ -223,14 +244,25 @@ export async function DELETE(
 
     const existingOrder = await prisma.order.findUnique({
       where: { id: orderId },
-      include: { shop: true },
+      include: {
+        product: {
+          include: {
+            createdBy: {
+              include: {
+                shops: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!existingOrder) {
       return notFoundResponse('Order not found');
     }
 
-    if (existingOrder.shop.userId !== currentUser.id && currentUser.role !== UserRole.SUPERADMIN) {
+    const shop = existingOrder.product.createdBy.shops[0];
+    if ((!shop || shop.userId !== currentUser.id) && currentUser.role !== UserRole.SUPERADMIN) {
       return forbiddenResponse('You do not have permission to delete this resource');
     }
 

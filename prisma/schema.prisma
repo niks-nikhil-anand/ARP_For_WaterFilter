@@ -87,6 +87,13 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum OrderStatus {
+  PENDING
+  ACTIVE
+  CANCELLED
+  COMPLETED
+}
+
 // -------------------- MODELS --------------------
 
 // User model is the core model for all roles
@@ -102,6 +109,7 @@ model User {
   shops                 Shop[]
   agents                Agent[]
   productsCreated       Product[]
+  ordersCreated         Order[]
   receivedNotifications Notification[]
   serviceEvents         ServiceEvent[]
   createdAt             DateTime       @default(now())
@@ -138,7 +146,7 @@ model Shop {
   user            User           @relation(fields: [userId], references: [id])
   userId          Int            @unique
   addresses       Address[]
-  orders          Order[]
+
   agents          Agent[]
   amcContracts    AMCContract[]
   notifications   Notification[]
@@ -181,6 +189,7 @@ model Product {
   createdBy        User           @relation(fields: [createdById], references: [id])
   createdById      Int
   orders           Order[]
+  warranties       Warranty[]
   serviceEvents    ServiceEvent[] // Includes warranty, AMC, repairs, tickets
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
@@ -247,21 +256,51 @@ model ServiceEvent {
 }
 
 model Order {
-  id            Int            @id @default(autoincrement())
-  product       Product        @relation(fields: [productId], references: [id])
-  productId     Int
-  shop          Shop           @relation(fields: [shopId], references: [id])
-  shopId        Int
-  customerName  String
-  customerEmail String?
-  customerPhone String?
-  paymentMethod PaymentMethod  @default(CASH)
-  paymentStatus PaymentStatus  @default(PENDING)
-  transactionId String? // For online payments
-  amountPaid    Float?
-  serviceEvents ServiceEvent[]
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id                    Int            @id @default(autoincrement())
+  product               Product        @relation(fields: [productId], references: [id])
+  productId             Int
+
+  createdBy             User?          @relation(fields: [createdById], references: [id])
+  createdById           Int?
+  customerName          String
+  customerEmail         String?
+  customerPhone         String?
+  status                OrderStatus    @default(PENDING) // PENDING when created, ACTIVE when payment completed
+  paymentMethod         PaymentMethod  @default(CASH)
+  paymentStatus         PaymentStatus  @default(PENDING)
+  transactionId         String? // For online payments
+  amountPaid            Float?
+  freeInstallation      Boolean        @default(false) // If free installation is included
+  installationCompleted Boolean        @default(false) // Track if installation is done
+  installationDate      DateTime? // When installation was completed
+  freeWarranty          Boolean        @default(false) // If free warranty is included
+  additionalWarranty    Boolean        @default(false) // If additional warranty was purchased
+  amcPurchased          Boolean        @default(false) // If AMC was purchased with order
+  serviceEvents         ServiceEvent[]
+  warranties            Warranty[]
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+}
+
+// Warranty tracking model
+model Warranty {
+  id                  Int       @id @default(autoincrement())
+  product             Product   @relation(fields: [productId], references: [id])
+  productId           Int
+  order               Order     @relation(fields: [orderId], references: [id])
+  orderId             Int
+  warrantyType        String // "FREE" or "EXTENDED" or "BASIC"
+  startDate           DateTime
+  endDate             DateTime
+  durationMonths      Int // Duration in months
+  isActive            Boolean   @default(true)
+  additionalWarranty  Boolean   @default(false) // If this is an additional/extended warranty
+  warrantyAmount      Float? // Amount paid for extended warranty
+  termsAndConditions  String?
+  claimedDate         DateTime?
+  claimDescription    String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 }
 
 model Notification {

@@ -169,7 +169,29 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { customerName, customerEmail, customerPhone } = body;
+    const { 
+      customerName, 
+      customerEmail, 
+      customerPhone,
+      // Add other fields
+      customerAltPhone,
+      addressType,
+      apartmentNo,
+      locality,
+      landmark,
+      pincode,
+      state,
+      country,
+      selectedAdditionalWarranty,
+      selectedAMC,
+      paymentStatus,
+      transactionId,
+      freeInstallation,
+      installationCompleted,
+      freeWarranty,
+      additionalWarranty,
+      amcPurchased
+    } = body;
 
     if (!customerName) {
       return errorResponse('Customer name is required');
@@ -205,6 +227,23 @@ export async function PUT(
         customerName,
         customerEmail,
         customerPhone,
+        customerAltPhone,
+        addressType,
+        apartmentNo,
+        locality,
+        landmark,
+        pincode,
+        state,
+        country,
+        selectedAdditionalWarranty,
+        selectedAMC,
+        paymentStatus,
+        transactionId,
+        freeInstallation,
+        installationCompleted,
+        freeWarranty,
+        additionalWarranty,
+        amcPurchased
       },
       include: {
         product: {

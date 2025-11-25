@@ -201,6 +201,50 @@ export default async function OrderDetailPage({ params }: { params: { id: string
             </CardContent>
           </Card>
 
+          {/* Customer Address */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Customer Address
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Address Type</p>
+                  <Badge variant="outline" className="capitalize">
+                    {order.addressType || 'Home'}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Apartment/House No</p>
+                  <p className="font-medium">{order.apartmentNo || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Locality</p>
+                  <p className="font-medium">{order.locality || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Landmark</p>
+                  <p className="font-medium">{order.landmark || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Pincode</p>
+                  <p className="font-medium">{order.pincode || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">State</p>
+                  <p className="font-medium">{order.state || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Country</p>
+                  <p className="font-medium">{order.country || '-'}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Shop Information */}
           {shop && (
             <Card>

@@ -142,13 +142,28 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { productId, customerName, customerEmail, customerPhone } = body;
+    const { 
+      productId, 
+      customerName, 
+      customerEmail, 
+      customerPhone,
+      // New fields
+      customerAltPhone,
+      addressType,
+      apartmentNo,
+      locality,
+      landmark,
+      pincode,
+      state,
+      country,
+      selectedAdditionalWarranty,
+      selectedAMC,
+      paymentOption
+    } = body;
 
     if (!productId || !customerName) {
       return errorResponse('Product ID and customer name are required');
     }
-
-
 
     // Verify product exists and belongs to the shop
     const product = await prisma.product.findUnique({
@@ -183,15 +198,33 @@ export async function POST(request: NextRequest) {
       }
     }
 
-
+    // Determine payment details
+    const paymentMethod = paymentOption === 'pay_now' ? 'ONLINE' : 'CASH';
+    const paymentStatus = paymentOption === 'pay_now' ? 'PENDING' : 'PENDING';
+    const amountPaid = product.price || 0;
 
     const order = await prisma.order.create({
       data: {
         productId,
-
         customerName,
         customerEmail,
         customerPhone,
+        // Add new fields
+        customerAltPhone,
+        addressType,
+        apartmentNo,
+        locality,
+        landmark,
+        pincode,
+        state,
+        country,
+        selectedAdditionalWarranty,
+        selectedAMC,
+        paymentMethod,
+        paymentStatus,
+        amountPaid,
+        additionalWarranty: selectedAdditionalWarranty && selectedAdditionalWarranty !== 'none' ? true : false,
+        amcPurchased: selectedAMC && selectedAMC !== 'none' ? true : false,
       },
       include: {
         product: {
@@ -202,7 +235,6 @@ export async function POST(request: NextRequest) {
             type: true,
           },
         },
-
       },
     });
 

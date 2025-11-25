@@ -105,19 +105,24 @@ export async function getShopDashboardStats() {
     // Get the shop for this user
     const shop = await prisma.shop.findUnique({
       where: { userId: payload.id },
-      include: {
-        orders: {
-          include: {
-            product: true,
-          },
-        },
-        products: true,
-      },
+      // include: { products: true }, // Removed invalid include
     });
 
     if (!shop) {
       return { success: false, error: "Shop not found for this user" };
     }
+
+    // Fetch orders for products created by this shop owner
+    const orders = await prisma.order.findMany({
+      where: {
+        product: {
+          createdById: shop.userId
+        }
+      },
+      include: {
+        product: true
+      }
+    });
 
     // Calculate statistics
     const now = new Date();
@@ -136,58 +141,58 @@ export async function getShopDashboardStats() {
     lastMonthStart.setMonth(lastMonthStart.getMonth() - 1);
 
     // Today's orders and sales
-    const todayOrders = shop.orders.filter(
+    const todayOrders = orders.filter(
       (order) => new Date(order.createdAt) >= todayStart
     );
     const todaySales = todayOrders.length;
 
     // Yesterday's sales for comparison
-    const yesterdayOrders = shop.orders.filter(
+    const yesterdayOrders = orders.filter(
       (order) =>
         new Date(order.createdAt) >= yesterdayStart &&
         new Date(order.createdAt) < todayStart
     );
 
     // This week's sales
-    const thisWeekOrders = shop.orders.filter(
+    const thisWeekOrders = orders.filter(
       (order) => new Date(order.createdAt) >= thisWeekStart
     );
 
     // Last week's sales
-    const lastWeekOrders = shop.orders.filter(
+    const lastWeekOrders = orders.filter(
       (order) =>
         new Date(order.createdAt) >= lastWeekStart &&
         new Date(order.createdAt) < thisWeekStart
     );
 
     // This month's sales
-    const thisMonthOrders = shop.orders.filter(
+    const thisMonthOrders = orders.filter(
       (order) => new Date(order.createdAt) >= thisMonthStart
     );
 
     // Last month's sales
-    const lastMonthOrders = shop.orders.filter(
+    const lastMonthOrders = orders.filter(
       (order) =>
         new Date(order.createdAt) >= lastMonthStart &&
         new Date(order.createdAt) < thisMonthStart
     );
 
     // Calculate revenue (simplified - in real app, you'd have order totals)
-    const calculateRevenue = (orders: any[]) => {
+    const calculateRevenue = (ordersList: any[]) => {
       // Placeholder: assuming each order has a value
       // In real implementation, you'd sum up actual order totals
-      return orders.length * 5000; // Placeholder value
+      return ordersList.length * 5000; // Placeholder value
     };
 
     // Get unique customers (simplified)
-    const totalCustomers = new Set(shop.orders.map((o) => o.customerEmail)).size;
+    const totalCustomers = new Set(orders.map((o) => o.customerEmail)).size;
 
     // Active orders (not delivered)
-    const activeOrders = shop.orders.length;
+    const activeOrders = orders.length;
 
     // Top products (simplified)
     const productSales = new Map();
-    shop.orders.forEach((order) => {
+    orders.forEach((order) => {
       const productId = order.productId;
       if (!productSales.has(productId)) {
         productSales.set(productId, {
@@ -203,7 +208,7 @@ export async function getShopDashboardStats() {
       .slice(0, 5)
       .map((item, index) => ({
         id: item.product.id,
-        name: item.product.name,
+        name: item.product.productName || 'Unknown Product',
         unitsSold: item.count,
         revenue: item.count * 5000, // Placeholder
       }));
@@ -254,22 +259,26 @@ export async function getShopRecentOrders(limit: number = 10) {
 
     const shop = await prisma.shop.findUnique({
       where: { userId: payload.id },
-      include: {
-        orders: {
-          take: limit,
-          orderBy: { createdAt: "desc" },
-          include: {
-            product: true,
-          },
-        },
-      },
     });
 
     if (!shop) {
       return { success: false, error: "Shop not found" };
     }
 
-    const orders = shop.orders.map((order) => ({
+    const orders = await prisma.order.findMany({
+      where: {
+        product: {
+          createdById: shop.userId
+        }
+      },
+      take: limit,
+      orderBy: { createdAt: "desc" },
+      include: {
+        product: true,
+      },
+    });
+
+    const formattedOrders = orders.map((order) => ({
       id: order.id,
       orderNumber: `ORD-${order.id.toString().padStart(6, "0")}`,
       customerName: order.customerName,
@@ -277,10 +286,10 @@ export async function getShopRecentOrders(limit: number = 10) {
       orderDate: order.createdAt.toLocaleDateString("en-IN"),
       total: 5000, // Placeholder - in real app, calculate from order items
       orderStatus: "Processing", // Placeholder - add status field to Order model
-      product: order.product.name,
+      product: order.product.productName || 'Unknown Product',
     }));
 
-    return { success: true, data: orders };
+    return { success: true, data: formattedOrders };
   } catch (error) {
     console.error("Error fetching recent orders:", error);
     return { success: false, error: "Failed to fetch recent orders" };

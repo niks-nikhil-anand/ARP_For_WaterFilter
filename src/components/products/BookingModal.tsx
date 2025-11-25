@@ -48,8 +48,7 @@ type BookingModalProps = {
 
 export default function BookingModal({ isOpen, onClose, product }: BookingModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showThankYouCard, setShowThankYouCard] = useState(false)
-  const [countdown, setCountdown] = useState(5)
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -84,19 +83,7 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
 
   const baseWarrantyMonths = getBaseWarrantyMonths()
 
-  // Countdown effect for thank you card
-  React.useEffect(() => {
-    if (showThankYouCard && countdown > 0) {
-      const timer = setTimeout(() => {
-        setCountdown(countdown - 1)
-      }, 1000)
-      return () => clearTimeout(timer)
-    } else if (showThankYouCard && countdown === 0) {
-      setShowThankYouCard(false)
-      setCountdown(5)
-      onClose()
-    }
-  }, [showThankYouCard, countdown, onClose])
+
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -187,9 +174,9 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
           paymentOption: 'pay_later',
         })
 
-        // Show thank you card
-        setShowThankYouCard(true)
-        setCountdown(5)
+        // Close modal immediately
+        toast.success('Booking submitted successfully!')
+        onClose()
       } else {
         toast.error(result.error || 'Failed to submit booking')
       }
@@ -207,74 +194,8 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         {/* Show Thank You Card or Booking Form */}
-        {showThankYouCard ? (
-          <div className="py-8">
-            <div className="text-center space-y-6">
-              {/* Success Icon */}
-              <div className="mx-auto w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-                <svg className="w-12 h-12 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-
-              {/* Thank You Message */}
-              <div className="space-y-3">
-                <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
-                  Thank You!
-                </h2>
-                <p className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-                  Your order has been placed successfully!
-                </p>
-                <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto">
-                  We appreciate your trust in us. Our executive will contact you shortly to confirm your order and schedule the installation.
-                </p>
-              </div>
-
-              {/* Product Details */}
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 max-w-md mx-auto">
-                <p className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-2">
-                  Order Details
-                </p>
-                <div className="text-sm text-blue-800 dark:text-blue-400 space-y-1">
-                  <p><strong>Product:</strong> {product.productName || product.name}</p>
-                  <p><strong>Company:</strong> {product.company}</p>
-                  <p><strong>Type:</strong> {product.type}</p>
-                  {product.price && (
-                    <p><strong>Price:</strong> ₹{product.price.toLocaleString('en-IN')}</p>
-                  )}
-                </div>
-              </div>
-
-              {/* What's Next */}
-              <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4 max-w-md mx-auto">
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-200 mb-2">
-                  What happens next?
-                </p>
-                <ul className="text-sm text-gray-700 dark:text-gray-400 space-y-2 text-left">
-                  <li className="flex items-start">
-                    <span className="mr-2">•</span>
-                    <span>Our executive will call you within 24 hours</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="mr-2">•</span>
-                    <span>We'll confirm your order and discuss installation details</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="mr-2">•</span>
-                    <span>Our technician will install your water purifier at your convenience</span>
-                  </li>
-                </ul>
-              </div>
-
-              {/* Countdown */}
-              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  This window will close automatically in <span className="font-bold text-blue-600 dark:text-blue-400">{countdown}</span> seconds
-                </p>
-              </div>
-            </div>
-          </div>
-        ) : (
+        {/* Booking Form */}
+        <div className="py-4">
           <>
             <DialogHeader>
               <DialogTitle className="text-xl">Book Your Water Purifier</DialogTitle>
@@ -304,7 +225,7 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
               value={formData.name}
               onChange={handleInputChange}
               placeholder="Enter your full name"
-              required
+
               disabled={isSubmitting}
             />
           </div>
@@ -323,7 +244,6 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
                 value={formData.email}
                 onChange={handleInputChange}
                 placeholder="your.email@example.com"
-                required
                 disabled={isSubmitting}
               />
             </div>
@@ -341,7 +261,6 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
                 onChange={handleInputChange}
                 placeholder="10-digit mobile number"
                 maxLength={10}
-                required
                 disabled={isSubmitting}
               />
             </div>
@@ -567,7 +486,7 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
                 onChange={handleInputChange}
                 placeholder="e.g., Flat 101, Building A"
                 disabled={isSubmitting}
-                required
+
               />
             </div>
 
@@ -583,7 +502,7 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
                 onChange={handleInputChange}
                 placeholder="e.g., Sector 21"
                 disabled={isSubmitting}
-                required
+
               />
             </div>
 
@@ -614,7 +533,7 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
                 placeholder="6-digit pincode"
                 maxLength={6}
                 disabled={isSubmitting}
-                required
+
               />
             </div>
 
@@ -630,7 +549,7 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
                 onChange={handleInputChange}
                 placeholder="e.g., Maharashtra"
                 disabled={isSubmitting}
-                required
+
               />
             </div>
 
@@ -646,7 +565,7 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
                 onChange={handleInputChange}
                 placeholder="e.g., India"
                 disabled={isSubmitting}
-                required
+
               />
             </div>
           </div>
@@ -716,7 +635,7 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
           </div>
         </form>
         </>
-        )}
+        </div>
       </DialogContent>
     </Dialog>
   )

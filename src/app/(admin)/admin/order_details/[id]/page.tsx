@@ -29,6 +29,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
   }
 
   const order = result.data
+  const shop = order.product?.createdBy?.shops?.[0]
 
   const getPaymentStatusIcon = (status: string) => {
     switch (status) {
@@ -86,7 +87,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="text-lg font-semibold">
-                    {order.product?.productName || order.product?.name}
+                    {order.product?.productName || 'Unknown Product'}
                   </h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     {order.product?.company} • {order.product?.type}
@@ -138,7 +139,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
           </Card>
 
           {/* Shop Information */}
-          {order.shop && (
+          {shop && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -148,7 +149,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <p className="font-medium text-lg">{order.shop.shopName || order.shop.name}</p>
+                  <p className="font-medium text-lg">{shop.shopName || shop.name}</p>
                 </div>
               </CardContent>
             </Card>

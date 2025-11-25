@@ -48,13 +48,18 @@ export async function getProductById(id: number) {
 
 // POST - Create product
 export async function createProduct(productData: {
-  name: string;
+  uniqueId: string;
+  productName?: string | null;
+  description?: string | null;
   company: string;
   type: string;
-  color?: string;
-  offer?: string;
-  warrantyPeriod?: string;
-  shopId?: number;
+  color?: string | null;
+  price?: number | null;
+  featuredImageUrl?: string | null;
+  offer?: string | null;
+  discount?: number | null;
+  discountType?: string | null;
+  warrantyPeriod?: string | null;
 }) {
   try {
     const response = await fetch(`${API_BASE_URL}/api/products`, {

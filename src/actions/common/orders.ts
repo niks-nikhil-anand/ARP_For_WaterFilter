@@ -57,7 +57,6 @@ export async function createOrder(data: CreateOrderInput) {
       include: {
         product: {
           select: {
-            name: true,
             productName: true,
             company: true,
             type: true,
@@ -150,7 +149,6 @@ export async function getAllOrders(
         include: {
           product: {
             select: {
-              name: true,
               productName: true,
               company: true,
               type: true,

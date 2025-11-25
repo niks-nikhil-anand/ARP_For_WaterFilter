@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
           product: {
             select: {
               id: true,
-              name: true,
+              productName: true,
               company: true,
               type: true,
             },
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
           product: {
             select: {
               id: true,
-              name: true,
+              productName: true,
               company: true,
               type: true,
             },
@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
           product: {
             select: {
               id: true,
-              name: true,
+              productName: true,
               company: true,
               type: true,
             },
@@ -198,7 +198,7 @@ export async function POST(request: NextRequest) {
         product: {
           select: {
             id: true,
-            name: true,
+            productName: true,
             company: true,
             type: true,
           },

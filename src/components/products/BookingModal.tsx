@@ -20,8 +20,14 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Info } from 'lucide-react'
 import { createOrder } from '@/actions/common/orders'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 type Product = {
   id: number
@@ -270,11 +276,34 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
             />
           </div>
 
+          {/* Protection & Maintenance Section Header */}
+          <div className="pt-4">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white border-b pb-2">
+              Protection & Maintenance Plans (Optional)
+            </h3>
+          </div>
+
           {/* Warranty and AMC - Responsive Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Additional Warranty */}
             <div className="space-y-2">
-              <Label htmlFor="additionalWarranty">Additional Warranty</Label>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="additionalWarranty">Additional Warranty</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-4 w-4 text-gray-400 cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p className="font-semibold mb-1">What is Warranty?</p>
+                      <p className="text-sm">
+                        Warranty covers manufacturing defects and component failures. Extended warranty
+                        gives you additional coverage beyond the base warranty period for peace of mind.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
               <Select
                 value={formData.additionalWarranty}
                 onValueChange={(value) => handleSelectChange('additionalWarranty', value)}
@@ -294,7 +323,24 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
 
             {/* AMC (Annual Maintenance Contract) */}
             <div className="space-y-2">
-              <Label htmlFor="amc">AMC (Annual Maintenance Contract)</Label>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="amc">AMC (Annual Maintenance)</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-4 w-4 text-gray-400 cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p className="font-semibold mb-1">What is AMC?</p>
+                      <p className="text-sm">
+                        Annual Maintenance Contract provides regular servicing, filter replacements,
+                        water quality checks, and priority support. Keeps your purifier running optimally
+                        and extends its lifespan.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
               <Select
                 value={formData.amc}
                 onValueChange={(value) => handleSelectChange('amc', value)}
@@ -311,6 +357,25 @@ export default function BookingModal({ isOpen, onClose, product }: BookingModalP
                   <SelectItem value="5year">5 Years AMC</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+
+          {/* Informational Box about Warranty vs AMC */}
+          <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+            <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-200 mb-2 flex items-center gap-2">
+              <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              Understanding the Difference
+            </h4>
+            <div className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+              <div>
+                <span className="font-semibold">Warranty:</span> Covers repair/replacement of defective parts at no cost
+              </div>
+              <div>
+                <span className="font-semibold">AMC:</span> Includes regular maintenance, filter changes, and preventive servicing
+              </div>
+              <div className="text-xs text-gray-600 dark:text-gray-400 mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                💡 Tip: AMC helps prevent issues while warranty fixes them if they occur
+              </div>
             </div>
           </div>
 

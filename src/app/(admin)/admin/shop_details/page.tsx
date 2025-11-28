@@ -35,6 +35,10 @@ import {
   Pencil,
   Eye,
   Plus,
+  Loader2,
+  Phone,
+  Mail,
+  MapPin,
 } from 'lucide-react'
 
 import { getUsersByRole, deleteUser, updateUser, createUser } from '@/actions/admin/users'
@@ -100,6 +104,7 @@ const ShopDetailsPage = () => {
     },
   })
   const [addressId, setAddressId] = useState<number | null>(null)
+  const [isAddingShop, setIsAddingShop] = useState(false)
 
   useEffect(() => {
     loadAdminUsers()
@@ -228,68 +233,73 @@ const ShopDetailsPage = () => {
   }
 
   const handleAddShop = async () => {
-    // Create user with ADMIN role
-    const userResult = await createUser({
-      name: addForm.name,
-      email: addForm.email,
-      mobile: addForm.mobile,
-      password: addForm.password,
-      role: 'ADMIN' as any,
-      status: 'ACTIVE' as any,
-    })
-
-    if (!userResult.success || !userResult.data) {
-      toast.error(userResult.error || 'Failed to create shop owner')
-      return
-    }
-
-    const userId = userResult.data.id
-
-    // Create shop for the new user
-    const shopResult = await createOrUpdateShop(userId, {
-      name: addForm.name,
-      shopName: addForm.shopName,
-      alternateMobile: addForm.alternateMobile,
-      gstNumber: addForm.gstNumber,
-      panNumber: addForm.panNumber,
-    })
-
-    // Create address if any field is filled
-    let addressResult = { success: true }
-    if (shopResult.success && shopResult.data &&
-        (addForm.address.apartmentNo || addForm.address.locality)) {
-      addressResult = await createAddress({
-        ...addForm.address,
-        shopId: shopResult.data.id,
-        userId: userId,
+    setIsAddingShop(true)
+    try {
+      // Create user with ADMIN role
+      const userResult = await createUser({
+        name: addForm.name,
+        email: addForm.email,
+        mobile: addForm.mobile,
+        password: addForm.password,
+        role: 'ADMIN' as any,
+        status: 'ACTIVE' as any,
       })
-    }
 
-    if (userResult.success && shopResult.success && addressResult.success) {
-      loadAdminUsers()
-      setAddDialogOpen(false)
-      setAddForm({
-        name: '',
-        email: '',
-        mobile: '',
-        password: '',
-        role: 'ADMIN',
-        shopName: '',
-        alternateMobile: '',
-        gstNumber: '',
-        panNumber: '',
-        address: {
-          apartmentNo: '',
-          locality: '',
-          state: '',
-          country: '',
-          pincode: '',
-          phone: '',
-        },
+      if (!userResult.success || !userResult.data) {
+        toast.error(userResult.error || 'Failed to create shop owner')
+        return
+      }
+
+      const userId = userResult.data.id
+
+      // Create shop for the new user
+      const shopResult = await createOrUpdateShop(userId, {
+        name: addForm.name,
+        shopName: addForm.shopName,
+        alternateMobile: addForm.alternateMobile,
+        gstNumber: addForm.gstNumber,
+        panNumber: addForm.panNumber,
       })
-      toast.success('Shop owner and shop created successfully')
-    } else {
-      toast.error('Failed to create shop')
+
+      // Create address if any field is filled
+      let addressResult = { success: true }
+      if (shopResult.success && shopResult.data &&
+          (addForm.address.apartmentNo || addForm.address.locality)) {
+        addressResult = await createAddress({
+          ...addForm.address,
+          shopId: shopResult.data.id,
+          userId: userId,
+        })
+      }
+
+      if (userResult.success && shopResult.success && addressResult.success) {
+        loadAdminUsers()
+        setAddDialogOpen(false)
+        setAddForm({
+          name: '',
+          email: '',
+          mobile: '',
+          password: '',
+          role: 'ADMIN',
+          shopName: '',
+          alternateMobile: '',
+          gstNumber: '',
+          panNumber: '',
+          address: {
+            apartmentNo: '',
+            locality: '',
+            state: '',
+            country: '',
+            pincode: '',
+            phone: '',
+          },
+        })
+        toast.success('Shop owner and shop created successfully')
+      } else {
+        toast.error('Failed to create shop')
+      }
+    } finally {
+      setIsAddingShop(false)
     }
   }
 
@@ -378,11 +388,9 @@ const ShopDetailsPage = () => {
                 <TableRow>
                   <TableHead>ID</TableHead>
                   <TableHead>Owner Name</TableHead>
-                  <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
-                  <TableHead>Shop Name</TableHead>
-                  <TableHead>GST Number</TableHead>
-                  <TableHead>PAN Number</TableHead>
+                  <TableHead>Contact Details</TableHead>
+                  <TableHead>Address</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -390,13 +398,13 @@ const ShopDetailsPage = () => {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-10">
+                    <TableCell colSpan={7} className="text-center py-10">
                       <p className="text-muted-foreground">Loading...</p>
                     </TableCell>
                   </TableRow>
                 ) : filteredUsers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-10">
+                    <TableCell colSpan={7} className="text-center py-10">
                       <div className="flex flex-col items-center gap-2">
                         <Store className="h-10 w-10 text-muted-foreground" />
                         <p className="text-muted-foreground">
@@ -408,11 +416,13 @@ const ShopDetailsPage = () => {
                 ) : (
                   filteredUsers.map((user) => {
                     const shop = user.shops && user.shops[0]
+                    const address = shop?.addresses && shop.addresses[0]
                     return (
                       <TableRow key={user.id}>
                         <TableCell className="font-medium">#{user.id}</TableCell>
-                        <TableCell>{user.name || '-'}</TableCell>
-                        <TableCell>{user.email}</TableCell>
+                        <TableCell>
+                          <div className="font-medium">{user.name || '-'}</div>
+                        </TableCell>
                         <TableCell>
                           <Badge className={
                             user.role === 'SUPERADMIN'
@@ -422,13 +432,45 @@ const ShopDetailsPage = () => {
                             {user.role}
                           </Badge>
                         </TableCell>
-                        <TableCell>{shop?.shopName || '-'}</TableCell>
-                        <TableCell>{shop?.gstNumber || '-'}</TableCell>
-                        <TableCell>{shop?.panNumber || '-'}</TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            {user.mobile && (
+                              <div className="flex items-center gap-2 text-sm">
+                                <Phone className="h-3 w-3 text-muted-foreground" />
+                                <span>{user.mobile}</span>
+                              </div>
+                            )}
+                            {user.email && (
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Mail className="h-3 w-3" />
+                                <span className="truncate max-w-[150px]">{user.email}</span>
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {address ? (
+                            <div className="flex items-start gap-2 max-w-[250px]">
+                              <MapPin className="h-3 w-3 text-muted-foreground mt-0.5 flex-shrink-0" />
+                              <div className="text-sm text-muted-foreground">
+                                <div className="line-clamp-2">
+                                  {address.apartmentNo && `${address.apartmentNo}, `}
+                                  {address.locality}
+                                </div>
+                                <div className="text-xs">
+                                  {address.pincode}
+                                  {address.state && ` - ${address.state}`}
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground italic">No address</span>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <Badge className={
-                            user.status === 'ACTIVE' 
-                              ? 'bg-green-100 text-green-800' 
+                            user.status === 'ACTIVE'
+                              ? 'bg-green-100 text-green-800'
                               : user.status === 'BLOCKED'
                               ? 'bg-red-100 text-red-800'
                               : 'bg-yellow-100 text-yellow-800'
@@ -602,162 +644,200 @@ const ShopDetailsPage = () => {
 
       {/* Add Shop Dialog */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add New Shop</DialogTitle>
             <DialogDescription>
               Create a new shop owner account and shop
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="add-name">Owner Name *</Label>
-              <Input
-                id="add-name"
-                value={addForm.name}
-                onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
-                placeholder="Enter owner name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="add-email">Email *</Label>
-              <Input
-                id="add-email"
-                type="email"
-                value={addForm.email}
-                onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
-                placeholder="Enter email"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="add-mobile">Mobile Number</Label>
-              <Input
-                id="add-mobile"
-                value={addForm.mobile}
-                onChange={(e) => setAddForm({ ...addForm, mobile: e.target.value })}
-                placeholder="Enter mobile number"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="add-password">Password *</Label>
-              <Input
-                id="add-password"
-                type="password"
-                value={addForm.password}
-                onChange={(e) => setAddForm({ ...addForm, password: e.target.value })}
-                placeholder="Enter password"
-              />
-            </div>
-            <div className="border-t pt-4">
-              <h3 className="font-semibold mb-3">Shop Information</h3>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="add-shopName">Shop Name</Label>
-              <Input
-                id="add-shopName"
-                value={addForm.shopName}
-                onChange={(e) => setAddForm({ ...addForm, shopName: e.target.value })}
-                placeholder="Enter shop name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="add-alternateMobile">Alternate Mobile</Label>
-              <Input
-                id="add-alternateMobile"
-                value={addForm.alternateMobile}
-                onChange={(e) => setAddForm({ ...addForm, alternateMobile: e.target.value })}
-                placeholder="Enter alternate mobile number"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="add-gstNumber">GST Number</Label>
-              <Input
-                id="add-gstNumber"
-                value={addForm.gstNumber}
-                onChange={(e) => setAddForm({ ...addForm, gstNumber: e.target.value })}
-                placeholder="Enter GST number"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="add-panNumber">PAN Number</Label>
-              <Input
-                id="add-panNumber"
-                value={addForm.panNumber}
-                onChange={(e) => setAddForm({ ...addForm, panNumber: e.target.value })}
-                placeholder="Enter PAN number"
-              />
-            </div>
-            <div className="border-t pt-4">
-              <h3 className="font-semibold mb-3">Address Information</h3>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="add-apartmentNo">Apartment/Building No.</Label>
-              <Input
-                id="add-apartmentNo"
-                value={addForm.address.apartmentNo}
-                onChange={(e) => setAddForm({ ...addForm, address: { ...addForm.address, apartmentNo: e.target.value } })}
-                placeholder="Enter apartment/building number"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="add-locality">Locality/Area</Label>
-              <Input
-                id="add-locality"
-                value={addForm.address.locality}
-                onChange={(e) => setAddForm({ ...addForm, address: { ...addForm.address, locality: e.target.value } })}
-                placeholder="Enter locality or area"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="add-state">State</Label>
-                <Input
-                  id="add-state"
-                  value={addForm.address.state}
-                  onChange={(e) => setAddForm({ ...addForm, address: { ...addForm.address, state: e.target.value } })}
-                  placeholder="Enter state"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="add-country">Country</Label>
-                <Input
-                  id="add-country"
-                  value={addForm.address.country}
-                  onChange={(e) => setAddForm({ ...addForm, address: { ...addForm.address, country: e.target.value } })}
-                  placeholder="Enter country"
-                />
+          <div className="space-y-6">
+            {/* Owner Information */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-muted-foreground">Owner Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="add-name">Owner Name *</Label>
+                  <Input
+                    id="add-name"
+                    value={addForm.name}
+                    onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
+                    placeholder="Enter owner name"
+                    required
+                    disabled={isAddingShop}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-mobile">Mobile Number</Label>
+                  <Input
+                    id="add-mobile"
+                    value={addForm.mobile}
+                    onChange={(e) => setAddForm({ ...addForm, mobile: e.target.value })}
+                    placeholder="+91 98765 43210"
+                    disabled={isAddingShop}
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="add-email">Email Address *</Label>
+                  <Input
+                    id="add-email"
+                    type="email"
+                    value={addForm.email}
+                    onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
+                    placeholder="owner@email.com"
+                    required
+                    disabled={isAddingShop}
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="add-password">Password *</Label>
+                  <Input
+                    id="add-password"
+                    type="password"
+                    value={addForm.password}
+                    onChange={(e) => setAddForm({ ...addForm, password: e.target.value })}
+                    placeholder="Enter password"
+                    required
+                    disabled={isAddingShop}
+                  />
+                </div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="add-pincode">Pincode</Label>
-                <Input
-                  id="add-pincode"
-                  value={addForm.address.pincode}
-                  onChange={(e) => setAddForm({ ...addForm, address: { ...addForm.address, pincode: e.target.value } })}
-                  placeholder="Enter pincode"
-                />
+
+            {/* Shop Information */}
+            <div className="space-y-4 border-t pt-4">
+              <h3 className="text-sm font-semibold text-muted-foreground">Shop Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="add-shopName">Shop Name</Label>
+                  <Input
+                    id="add-shopName"
+                    value={addForm.shopName}
+                    onChange={(e) => setAddForm({ ...addForm, shopName: e.target.value })}
+                    placeholder="Enter shop name"
+                    disabled={isAddingShop}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-alternateMobile">Alternate Mobile</Label>
+                  <Input
+                    id="add-alternateMobile"
+                    value={addForm.alternateMobile}
+                    onChange={(e) => setAddForm({ ...addForm, alternateMobile: e.target.value })}
+                    placeholder="+91 98765 43210"
+                    disabled={isAddingShop}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-gstNumber">GST Number</Label>
+                  <Input
+                    id="add-gstNumber"
+                    value={addForm.gstNumber}
+                    onChange={(e) => setAddForm({ ...addForm, gstNumber: e.target.value })}
+                    placeholder="Enter GST number"
+                    disabled={isAddingShop}
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="add-panNumber">PAN Number</Label>
+                  <Input
+                    id="add-panNumber"
+                    value={addForm.panNumber}
+                    onChange={(e) => setAddForm({ ...addForm, panNumber: e.target.value })}
+                    placeholder="Enter PAN number"
+                    disabled={isAddingShop}
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="add-phone">Phone</Label>
-                <Input
-                  id="add-phone"
-                  value={addForm.address.phone}
-                  onChange={(e) => setAddForm({ ...addForm, address: { ...addForm.address, phone: e.target.value } })}
-                  placeholder="Enter phone number"
-                />
+            </div>
+
+            {/* Address Information */}
+            <div className="space-y-4 border-t pt-4">
+              <h3 className="text-sm font-semibold text-muted-foreground">Address Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="add-locality">Locality/Area</Label>
+                  <Input
+                    id="add-locality"
+                    value={addForm.address.locality}
+                    onChange={(e) => setAddForm({ ...addForm, address: { ...addForm.address, locality: e.target.value } })}
+                    placeholder="Enter locality or area"
+                    disabled={isAddingShop}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-apartmentNo">Apartment/Building No.</Label>
+                  <Input
+                    id="add-apartmentNo"
+                    value={addForm.address.apartmentNo}
+                    onChange={(e) => setAddForm({ ...addForm, address: { ...addForm.address, apartmentNo: e.target.value } })}
+                    placeholder="Flat/Building number"
+                    disabled={isAddingShop}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-pincode">Pincode</Label>
+                  <Input
+                    id="add-pincode"
+                    value={addForm.address.pincode}
+                    onChange={(e) => setAddForm({ ...addForm, address: { ...addForm.address, pincode: e.target.value } })}
+                    placeholder="Enter pincode"
+                    disabled={isAddingShop}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-state">State</Label>
+                  <Input
+                    id="add-state"
+                    value={addForm.address.state}
+                    onChange={(e) => setAddForm({ ...addForm, address: { ...addForm.address, state: e.target.value } })}
+                    placeholder="Enter state"
+                    disabled={isAddingShop}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-country">Country</Label>
+                  <Input
+                    id="add-country"
+                    value={addForm.address.country}
+                    onChange={(e) => setAddForm({ ...addForm, address: { ...addForm.address, country: e.target.value } })}
+                    placeholder="Enter country"
+                    disabled={isAddingShop}
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="add-phone">Phone</Label>
+                  <Input
+                    id="add-phone"
+                    value={addForm.address.phone}
+                    onChange={(e) => setAddForm({ ...addForm, address: { ...addForm.address, phone: e.target.value } })}
+                    placeholder="Enter phone number"
+                    disabled={isAddingShop}
+                  />
+                </div>
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setAddDialogOpen(false)}
+              disabled={isAddingShop}
+            >
               Cancel
             </Button>
             <Button
               onClick={handleAddShop}
-              disabled={!addForm.name || !addForm.email || !addForm.password}
+              disabled={!addForm.name || !addForm.email || !addForm.password || isAddingShop}
             >
-              Add Shop
+              {isAddingShop ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Adding Shop...
+                </>
+              ) : (
+                'Add Shop'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

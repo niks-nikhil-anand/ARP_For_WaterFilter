@@ -168,13 +168,14 @@ model Shop {
 
 // Dedicated model for Service Agents
 model Agent {
-  id      Int            @id @default(autoincrement())
-  user    User           @relation(fields: [userId], references: [id], onDelete: Restrict)
-  userId  Int            @unique
-  shop    Shop?          @relation(fields: [shopId], references: [id], onDelete: SetNull)
-  shopId  Int?
-  tasks   ServiceEvent[]
-  tickets Ticket[]
+  id        Int            @id @default(autoincrement())
+  user      User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  userId    Int            @unique
+  shop      Shop?          @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  shopId    Int?
+  areaCover String? // Area or zone the agent covers
+  tasks     ServiceEvent[]
+  tickets   Ticket[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -199,6 +200,7 @@ model Product {
   discount         Decimal?
   discountType     DiscountType?
   warrantyPeriod   String?
+  isVisibleWebsite Boolean        @default(true)
   status           UserStatus     @default(PENDING)
   createdBy        User           @relation(fields: [createdById], references: [id], onDelete: Restrict)
   createdById      Int

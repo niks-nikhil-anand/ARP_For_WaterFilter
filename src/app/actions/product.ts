@@ -71,6 +71,7 @@ export async function createProduct(data: {
   discount?: number
   discountType?: 'PERCENTAGE' | 'FLAT_RATE'
   warrantyPeriod?: string
+  isVisibleWebsite?: boolean
   status?: 'ACTIVE' | 'BLOCKED' | 'PENDING'
 }) {
   try {
@@ -102,6 +103,7 @@ export async function createProduct(data: {
         discount: data.discount,
         discountType: data.discountType,
         warrantyPeriod: data.warrantyPeriod,
+        isVisibleWebsite: data.isVisibleWebsite ?? true,
         status: data.status || 'PENDING',
         createdBy: {
           connect: { id: currentUser.id },
@@ -143,6 +145,7 @@ export async function updateProduct(
     discount?: number
     discountType?: 'PERCENTAGE' | 'FLAT_RATE'
     warrantyPeriod?: string
+    isVisibleWebsite?: boolean
     status?: 'ACTIVE' | 'BLOCKED' | 'PENDING'
   }
 ) {

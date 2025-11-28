@@ -72,6 +72,7 @@ type Product = {
   discount: number | null
   discountType: string | null
   warrantyPeriod: string | null
+  isVisibleWebsite: boolean
   status: string
   createdBy?: {
     id: number
@@ -102,6 +103,7 @@ const ProductManagementPage = () => {
     price: '',
     discount: '',
     discountType: '',
+    isVisibleWebsite: true,
     status: '',
   })
   const [addForm, setAddForm] = useState({
@@ -111,6 +113,7 @@ const ProductManagementPage = () => {
     color: '',
     warrantyPeriod: '',
     freeInstallation: false,
+    isVisibleWebsite: true,
     price: '',
     discountType: 'PERCENTAGE',
     discount: '',
@@ -152,6 +155,7 @@ const ProductManagementPage = () => {
       price: product.price?.toString() || '',
       discount: product.discount?.toString() || '',
       discountType: product.discountType || 'PERCENTAGE',
+      isVisibleWebsite: product.isVisibleWebsite ?? true,
       status: product.status || 'PENDING',
     })
     setEditDialogOpen(true)
@@ -188,6 +192,7 @@ const ProductManagementPage = () => {
       price: editForm.price ? parseFloat(editForm.price) : undefined,
       discount: editForm.discount ? parseFloat(editForm.discount) : undefined,
       discountType: editForm.discountType as 'PERCENTAGE' | 'FLAT_RATE',
+      isVisibleWebsite: editForm.isVisibleWebsite,
       status: editForm.status as 'ACTIVE' | 'BLOCKED' | 'PENDING',
     })
 
@@ -212,6 +217,7 @@ const ProductManagementPage = () => {
       color: '',
       warrantyPeriod: '',
       freeInstallation: false,
+      isVisibleWebsite: true,
       price: '',
       discountType: 'PERCENTAGE',
       discount: '',
@@ -328,6 +334,7 @@ const ProductManagementPage = () => {
         discount: parseFloat(addForm.discount) || undefined,
         discountType: addForm.discountType as 'PERCENTAGE' | 'FLAT_RATE',
         warrantyPeriod: addForm.warrantyPeriod,
+        isVisibleWebsite: addForm.isVisibleWebsite,
         featuredImageUrl,
         images: imageUrls,
         status: 'PENDING',
@@ -770,6 +777,31 @@ const ProductManagementPage = () => {
                 </Select>
               </div>
             </div>
+            <div className="space-y-2">
+              <Label>Website Visibility</Label>
+              <div
+                onClick={() => setEditForm({ ...editForm, isVisibleWebsite: !editForm.isVisibleWebsite })}
+                className={`
+                  p-4 border-2 rounded-lg cursor-pointer transition-all
+                  ${editForm.isVisibleWebsite
+                    ? 'border-primary bg-primary/10 shadow-md'
+                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                  }
+                `}
+              >
+                <div className="flex items-center space-x-3">
+                  <Checkbox
+                    id="edit-isVisibleWebsite"
+                    checked={editForm.isVisibleWebsite}
+                    onCheckedChange={(checked) => setEditForm({ ...editForm, isVisibleWebsite: checked as boolean })}
+                  />
+                  <div>
+                    <div className="font-semibold">Visible on Website</div>
+                    <div className="text-sm text-muted-foreground">Show this product on the public website</div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
@@ -918,6 +950,31 @@ const ProductManagementPage = () => {
                       <div>
                         <div className="font-semibold">Free Installation</div>
                         <div className="text-sm text-muted-foreground">Professional installation included</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Website Visibility</Label>
+                  <div
+                    onClick={() => setAddForm({ ...addForm, isVisibleWebsite: !addForm.isVisibleWebsite })}
+                    className={`
+                      p-4 border-2 rounded-lg cursor-pointer transition-all
+                      ${addForm.isVisibleWebsite
+                        ? 'border-primary bg-primary/10 shadow-md'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      }
+                    `}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <Checkbox
+                        id="add-isVisibleWebsite"
+                        checked={addForm.isVisibleWebsite}
+                        onCheckedChange={(checked) => setAddForm({ ...addForm, isVisibleWebsite: checked as boolean })}
+                      />
+                      <div>
+                        <div className="font-semibold">Visible on Website</div>
+                        <div className="text-sm text-muted-foreground">Show this product on the public website</div>
                       </div>
                     </div>
                   </div>

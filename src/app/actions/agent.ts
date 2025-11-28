@@ -40,37 +40,76 @@ export async function getAgents() {
 
 export async function createAgent(data: {
   name: string
-  email: string
+  email?: string
   mobile: string
   shopId: number
+  areaCover?: string
   address?: {
-    street: string
-    city: string
+    locality: string
+    pincode: string
     state: string
-    zip: string
+    landmark?: string
+    apartmentNo?: string
+    phone: string
   }
 }) {
   try {
+    // Validate required fields
+    if (!data.name || !data.mobile) {
+      return { success: false, error: 'Name and mobile number are required' }
+    }
+
+    if (!data.shopId) {
+      return { success: false, error: 'Shop assignment is required' }
+    }
+
+    // Validate address if provided
+    if (data.address && (!data.address.locality || !data.address.pincode || !data.address.state)) {
+      return { success: false, error: 'Address requires locality, pincode, and state' }
+    }
+
+    // Verify shop exists
+    const shop = await prisma.shop.findUnique({
+      where: { id: data.shopId }
+    })
+
+    if (!shop) {
+      return { success: false, error: 'Selected shop not found' }
+    }
+
     // 1. Create User
     // For now, we'll set a default password. In a real app, we might send an invite email.
     const hashedPassword = await hash('password123', 10)
-    
+
+    // Generate unique email if not provided
+    const userEmail = data.email || `agent_${Date.now()}@temp.local`
+
+    // Check if email already exists before starting transaction
+    const existingUser = await prisma.user.findUnique({
+      where: { email: userEmail }
+    })
+
+    if (existingUser) {
+      return { success: false, error: 'Email already exists' }
+    }
+
     const result = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
           name: data.name,
-          email: data.email,
+          email: userEmail,
           password: hashedPassword,
           mobile: data.mobile,
           role: UserRole.AGENT,
           status: UserStatus.ACTIVE,
           addresses: {
             create: data.address ? [{
-              locality: data.address.street,
+              locality: data.address.locality,
               state: data.address.state,
-              pincode: data.address.zip,
-              // Mapping city to locality or just storing it loosely for now as schema has specific fields
-              // Schema: type, pincode, landmark, apartmentNo, state, country, locality, phone, altPhone
+              pincode: data.address.pincode,
+              landmark: data.address.landmark,
+              apartmentNo: data.address.apartmentNo,
+              phone: data.address.phone,
             }] : []
           }
         }
@@ -80,7 +119,8 @@ export async function createAgent(data: {
       const agent = await tx.agent.create({
         data: {
           userId: user.id,
-          shopId: data.shopId
+          shopId: data.shopId,
+          areaCover: data.areaCover,
         },
         include: {
           user: {
@@ -93,13 +133,25 @@ export async function createAgent(data: {
       })
 
       return agent
+    }, {
+      maxWait: 10000, // 10 seconds max wait time
+      timeout: 15000, // 15 seconds transaction timeout
     })
 
     revalidatePath('/admin/agent_details')
     return { success: true, data: result }
   } catch (error) {
     console.error('Failed to create agent:', error)
-    return { success: false, error: 'Failed to create agent' }
+
+    // Provide specific error messages
+    if (error instanceof Error) {
+      if (error.message.includes('Unique constraint') || error.message.includes('unique_email')) {
+        return { success: false, error: 'User with this email already exists' }
+      }
+      return { success: false, error: error.message }
+    }
+
+    return { success: false, error: 'Failed to create agent. Please try again.' }
   }
 }
 

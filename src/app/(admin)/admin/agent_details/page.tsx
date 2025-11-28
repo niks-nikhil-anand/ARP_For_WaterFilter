@@ -40,6 +40,7 @@ import {
 
 import { getUsersByRole, deleteUser, updateUser, createUser } from '@/actions/admin/users'
 import { createAgent } from '@/app/actions/agent'
+import { getShops } from '@/app/actions/shop'
 import { toast } from 'sonner'
 
 type AgentUser = {
@@ -71,6 +72,8 @@ const AgentUsersPage = () => {
   const [shops, setShops] = useState<Shop[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
+  const [shopsLoading, setShopsLoading] = useState(true)
+  const [addLoading, setAddLoading] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<AgentUser | null>(null)
@@ -87,6 +90,12 @@ const AgentUsersPage = () => {
     mobile: '',
     password: '',
     shopId: '',
+    areaCover: '',
+    locality: '',
+    pincode: '',
+    state: '',
+    landmark: '',
+    apartmentNo: '',
   })
 
   useEffect(() => {
@@ -95,22 +104,25 @@ const AgentUsersPage = () => {
   }, [])
 
   const loadShops = async () => {
+    setShopsLoading(true)
     try {
-      const response = await fetch('/api/shops')
-      if (response.ok) {
-        const data = await response.json()
-        // Handle different response structures
-        if (data.success && Array.isArray(data.data)) {
-          setShops(data.data)
-        } else if (Array.isArray(data)) {
-          setShops(data)
-        } else {
-          setShops([])
-        }
+      const result = await getShops()
+      console.log('Shops result:', result)
+
+      if (result.success && result.data) {
+        console.log('Setting shops:', result.data.length, 'shops')
+        setShops(result.data)
+      } else {
+        console.error('Failed to load shops:', result.error)
+        toast.error(result.error || 'Failed to load shops')
+        setShops([])
       }
     } catch (error) {
       console.error('Failed to load shops:', error)
+      toast.error('Failed to load shops')
       setShops([])
+    } finally {
+      setShopsLoading(false)
     }
   }
 
@@ -174,33 +186,68 @@ const AgentUsersPage = () => {
   }
 
   const handleAddAgent = async () => {
-    const shopId = addForm.shopId && addForm.shopId !== 'none' ? parseInt(addForm.shopId) : null
+    try {
+      setAddLoading(true)
 
-    if (!shopId) {
-      toast.error('Please select a shop')
-      return
-    }
+      // Validate required fields
+      if (!addForm.name || !addForm.mobile) {
+        toast.error('Name and mobile number are required')
+        return
+      }
 
-    const result = await createAgent({
-      name: addForm.name,
-      email: addForm.email,
-      mobile: addForm.mobile,
-      shopId: shopId,
-    })
+      if (!addForm.locality || !addForm.pincode || !addForm.state) {
+        toast.error('Address details (locality, pincode, state) are required')
+        return
+      }
 
-    if (result.success) {
-      loadAgentUsers()
-      setAddDialogOpen(false)
-      setAddForm({
-        name: '',
-        email: '',
-        mobile: '',
-        password: '',
-        shopId: '',
+      const shopId = addForm.shopId && addForm.shopId !== 'none' ? parseInt(addForm.shopId) : null
+
+      if (!shopId) {
+        toast.error('Please select a shop')
+        return
+      }
+
+      const result = await createAgent({
+        name: addForm.name,
+        email: addForm.email || undefined,
+        mobile: addForm.mobile,
+        shopId: shopId,
+        areaCover: addForm.areaCover || undefined,
+        address: {
+          locality: addForm.locality,
+          pincode: addForm.pincode,
+          state: addForm.state,
+          landmark: addForm.landmark || undefined,
+          apartmentNo: addForm.apartmentNo || undefined,
+          phone: addForm.mobile,
+        },
       })
-      toast.success('Agent created successfully')
-    } else {
-      toast.error(result.error || 'Failed to create agent')
+
+      if (result.success) {
+        await loadAgentUsers()
+        setAddDialogOpen(false)
+        setAddForm({
+          name: '',
+          email: '',
+          mobile: '',
+          password: '',
+          shopId: '',
+          areaCover: '',
+          locality: '',
+          pincode: '',
+          state: '',
+          landmark: '',
+          apartmentNo: '',
+        })
+        toast.success('Agent created successfully')
+      } else {
+        toast.error(result.error || 'Failed to create agent')
+      }
+    } catch (error) {
+      console.error('Error creating agent:', error)
+      toast.error('An unexpected error occurred')
+    } finally {
+      setAddLoading(false)
     }
   }
 
@@ -240,7 +287,7 @@ const AgentUsersPage = () => {
           {/* Header */}
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Agent Users</h1>
+              <h1 className="text-3xl font-bold tracking-tight">Agent(Technicians)</h1>
               <p className="text-muted-foreground mt-2">
                 Manage users with agent role
               </p>
@@ -364,7 +411,7 @@ const AgentUsersPage = () => {
 
       {/* Add Agent Dialog */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add New Agent</DialogTitle>
             <DialogDescription>
@@ -382,17 +429,17 @@ const AgentUsersPage = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="add-email">Email *</Label>
+              <Label htmlFor="add-email">Email</Label>
               <Input
                 id="add-email"
                 type="email"
                 value={addForm.email}
                 onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
-                placeholder="Enter email"
+                placeholder="Enter email (optional)"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="add-mobile">Mobile *</Label>
+              <Label htmlFor="add-mobile">Mobile Number *</Label>
               <Input
                 id="add-mobile"
                 value={addForm.mobile}
@@ -400,34 +447,112 @@ const AgentUsersPage = () => {
                 placeholder="Enter mobile number"
               />
             </div>
+
+            {/* Address Fields */}
+            <div className="border-t pt-4 mt-4">
+              <h4 className="font-semibold mb-3 text-sm">Address Details</h4>
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="add-locality">Locality *</Label>
+                  <Input
+                    id="add-locality"
+                    value={addForm.locality}
+                    onChange={(e) => setAddForm({ ...addForm, locality: e.target.value })}
+                    placeholder="Enter locality/area"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="add-pincode">Pincode *</Label>
+                    <Input
+                      id="add-pincode"
+                      value={addForm.pincode}
+                      onChange={(e) => setAddForm({ ...addForm, pincode: e.target.value })}
+                      placeholder="Enter pincode"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="add-state">State *</Label>
+                    <Input
+                      id="add-state"
+                      value={addForm.state}
+                      onChange={(e) => setAddForm({ ...addForm, state: e.target.value })}
+                      placeholder="Enter state"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="add-landmark">Landmark</Label>
+                    <Input
+                      id="add-landmark"
+                      value={addForm.landmark}
+                      onChange={(e) => setAddForm({ ...addForm, landmark: e.target.value })}
+                      placeholder="Enter landmark (optional)"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="add-apartment">Apartment No.</Label>
+                    <Input
+                      id="add-apartment"
+                      value={addForm.apartmentNo}
+                      onChange={(e) => setAddForm({ ...addForm, apartmentNo: e.target.value })}
+                      placeholder="Enter apartment no. (optional)"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="add-area-cover">Area Cover</Label>
+              <Input
+                id="add-area-cover"
+                value={addForm.areaCover}
+                onChange={(e) => setAddForm({ ...addForm, areaCover: e.target.value })}
+                placeholder="Enter area cover (e.g., North Zone, District 5)"
+              />
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="add-shop">Assign to Shop *</Label>
               <Select
                 value={addForm.shopId}
                 onValueChange={(value) => setAddForm({ ...addForm, shopId: value })}
+                disabled={shopsLoading}
               >
                 <SelectTrigger id="add-shop">
-                  <SelectValue placeholder="Select shop" />
+                  <SelectValue placeholder={shopsLoading ? "Loading shops..." : shops.length === 0 ? "No shops available" : "Select shop"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {shops.map((shop) => (
-                    <SelectItem key={shop.id} value={shop.id.toString()}>
-                      {shop.name}
-                    </SelectItem>
-                  ))}
+                  {shopsLoading ? (
+                    <div className="p-2 text-center text-sm text-muted-foreground">
+                      Loading shops...
+                    </div>
+                  ) : shops.length === 0 ? (
+                    <div className="p-2 text-center text-sm text-muted-foreground">
+                      No shops available
+                    </div>
+                  ) : (
+                    shops.map((shop) => (
+                      <SelectItem key={shop.id} value={shop.id.toString()}>
+                        {shop.name}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setAddDialogOpen(false)} disabled={addLoading}>
               Cancel
             </Button>
             <Button
               onClick={handleAddAgent}
-              disabled={!addForm.name || !addForm.email || !addForm.mobile || !addForm.shopId || addForm.shopId === 'none'}
+              disabled={addLoading || !addForm.name || !addForm.mobile || !addForm.locality || !addForm.pincode || !addForm.state || !addForm.shopId || addForm.shopId === 'none'}
             >
-              Add Agent
+              {addLoading ? 'Creating...' : 'Add Agent'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -492,17 +617,26 @@ const AgentUsersPage = () => {
               <Select
                 value={editForm.shopId}
                 onValueChange={(value) => setEditForm({ ...editForm, shopId: value })}
+                disabled={shopsLoading}
               >
                 <SelectTrigger id="edit-shop">
-                  <SelectValue placeholder="Select shop" />
+                  <SelectValue placeholder={shopsLoading ? "Loading shops..." : "Select shop"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">No Shop</SelectItem>
-                  {shops.map((shop) => (
-                    <SelectItem key={shop.id} value={shop.id.toString()}>
-                      {shop.name}
-                    </SelectItem>
-                  ))}
+                  {shopsLoading ? (
+                    <div className="p-2 text-center text-sm text-muted-foreground">
+                      Loading shops...
+                    </div>
+                  ) : (
+                    <>
+                      <SelectItem value="none">No Shop</SelectItem>
+                      {shops.map((shop) => (
+                        <SelectItem key={shop.id} value={shop.id.toString()}>
+                          {shop.name}
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
                 </SelectContent>
               </Select>
             </div>

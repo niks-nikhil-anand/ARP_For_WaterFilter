@@ -35,9 +35,11 @@ import {
   UserCheck,
   UserX,
   Pencil,
+  Plus,
 } from 'lucide-react'
 
-import { getUsersByRole, deleteUser, updateUser } from '@/actions/admin/users'
+import { getUsersByRole, deleteUser, updateUser, createUser } from '@/actions/admin/users'
+import { createAgent } from '@/app/actions/agent'
 import { toast } from 'sonner'
 
 type AgentUser = {
@@ -70,12 +72,20 @@ const AgentUsersPage = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<AgentUser | null>(null)
   const [editForm, setEditForm] = useState({
     name: '',
     email: '',
     mobile: '',
     status: '',
+    shopId: '',
+  })
+  const [addForm, setAddForm] = useState({
+    name: '',
+    email: '',
+    mobile: '',
+    password: '',
     shopId: '',
   })
 
@@ -163,6 +173,37 @@ const AgentUsersPage = () => {
     }
   }
 
+  const handleAddAgent = async () => {
+    const shopId = addForm.shopId && addForm.shopId !== 'none' ? parseInt(addForm.shopId) : null
+
+    if (!shopId) {
+      toast.error('Please select a shop')
+      return
+    }
+
+    const result = await createAgent({
+      name: addForm.name,
+      email: addForm.email,
+      mobile: addForm.mobile,
+      shopId: shopId,
+    })
+
+    if (result.success) {
+      loadAgentUsers()
+      setAddDialogOpen(false)
+      setAddForm({
+        name: '',
+        email: '',
+        mobile: '',
+        password: '',
+        shopId: '',
+      })
+      toast.success('Agent created successfully')
+    } else {
+      toast.error(result.error || 'Failed to create agent')
+    }
+  }
+
   // Filter users based on search term
   const filteredUsers = agentUsers.filter((user) =>
     user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -204,6 +245,10 @@ const AgentUsersPage = () => {
                 Manage users with agent role
               </p>
             </div>
+            <Button className="flex items-center gap-2" onClick={() => setAddDialogOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Add Agent
+            </Button>
           </div>
 
           {/* Stats Cards */}
@@ -316,6 +361,77 @@ const AgentUsersPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Add Agent Dialog */}
+      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Add New Agent</DialogTitle>
+            <DialogDescription>
+              Create a new agent account and assign to a shop
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="add-name">Name *</Label>
+              <Input
+                id="add-name"
+                value={addForm.name}
+                onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
+                placeholder="Enter agent name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-email">Email *</Label>
+              <Input
+                id="add-email"
+                type="email"
+                value={addForm.email}
+                onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
+                placeholder="Enter email"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-mobile">Mobile *</Label>
+              <Input
+                id="add-mobile"
+                value={addForm.mobile}
+                onChange={(e) => setAddForm({ ...addForm, mobile: e.target.value })}
+                placeholder="Enter mobile number"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-shop">Assign to Shop *</Label>
+              <Select
+                value={addForm.shopId}
+                onValueChange={(value) => setAddForm({ ...addForm, shopId: value })}
+              >
+                <SelectTrigger id="add-shop">
+                  <SelectValue placeholder="Select shop" />
+                </SelectTrigger>
+                <SelectContent>
+                  {shops.map((shop) => (
+                    <SelectItem key={shop.id} value={shop.id.toString()}>
+                      {shop.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddAgent}
+              disabled={!addForm.name || !addForm.email || !addForm.mobile || !addForm.shopId || addForm.shopId === 'none'}
+            >
+              Add Agent
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit User Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>

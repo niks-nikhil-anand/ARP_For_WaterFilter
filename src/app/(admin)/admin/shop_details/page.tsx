@@ -34,9 +34,10 @@ import {
   Store,
   Pencil,
   Eye,
+  Plus,
 } from 'lucide-react'
 
-import { getUsersByRole, deleteUser, updateUser } from '@/actions/admin/users'
+import { getUsersByRole, deleteUser, updateUser, createUser } from '@/actions/admin/users'
 import { getShops, createOrUpdateShop } from '@/app/actions/shop'
 import { createAddress, updateAddress } from '@/app/actions/address'
 import { toast } from 'sonner'
@@ -59,12 +60,32 @@ const ShopDetailsPage = () => {
   const [loading, setLoading] = useState(true)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
+  const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null)
   const [editForm, setEditForm] = useState({
     name: '',
     email: '',
     mobile: '',
     status: '',
+    shopName: '',
+    alternateMobile: '',
+    gstNumber: '',
+    panNumber: '',
+    address: {
+      apartmentNo: '',
+      locality: '',
+      state: '',
+      country: '',
+      pincode: '',
+      phone: '',
+    },
+  })
+  const [addForm, setAddForm] = useState({
+    name: '',
+    email: '',
+    mobile: '',
+    password: '',
+    role: 'ADMIN',
     shopName: '',
     alternateMobile: '',
     gstNumber: '',
@@ -86,22 +107,30 @@ const ShopDetailsPage = () => {
 
   const loadAdminUsers = async () => {
     setLoading(true)
-    const result = await getUsersByRole('ADMIN')
-    if (result.success && result.data) {
-      // Fetch shops for each admin user
+    // Load both ADMIN and SUPERADMIN users
+    const adminResult = await getUsersByRole('ADMIN')
+    const superAdminResult = await getUsersByRole('SUPERADMIN')
+
+    const allUsers = [
+      ...(adminResult.success && adminResult.data ? adminResult.data : []),
+      ...(superAdminResult.success && superAdminResult.data ? superAdminResult.data : [])
+    ]
+
+    if (allUsers.length > 0) {
+      // Fetch shops for each user
       const shopsResult = await getShops()
       if (shopsResult.success && shopsResult.data) {
-        const usersWithShops = result.data.map((user: any) => ({
+        const usersWithShops = allUsers.map((user: any) => ({
           ...user,
           shops: shopsResult.data.filter((shop: any) => shop.userId === user.id)
         }))
         setAdminUsers(usersWithShops)
       } else {
-        setAdminUsers(result.data)
+        setAdminUsers(allUsers)
       }
     } else {
-      console.error('Failed to load admin users')
-      toast.error('Failed to load admin users')
+      console.error('Failed to load shop users')
+      toast.error('Failed to load shop users')
     }
     setLoading(false)
   }
@@ -198,6 +227,72 @@ const ShopDetailsPage = () => {
     }
   }
 
+  const handleAddShop = async () => {
+    // Create user with ADMIN role
+    const userResult = await createUser({
+      name: addForm.name,
+      email: addForm.email,
+      mobile: addForm.mobile,
+      password: addForm.password,
+      role: 'ADMIN' as any,
+      status: 'ACTIVE' as any,
+    })
+
+    if (!userResult.success || !userResult.data) {
+      toast.error(userResult.error || 'Failed to create shop owner')
+      return
+    }
+
+    const userId = userResult.data.id
+
+    // Create shop for the new user
+    const shopResult = await createOrUpdateShop(userId, {
+      name: addForm.name,
+      shopName: addForm.shopName,
+      alternateMobile: addForm.alternateMobile,
+      gstNumber: addForm.gstNumber,
+      panNumber: addForm.panNumber,
+    })
+
+    // Create address if any field is filled
+    let addressResult = { success: true }
+    if (shopResult.success && shopResult.data &&
+        (addForm.address.apartmentNo || addForm.address.locality)) {
+      addressResult = await createAddress({
+        ...addForm.address,
+        shopId: shopResult.data.id,
+        userId: userId,
+      })
+    }
+
+    if (userResult.success && shopResult.success && addressResult.success) {
+      loadAdminUsers()
+      setAddDialogOpen(false)
+      setAddForm({
+        name: '',
+        email: '',
+        mobile: '',
+        password: '',
+        role: 'ADMIN',
+        shopName: '',
+        alternateMobile: '',
+        gstNumber: '',
+        panNumber: '',
+        address: {
+          apartmentNo: '',
+          locality: '',
+          state: '',
+          country: '',
+          pincode: '',
+          phone: '',
+        },
+      })
+      toast.success('Shop owner and shop created successfully')
+    } else {
+      toast.error('Failed to create shop')
+    }
+  }
+
   // Filter users based on search term
   const filteredUsers = adminUsers.filter((user) => {
     const shop = user.shops && user.shops[0]
@@ -227,9 +322,13 @@ const ShopDetailsPage = () => {
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Shop Details</h1>
               <p className="text-muted-foreground mt-2">
-                Manage shop owners and their shop information
+                Manage shop owners (Admin & Super Admin) and their shop information
               </p>
             </div>
+            <Button className="flex items-center gap-2" onClick={() => setAddDialogOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Add Shop
+            </Button>
           </div>
 
           {/* Stats Cards */}
@@ -237,7 +336,7 @@ const ShopDetailsPage = () => {
             <div className="border rounded-lg p-4">
               <div className="flex items-center gap-2 text-muted-foreground mb-2">
                 <Store className="h-4 w-4" />
-                <span className="text-sm font-medium">Total Shop Owners</span>
+                <span className="text-sm font-medium">Total Shops</span>
               </div>
               <p className="text-2xl font-bold">{adminUsers.length}</p>
             </div>
@@ -280,6 +379,7 @@ const ShopDetailsPage = () => {
                   <TableHead>ID</TableHead>
                   <TableHead>Owner Name</TableHead>
                   <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
                   <TableHead>Shop Name</TableHead>
                   <TableHead>GST Number</TableHead>
                   <TableHead>PAN Number</TableHead>
@@ -290,13 +390,13 @@ const ShopDetailsPage = () => {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-10">
+                    <TableCell colSpan={9} className="text-center py-10">
                       <p className="text-muted-foreground">Loading...</p>
                     </TableCell>
                   </TableRow>
                 ) : filteredUsers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-10">
+                    <TableCell colSpan={9} className="text-center py-10">
                       <div className="flex flex-col items-center gap-2">
                         <Store className="h-10 w-10 text-muted-foreground" />
                         <p className="text-muted-foreground">
@@ -313,6 +413,15 @@ const ShopDetailsPage = () => {
                         <TableCell className="font-medium">#{user.id}</TableCell>
                         <TableCell>{user.name || '-'}</TableCell>
                         <TableCell>{user.email}</TableCell>
+                        <TableCell>
+                          <Badge className={
+                            user.role === 'SUPERADMIN'
+                              ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300'
+                              : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
+                          }>
+                            {user.role}
+                          </Badge>
+                        </TableCell>
                         <TableCell>{shop?.shopName || '-'}</TableCell>
                         <TableCell>{shop?.gstNumber || '-'}</TableCell>
                         <TableCell>{shop?.panNumber || '-'}</TableCell>
@@ -486,6 +595,169 @@ const ShopDetailsPage = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setViewDialogOpen(false)}>
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Shop Dialog */}
+      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add New Shop</DialogTitle>
+            <DialogDescription>
+              Create a new shop owner account and shop
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="add-name">Owner Name *</Label>
+              <Input
+                id="add-name"
+                value={addForm.name}
+                onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
+                placeholder="Enter owner name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-email">Email *</Label>
+              <Input
+                id="add-email"
+                type="email"
+                value={addForm.email}
+                onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
+                placeholder="Enter email"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-mobile">Mobile Number</Label>
+              <Input
+                id="add-mobile"
+                value={addForm.mobile}
+                onChange={(e) => setAddForm({ ...addForm, mobile: e.target.value })}
+                placeholder="Enter mobile number"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-password">Password *</Label>
+              <Input
+                id="add-password"
+                type="password"
+                value={addForm.password}
+                onChange={(e) => setAddForm({ ...addForm, password: e.target.value })}
+                placeholder="Enter password"
+              />
+            </div>
+            <div className="border-t pt-4">
+              <h3 className="font-semibold mb-3">Shop Information</h3>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-shopName">Shop Name</Label>
+              <Input
+                id="add-shopName"
+                value={addForm.shopName}
+                onChange={(e) => setAddForm({ ...addForm, shopName: e.target.value })}
+                placeholder="Enter shop name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-alternateMobile">Alternate Mobile</Label>
+              <Input
+                id="add-alternateMobile"
+                value={addForm.alternateMobile}
+                onChange={(e) => setAddForm({ ...addForm, alternateMobile: e.target.value })}
+                placeholder="Enter alternate mobile number"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-gstNumber">GST Number</Label>
+              <Input
+                id="add-gstNumber"
+                value={addForm.gstNumber}
+                onChange={(e) => setAddForm({ ...addForm, gstNumber: e.target.value })}
+                placeholder="Enter GST number"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-panNumber">PAN Number</Label>
+              <Input
+                id="add-panNumber"
+                value={addForm.panNumber}
+                onChange={(e) => setAddForm({ ...addForm, panNumber: e.target.value })}
+                placeholder="Enter PAN number"
+              />
+            </div>
+            <div className="border-t pt-4">
+              <h3 className="font-semibold mb-3">Address Information</h3>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-apartmentNo">Apartment/Building No.</Label>
+              <Input
+                id="add-apartmentNo"
+                value={addForm.address.apartmentNo}
+                onChange={(e) => setAddForm({ ...addForm, address: { ...addForm.address, apartmentNo: e.target.value } })}
+                placeholder="Enter apartment/building number"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-locality">Locality/Area</Label>
+              <Input
+                id="add-locality"
+                value={addForm.address.locality}
+                onChange={(e) => setAddForm({ ...addForm, address: { ...addForm.address, locality: e.target.value } })}
+                placeholder="Enter locality or area"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="add-state">State</Label>
+                <Input
+                  id="add-state"
+                  value={addForm.address.state}
+                  onChange={(e) => setAddForm({ ...addForm, address: { ...addForm.address, state: e.target.value } })}
+                  placeholder="Enter state"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="add-country">Country</Label>
+                <Input
+                  id="add-country"
+                  value={addForm.address.country}
+                  onChange={(e) => setAddForm({ ...addForm, address: { ...addForm.address, country: e.target.value } })}
+                  placeholder="Enter country"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="add-pincode">Pincode</Label>
+                <Input
+                  id="add-pincode"
+                  value={addForm.address.pincode}
+                  onChange={(e) => setAddForm({ ...addForm, address: { ...addForm.address, pincode: e.target.value } })}
+                  placeholder="Enter pincode"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="add-phone">Phone</Label>
+                <Input
+                  id="add-phone"
+                  value={addForm.address.phone}
+                  onChange={(e) => setAddForm({ ...addForm, address: { ...addForm.address, phone: e.target.value } })}
+                  placeholder="Enter phone number"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddShop}
+              disabled={!addForm.name || !addForm.email || !addForm.password}
+            >
+              Add Shop
             </Button>
           </DialogFooter>
         </DialogContent>

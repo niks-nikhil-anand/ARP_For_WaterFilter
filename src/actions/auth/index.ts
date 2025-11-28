@@ -46,7 +46,7 @@ export async function signup(userData: {
     // Determine role - default to USER if not provided
     const userRole = userData.role || UserRole.USER;
 
-    // Create user and Shop in a transaction if role is ADMIN
+    // Create user and Shop in a transaction if role is ADMIN or SUPERADMIN
     const result = await prisma.$transaction(async (tx) => {
       // Create user with PENDING status (requires admin approval)
       const user = await tx.user.create({
@@ -70,8 +70,8 @@ export async function signup(userData: {
         },
       });
 
-      // If role is ADMIN, create a Shop record
-      if (userRole === UserRole.ADMIN) {
+      // If role is ADMIN or SUPERADMIN, create a Shop record
+      if (userRole === UserRole.ADMIN || userRole === UserRole.SUPERADMIN) {
         await tx.shop.create({
           data: {
             name: userData.name, // Use user's name as default shop name

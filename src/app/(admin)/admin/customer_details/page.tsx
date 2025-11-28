@@ -117,15 +117,11 @@ const RoleManagementPage = () => {
     email: string
     mobile: string
     password: string
-    role: UserRole
-    status: UserStatus
   }>({
     name: '',
     email: '',
     mobile: '',
     password: '',
-    role: UserRole.USER,
-    status: UserStatus.ACTIVE,
   })
 
   // Filtering and sorting logic
@@ -255,8 +251,8 @@ const RoleManagementPage = () => {
       email: addForm.email,
       mobile: addForm.mobile,
       password: addForm.password,
-      role: addForm.role,
-      status: addForm.status,
+      role: UserRole.USER,
+      status: UserStatus.ACTIVE,
     })
 
     if (result.success && result.data) {
@@ -267,8 +263,6 @@ const RoleManagementPage = () => {
         email: '',
         mobile: '',
         password: '',
-        role: UserRole.USER,
-        status: UserStatus.ACTIVE,
       })
       // toast.success('User added successfully')
     } else {
@@ -370,7 +364,7 @@ const RoleManagementPage = () => {
           </div>
           <Button className="flex items-center gap-2" onClick={() => setAddUserDialogOpen(true)}>
             <Plus className="h-4 w-4" />
-            Add User
+            Add Customer
           </Button>
         </div>
 
@@ -658,8 +652,8 @@ const RoleManagementPage = () => {
       <Dialog open={addUserDialogOpen} onOpenChange={setAddUserDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Add New User</DialogTitle>
-            <DialogDescription>Create a new user account with role and status</DialogDescription>
+            <DialogTitle>Add New Customer</DialogTitle>
+            <DialogDescription>Create a new customer account</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -699,44 +693,6 @@ const RoleManagementPage = () => {
                 onChange={(e) => setAddForm({ ...addForm, password: e.target.value })}
                 placeholder="Enter password"
               />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="add-role">Role *</Label>
-                <Select
-                  value={addForm.role}
-                  onValueChange={(value) => setAddForm({ ...addForm, role: value as UserRole })}
-                >
-                  <SelectTrigger id="add-role">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.values(UserRole).map((role) => (
-                      <SelectItem key={role} value={role}>
-                        {role}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="add-status">Status *</Label>
-                <Select
-                  value={addForm.status}
-                  onValueChange={(value) => setAddForm({ ...addForm, status: value as UserStatus })}
-                >
-                  <SelectTrigger id="add-status">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.values(UserStatus).map((status) => (
-                      <SelectItem key={status} value={status}>
-                        {status}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
           </div>
           <DialogFooter>

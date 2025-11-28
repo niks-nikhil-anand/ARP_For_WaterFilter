@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
-import { Plus, Wrench, Eye, Package, FileText } from 'lucide-react'
+import { Plus, Wrench, Eye } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   getServiceEvents,
@@ -17,8 +17,6 @@ import {
   getProducts,
   getCustomers,
   getAgents,
-  getAMCContracts,
-  getAllAMCs
 } from '@/actions/admin/serviceEvents'
 
 type ServiceEvent = {
@@ -39,30 +37,20 @@ type ServiceEvent = {
       name: string
     }
   } | null
-  amcContract?: {
-    id: number
-    name: string
-    duration: string
-    price: number
-    status: string
-  } | null
   description?: string | null
   remarks?: string | null
   parts?: string | null
   feedback?: string | null
   pricePaid?: number | null
-  startDate?: Date | null
-  endDate?: Date | null
   createdAt: Date
   updatedAt: Date
 }
 
-const AMCRepairsPage = () => {
+const RepairsPage = () => {
   const [events, setEvents] = useState<ServiceEvent[]>([])
   const [products, setProducts] = useState<{id: number, productName: string | null}[]>([])
   const [customers, setCustomers] = useState<{id: number, name: string, email: string}[]>([])
   const [agents, setAgents] = useState<{id: number, user: {name: string}}[]>([])
-  const [amcContracts, setAmcContracts] = useState<{id: number, name: string, duration: string, price: number, status: string}[]>([])
   const [loading, setLoading] = useState(true)
   const [isCreating, setIsCreating] = useState(false)
 
@@ -71,17 +59,14 @@ const AMCRepairsPage = () => {
   const [selectedEvent, setSelectedEvent] = useState<ServiceEvent | null>(null)
 
   const [addForm, setAddForm] = useState({
-    type: 'AMC' as 'AMC',
+    type: 'REPAIR' as 'REPAIR',
     productId: '',
     customerId: '',
     agentId: '',
-    amcContractId: '',
     description: '',
     remarks: '',
     parts: '',
     pricePaid: '',
-    startDate: '',
-    endDate: '',
   })
 
   useEffect(() => {
@@ -90,58 +75,25 @@ const AMCRepairsPage = () => {
 
   const loadData = async () => {
     setLoading(true)
-    const [eventsRes, amcsRes, productsRes, customersRes, agentsRes, contractsRes] = await Promise.all([
+    const [eventsRes, productsRes, customersRes, agentsRes] = await Promise.all([
       getServiceEvents(),
-      getAllAMCs(),
       getProducts(),
       getCustomers(),
       getAgents(),
-      getAMCContracts()
     ])
 
-    let allEvents: ServiceEvent[] = []
-
     if (eventsRes.success && eventsRes.data) {
-      allEvents = [...eventsRes.data] as ServiceEvent[]
+      // Filter only REPAIR type events
+      const repairEvents = eventsRes.data.filter(e => e.type === 'REPAIR')
+      // Sort by createdAt desc
+      repairEvents.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      setEvents(repairEvents as ServiceEvent[])
     }
 
-    if (amcsRes.success && amcsRes.data) {
-      const mappedAMCs = amcsRes.data.map((amc: any) => ({
-        id: amc.id,
-        type: 'AMC_CONTRACT' as const,
-        product: {
-          id: amc.product.id,
-          productName: amc.product.productName
-        },
-        customer: {
-          id: amc.order.id, // Using order ID as proxy since we don't have direct customer ID here easily without more queries
-          name: amc.order.customerName,
-          email: amc.order.customerEmail
-        },
-        assignedTo: null,
-        amcContract: null,
-        description: `AMC Contract (${amc.durationMonths} months)`,
-        remarks: null,
-        parts: null,
-        feedback: null,
-        pricePaid: amc.amountPaid,
-        startDate: amc.startDate,
-        endDate: amc.endDate,
-        createdAt: amc.createdAt,
-        updatedAt: amc.updatedAt
-      }))
-      allEvents = [...allEvents, ...mappedAMCs]
-    }
-
-    // Sort by createdAt desc
-    allEvents.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-
-    setEvents(allEvents)
     if (productsRes.success && productsRes.data) setProducts(productsRes.data)
     if (customersRes.success && customersRes.data) setCustomers(customersRes.data)
     if (agentsRes.success && agentsRes.data) setAgents(agentsRes.data)
-    if (contractsRes.success && contractsRes.data) setAmcContracts(contractsRes.data)
-    
+
     setLoading(false)
   }
 
@@ -157,35 +109,29 @@ const AMCRepairsPage = () => {
       productId: parseInt(addForm.productId),
       customerId: addForm.customerId ? parseInt(addForm.customerId) : undefined,
       agentId: addForm.agentId ? parseInt(addForm.agentId) : undefined,
-      amcContractId: addForm.amcContractId ? parseInt(addForm.amcContractId) : undefined,
       description: addForm.description || undefined,
       remarks: addForm.remarks || undefined,
       parts: addForm.parts || undefined,
       pricePaid: addForm.pricePaid ? parseFloat(addForm.pricePaid) : undefined,
-      startDate: addForm.startDate ? new Date(addForm.startDate) : undefined,
-      endDate: addForm.endDate ? new Date(addForm.endDate) : undefined,
     })
     setIsCreating(false)
 
     if (result.success) {
-      toast.success(`${addForm.type} created successfully`)
+      toast.success('Repair created successfully')
       setAddDialogOpen(false)
       setAddForm({
-        type: 'AMC',
+        type: 'REPAIR',
         productId: '',
         customerId: '',
         agentId: '',
-        amcContractId: '',
         description: '',
         remarks: '',
         parts: '',
         pricePaid: '',
-        startDate: '',
-        endDate: '',
       })
       loadData()
     } else {
-      toast.error(result.error || 'Failed to create event')
+      toast.error(result.error || 'Failed to create repair')
     }
   }
 
@@ -207,18 +153,6 @@ const AMCRepairsPage = () => {
     }).format(amount)
   }
 
-  const getTypeBadge = (type: string) => {
-    const variants: Record<string, string> = {
-      REPAIR: 'bg-orange-100 text-orange-800',
-      AMC: 'bg-blue-100 text-blue-800',
-      WARRANTY: 'bg-green-100 text-green-800',
-      AMC_CONTRACT: 'bg-purple-100 text-purple-800',
-    }
-    return <Badge className={variants[type] || 'bg-gray-100'}>{type.replace('_', ' ')}</Badge>
-  }
-
-  const amcEvents = events.filter(e => e.type === 'AMC' || e.type === 'AMC_CONTRACT')
-
   return (
     <div className="h-[90vh] max-h-[92vh] overflow-y-auto">
       <div className="container mx-auto py-10 px-4 pb-20">
@@ -226,42 +160,33 @@ const AMCRepairsPage = () => {
           {/* Header */}
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">AMC Management</h1>
+              <h1 className="text-3xl font-bold tracking-tight">Repairs Management</h1>
               <p className="text-muted-foreground mt-2">
-                Track and manage AMC contracts and visits
+                Track and manage repair service records
               </p>
             </div>
             <Button onClick={() => setAddDialogOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
-              Add AMC Visit
+              Add Repair
             </Button>
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="border rounded-lg p-4">
               <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                <FileText className="h-4 w-4" />
-                <span className="text-sm font-medium">Total AMC Records</span>
+                <Wrench className="h-4 w-4" />
+                <span className="text-sm font-medium">Total Repairs</span>
               </div>
-              <p className="text-2xl font-bold">{amcEvents.length}</p>
+              <p className="text-2xl font-bold">{events.length}</p>
             </div>
-            <div className="border rounded-lg p-4 border-blue-200 bg-blue-50 dark:bg-blue-950/20">
-              <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400 mb-2">
-                <FileText className="h-4 w-4" />
-                <span className="text-sm font-medium">AMC Visits</span>
+            <div className="border rounded-lg p-4 border-orange-200 bg-orange-50 dark:bg-orange-950/20">
+              <div className="flex items-center gap-2 text-orange-700 dark:text-orange-400 mb-2">
+                <Wrench className="h-4 w-4" />
+                <span className="text-sm font-medium">Total Revenue</span>
               </div>
-              <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">
-                {amcEvents.filter(e => e.type === 'AMC').length}
-              </p>
-            </div>
-            <div className="border rounded-lg p-4 border-purple-200 bg-purple-50 dark:bg-purple-950/20">
-              <div className="flex items-center gap-2 text-purple-700 dark:text-purple-400 mb-2">
-                <Package className="h-4 w-4" />
-                <span className="text-sm font-medium">AMC Contracts</span>
-              </div>
-              <p className="text-2xl font-bold text-purple-700 dark:text-purple-400">
-                {amcEvents.filter(e => e.type === 'AMC_CONTRACT').length}
+              <p className="text-2xl font-bold text-orange-700 dark:text-orange-400">
+                {formatCurrency(events.reduce((sum, e) => sum + (e.pricePaid || 0), 0))}
               </p>
             </div>
           </div>
@@ -272,11 +197,11 @@ const AMCRepairsPage = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>ID</TableHead>
-                  <TableHead>Type</TableHead>
                   <TableHead>Product</TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead>Technician</TableHead>
                   <TableHead>Description</TableHead>
+                  <TableHead>Price Paid</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -293,19 +218,19 @@ const AMCRepairsPage = () => {
                     <TableCell colSpan={8} className="text-center py-10">
                       <div className="flex flex-col items-center gap-2">
                         <Wrench className="h-10 w-10 text-muted-foreground" />
-                        <p className="text-muted-foreground">No records found</p>
+                        <p className="text-muted-foreground">No repairs found</p>
                       </div>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  amcEvents.map((event) => (
-                    <TableRow key={`${event.type}-${event.id}`}>
+                  events.map((event) => (
+                    <TableRow key={event.id}>
                       <TableCell className="font-medium">#{event.id}</TableCell>
-                      <TableCell>{getTypeBadge(event.type)}</TableCell>
                       <TableCell>{event.product.productName || 'Unknown Product'}</TableCell>
                       <TableCell>{event.customer?.name || 'N/A'}</TableCell>
                       <TableCell>{event.assignedTo?.user.name || 'N/A'}</TableCell>
                       <TableCell className="max-w-xs truncate">{event.description || 'N/A'}</TableCell>
+                      <TableCell>{formatCurrency(event.pricePaid)}</TableCell>
                       <TableCell>{formatDate(event.createdAt)}</TableCell>
                       <TableCell className="text-right">
                         <Button
@@ -332,9 +257,9 @@ const AMCRepairsPage = () => {
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add AMC Visit</DialogTitle>
+            <DialogTitle>Add Repair</DialogTitle>
             <DialogDescription>
-              Create a new AMC visit record
+              Create a new repair service record
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -402,54 +327,12 @@ const AMCRepairsPage = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="amcContract">AMC Contract</Label>
-              <Select
-                value={addForm.amcContractId}
-                onValueChange={(value) => setAddForm({ ...addForm, amcContractId: value })}
-                disabled={isCreating}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select AMC contract" />
-                </SelectTrigger>
-                <SelectContent>
-                  {amcContracts.map((contract) => (
-                    <SelectItem key={contract.id} value={contract.id.toString()}>
-                      {contract.name} - {contract.duration}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="startDate">Start Date</Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={addForm.startDate}
-                  onChange={(e) => setAddForm({ ...addForm, startDate: e.target.value })}
-                  disabled={isCreating}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="endDate">End Date</Label>
-                <Input
-                  id="endDate"
-                  type="date"
-                  value={addForm.endDate}
-                  onChange={(e) => setAddForm({ ...addForm, endDate: e.target.value })}
-                  disabled={isCreating}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
                 value={addForm.description}
                 onChange={(e) => setAddForm({ ...addForm, description: e.target.value })}
-                placeholder="Describe the issue or service..."
+                placeholder="Describe the repair issue..."
                 disabled={isCreating}
               />
             </div>
@@ -494,7 +377,7 @@ const AMCRepairsPage = () => {
               Cancel
             </Button>
             <Button onClick={handleAddEvent} disabled={isCreating}>
-              {isCreating ? 'Creating...' : 'Create Event'}
+              {isCreating ? 'Creating...' : 'Create Repair'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -504,15 +387,11 @@ const AMCRepairsPage = () => {
       <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Service Event Details</DialogTitle>
+            <DialogTitle>Repair Details</DialogTitle>
           </DialogHeader>
           {selectedEvent && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground">Type</Label>
-                  <p>{getTypeBadge(selectedEvent.type)}</p>
-                </div>
                 <div>
                   <Label className="text-muted-foreground">Product</Label>
                   <p>{selectedEvent.product.productName}</p>
@@ -568,4 +447,4 @@ const AMCRepairsPage = () => {
   )
 }
 
-export default AMCRepairsPage
+export default RepairsPage

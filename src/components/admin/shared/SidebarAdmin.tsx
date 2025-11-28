@@ -16,6 +16,7 @@ import {
   LogOut,
   Bell,
   Ticket,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -60,9 +61,14 @@ const SidebarAdmin: React.FC<SidebarAdminProps> = ({ className }) => {
           href: "/admin/warranty_details",
         },
         {
-          icon: Wrench,
-          label: "AMC & Repairs",
+          icon: FileText,
+          label: "AMC",
           href: "/admin/amc_repairs",
+        },
+        {
+          icon: Wrench,
+          label: "Repairs",
+          href: "/admin/repairs",
         },
       ],
     },

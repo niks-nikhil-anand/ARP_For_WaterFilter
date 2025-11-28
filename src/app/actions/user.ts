@@ -5,11 +5,18 @@ import { UserRole, UserStatus, Prisma } from '@/generated/prisma'
 import { revalidatePath } from 'next/cache'
 import { hashPassword } from '@/lib/password'
 
-export type User = Prisma.UserGetPayload<{}>
+export type User = Prisma.UserGetPayload<{
+  include: {
+    addresses: true
+  }
+}>
 
 export async function getUsers() {
   try {
     const users = await prisma.user.findMany({
+      include: {
+        addresses: true,
+      },
       orderBy: {
         createdAt: 'desc',
       },
@@ -73,6 +80,9 @@ export async function createUser(data: {
           },
         }),
       },
+      include: {
+        addresses: true,
+      },
     })
     revalidatePath('/admin/user_details')
     revalidatePath('/admin/customer_details')
@@ -97,8 +107,12 @@ export async function updateUser(
     const user = await prisma.user.update({
       where: { id },
       data,
+      include: {
+        addresses: true,
+      },
     })
     revalidatePath('/admin/user_details')
+    revalidatePath('/admin/customer_details')
     return { success: true, data: user }
   } catch (error) {
     console.error('Failed to update user:', error)

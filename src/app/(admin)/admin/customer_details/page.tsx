@@ -59,6 +59,8 @@ import {
   Calendar,
   Crown,
   Settings,
+  MapPin,
+  Loader2,
 } from 'lucide-react'
 import { getUsers, createUser, updateUser, deleteUser } from '@/app/actions/user'
 import { UserRole, UserStatus } from '@/generated/prisma'
@@ -74,6 +76,7 @@ const RoleManagementPage = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(8)
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false)
+  const [isAddingUser, setIsAddingUser] = useState(false)
 
   useEffect(() => {
     loadUsers()
@@ -134,7 +137,7 @@ const RoleManagementPage = () => {
     landmark: '',
     apartmentNo: '',
     state: '',
-    country: '',
+    country: 'India',
     locality: '',
   })
 
@@ -260,44 +263,49 @@ const RoleManagementPage = () => {
   }
 
   const handleAddUser = async () => {
-    const result = await createUser({
-      name: addForm.name,
-      ...(addForm.email && { email: addForm.email }),
-      mobile: addForm.mobile,
-      role: UserRole.USER,
-      status: addForm.status,
-      address: {
-        ...(addForm.type && { type: addForm.type }),
-        pincode: addForm.pincode,
-        ...(addForm.landmark && { landmark: addForm.landmark }),
-        ...(addForm.apartmentNo && { apartmentNo: addForm.apartmentNo }),
-        ...(addForm.state && { state: addForm.state }),
-        ...(addForm.country && { country: addForm.country }),
-        locality: addForm.locality,
-        phone: addForm.mobile, // Use mobile as phone
-      },
-    })
-
-    if (result.success && result.data) {
-      setUsers([result.data, ...users])
-      setAddUserDialogOpen(false)
-      setAddForm({
-        name: '',
-        email: '',
-        mobile: '',
-        status: UserStatus.ACTIVE,
-        type: '',
-        pincode: '',
-        landmark: '',
-        apartmentNo: '',
-        state: '',
-        country: '',
-        locality: '',
+    setIsAddingUser(true)
+    try {
+      const result = await createUser({
+        name: addForm.name,
+        ...(addForm.email && { email: addForm.email }),
+        mobile: addForm.mobile,
+        role: UserRole.USER,
+        status: addForm.status,
+        address: {
+          ...(addForm.type && { type: addForm.type }),
+          pincode: addForm.pincode,
+          ...(addForm.landmark && { landmark: addForm.landmark }),
+          ...(addForm.apartmentNo && { apartmentNo: addForm.apartmentNo }),
+          ...(addForm.state && { state: addForm.state }),
+          ...(addForm.country && { country: addForm.country }),
+          locality: addForm.locality,
+          phone: addForm.mobile, // Use mobile as phone
+        },
       })
-      // toast.success('User added successfully')
-    } else {
-      // toast.error('Failed to add user')
-      console.error('Failed to add user:', result.error)
+
+      if (result.success && result.data) {
+        setUsers([result.data, ...users])
+        setAddUserDialogOpen(false)
+        setAddForm({
+          name: '',
+          email: '',
+          mobile: '',
+          status: UserStatus.ACTIVE,
+          type: '',
+          pincode: '',
+          landmark: '',
+          apartmentNo: '',
+          state: '',
+          country: 'India',
+          locality: '',
+        })
+        // toast.success('User added successfully')
+      } else {
+        // toast.error('Failed to add user')
+        console.error('Failed to add user:', result.error)
+      }
+    } finally {
+      setIsAddingUser(false)
     }
   }
 
@@ -509,20 +517,11 @@ const RoleManagementPage = () => {
                   onClick={() => handleSort('name')}
                 >
                   <div className="flex items-center">
-                    User
+                    Name
                     {getSortIcon('name')}
                   </div>
                 </TableHead>
                 <TableHead>Contact</TableHead>
-                <TableHead
-                  className="cursor-pointer select-none text-center"
-                  onClick={() => handleSort('role')}
-                >
-                  <div className="flex items-center justify-center">
-                    Role
-                    {getSortIcon('role')}
-                  </div>
-                </TableHead>
                 <TableHead
                   className="cursor-pointer select-none text-center"
                   onClick={() => handleSort('status')}
@@ -541,6 +540,7 @@ const RoleManagementPage = () => {
                     {getSortIcon('createdAt')}
                   </div>
                 </TableHead>
+                <TableHead>Address</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -555,70 +555,89 @@ const RoleManagementPage = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                currentUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">#{user.id}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <UserIcon className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          <div className="font-medium">{user.name}</div>
+                currentUsers.map((user) => {
+                  const primaryAddress = user.addresses?.[0]
+                  return (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-medium">#{user.id}</TableCell>
+                      <TableCell>
+                        <div className="font-medium">{user.name}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          {user.mobile && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <Phone className="h-3 w-3 text-muted-foreground" />
+                              <span>{user.mobile}</span>
+                            </div>
+                          )}
+                          {user.email && (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Mail className="h-3 w-3" />
+                              <span className="truncate max-w-[150px]">{user.email}</span>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 text-sm">
-                          <Mail className="h-3 w-3 text-muted-foreground" />
-                          <span>{user.email}</span>
+                      </TableCell>
+                      <TableCell className="text-center">{getStatusBadge(user.status)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-sm">{formatDate(user.createdAt)}</span>
                         </div>
-                        {user.mobile && (
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Phone className="h-3 w-3" />
-                            <span>{user.mobile}</span>
+                      </TableCell>
+                      <TableCell>
+                        {primaryAddress ? (
+                          <div className="flex items-start gap-2 max-w-[250px]">
+                            <MapPin className="h-3 w-3 text-muted-foreground mt-0.5 flex-shrink-0" />
+                            <div className="text-sm text-muted-foreground">
+                              <div className="line-clamp-2">
+                                {primaryAddress.apartmentNo && `${primaryAddress.apartmentNo}, `}
+                                {primaryAddress.locality}
+                                {primaryAddress.landmark && `, ${primaryAddress.landmark}`}
+                              </div>
+                              <div className="text-xs">
+                                {primaryAddress.pincode}
+                                {primaryAddress.state && ` - ${primaryAddress.state}`}
+                              </div>
+                            </div>
                           </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground italic">No address</span>
                         )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">{getRoleBadge(user.role)}</TableCell>
-                    <TableCell className="text-center">{getStatusBadge(user.status)}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-sm">{formatDate(user.createdAt)}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleView(user)}
-                          title="View details"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(user)}
-                          title="Edit user"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(user)}
-                          title="Delete user"
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleView(user)}
+                            title="View details"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(user)}
+                            title="Edit user"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(user)}
+                            title="Delete user"
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
               )}
             </TableBody>
           </Table>
@@ -698,6 +717,7 @@ const RoleManagementPage = () => {
                     onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
                     placeholder="Enter full name"
                     required
+                    disabled={isAddingUser}
                   />
                 </div>
                 <div className="space-y-2">
@@ -708,6 +728,7 @@ const RoleManagementPage = () => {
                     onChange={(e) => setAddForm({ ...addForm, mobile: e.target.value })}
                     placeholder="+91 98765 43210"
                     required
+                    disabled={isAddingUser}
                   />
                 </div>
                 <div className="space-y-2 md:col-span-2">
@@ -718,6 +739,7 @@ const RoleManagementPage = () => {
                     value={addForm.email}
                     onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
                     placeholder="user@email.com"
+                    disabled={isAddingUser}
                   />
                 </div>
                 <div className="space-y-2">
@@ -725,6 +747,7 @@ const RoleManagementPage = () => {
                   <Select
                     value={addForm.status}
                     onValueChange={(value) => setAddForm({ ...addForm, status: value as UserStatus })}
+                    disabled={isAddingUser}
                   >
                     <SelectTrigger id="add-status">
                       <SelectValue />
@@ -752,6 +775,7 @@ const RoleManagementPage = () => {
                     value={addForm.type}
                     onChange={(e) => setAddForm({ ...addForm, type: e.target.value })}
                     placeholder="Home, Office, etc."
+                    disabled={isAddingUser}
                   />
                 </div>
                 <div className="space-y-2">
@@ -762,6 +786,7 @@ const RoleManagementPage = () => {
                     onChange={(e) => setAddForm({ ...addForm, pincode: e.target.value })}
                     placeholder="Enter pincode"
                     required
+                    disabled={isAddingUser}
                   />
                 </div>
                 <div className="space-y-2 md:col-span-2">
@@ -772,6 +797,7 @@ const RoleManagementPage = () => {
                     onChange={(e) => setAddForm({ ...addForm, locality: e.target.value })}
                     placeholder="Enter locality/area"
                     required
+                    disabled={isAddingUser}
                   />
                 </div>
                 <div className="space-y-2">
@@ -781,6 +807,7 @@ const RoleManagementPage = () => {
                     value={addForm.apartmentNo}
                     onChange={(e) => setAddForm({ ...addForm, apartmentNo: e.target.value })}
                     placeholder="Flat/House number"
+                    disabled={isAddingUser}
                   />
                 </div>
                 <div className="space-y-2">
@@ -790,6 +817,7 @@ const RoleManagementPage = () => {
                     value={addForm.landmark}
                     onChange={(e) => setAddForm({ ...addForm, landmark: e.target.value })}
                     placeholder="Nearby landmark"
+                    disabled={isAddingUser}
                   />
                 </div>
                 <div className="space-y-2">
@@ -799,29 +827,42 @@ const RoleManagementPage = () => {
                     value={addForm.state}
                     onChange={(e) => setAddForm({ ...addForm, state: e.target.value })}
                     placeholder="Enter state"
+                    disabled={isAddingUser}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="add-country">Country (Optional)</Label>
+                  <Label htmlFor="add-country">Country</Label>
                   <Input
                     id="add-country"
                     value={addForm.country}
                     onChange={(e) => setAddForm({ ...addForm, country: e.target.value })}
                     placeholder="Enter country"
+                    disabled={isAddingUser}
                   />
                 </div>
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddUserDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setAddUserDialogOpen(false)}
+              disabled={isAddingUser}
+            >
               Cancel
             </Button>
             <Button
               onClick={handleAddUser}
-              disabled={!addForm.name || !addForm.mobile || !addForm.pincode || !addForm.locality}
+              disabled={!addForm.name || !addForm.mobile || !addForm.pincode || !addForm.locality || isAddingUser}
             >
-              Add Customer
+              {isAddingUser ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Adding Customer...
+                </>
+              ) : (
+                'Add Customer'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

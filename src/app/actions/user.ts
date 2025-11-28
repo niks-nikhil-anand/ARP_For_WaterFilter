@@ -23,29 +23,59 @@ export async function getUsers() {
 
 export async function createUser(data: {
   name: string
-  email: string
-  mobile?: string
+  email?: string
+  mobile: string
   role: UserRole
   status: UserStatus
   password?: string
+  address?: {
+    type?: string
+    pincode: string
+    landmark?: string
+    apartmentNo?: string
+    state?: string
+    country?: string
+    locality: string
+    phone: string
+    altPhone?: string
+  }
 }) {
   try {
+    // Generate a unique email if not provided
+    const email = data.email || `customer_${Date.now()}@temp.com`
+
     // Hash the password before storing
-    const hashedPassword = data.password 
+    const hashedPassword = data.password
       ? await hashPassword(data.password)
       : await hashPassword('defaultPassword123') // Default password if not provided
-    
+
     const user = await prisma.user.create({
       data: {
         name: data.name,
-        email: data.email,
+        email: email,
         mobile: data.mobile,
         role: data.role,
         status: data.status,
         password: hashedPassword,
+        ...(data.address && {
+          addresses: {
+            create: {
+              type: data.address.type,
+              pincode: data.address.pincode,
+              landmark: data.address.landmark,
+              apartmentNo: data.address.apartmentNo,
+              state: data.address.state,
+              country: data.address.country,
+              locality: data.address.locality,
+              phone: data.address.phone,
+              altPhone: data.address.altPhone,
+            },
+          },
+        }),
       },
     })
     revalidatePath('/admin/user_details')
+    revalidatePath('/admin/customer_details')
     return { success: true, data: user }
   } catch (error: any) {
     console.error('Failed to create user:', error)

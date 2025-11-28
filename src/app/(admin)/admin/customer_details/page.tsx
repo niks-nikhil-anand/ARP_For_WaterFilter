@@ -116,12 +116,26 @@ const RoleManagementPage = () => {
     name: string
     email: string
     mobile: string
-    password: string
+    status: UserStatus
+    type: string
+    pincode: string
+    landmark: string
+    apartmentNo: string
+    state: string
+    country: string
+    locality: string
   }>({
     name: '',
     email: '',
     mobile: '',
-    password: '',
+    status: UserStatus.ACTIVE,
+    type: '',
+    pincode: '',
+    landmark: '',
+    apartmentNo: '',
+    state: '',
+    country: '',
+    locality: '',
   })
 
   // Filtering and sorting logic
@@ -248,11 +262,20 @@ const RoleManagementPage = () => {
   const handleAddUser = async () => {
     const result = await createUser({
       name: addForm.name,
-      email: addForm.email,
+      ...(addForm.email && { email: addForm.email }),
       mobile: addForm.mobile,
-      password: addForm.password,
       role: UserRole.USER,
-      status: UserStatus.ACTIVE,
+      status: addForm.status,
+      address: {
+        ...(addForm.type && { type: addForm.type }),
+        pincode: addForm.pincode,
+        ...(addForm.landmark && { landmark: addForm.landmark }),
+        ...(addForm.apartmentNo && { apartmentNo: addForm.apartmentNo }),
+        ...(addForm.state && { state: addForm.state }),
+        ...(addForm.country && { country: addForm.country }),
+        locality: addForm.locality,
+        phone: addForm.mobile, // Use mobile as phone
+      },
     })
 
     if (result.success && result.data) {
@@ -262,12 +285,19 @@ const RoleManagementPage = () => {
         name: '',
         email: '',
         mobile: '',
-        password: '',
+        status: UserStatus.ACTIVE,
+        type: '',
+        pincode: '',
+        landmark: '',
+        apartmentNo: '',
+        state: '',
+        country: '',
+        locality: '',
       })
       // toast.success('User added successfully')
     } else {
       // toast.error('Failed to add user')
-      console.error('Failed to add user')
+      console.error('Failed to add user:', result.error)
     }
   }
 
@@ -650,49 +680,137 @@ const RoleManagementPage = () => {
 
       {/* Add User Dialog */}
       <Dialog open={addUserDialogOpen} onOpenChange={setAddUserDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add New Customer</DialogTitle>
-            <DialogDescription>Create a new customer account</DialogDescription>
+            <DialogDescription>Create a new customer account with address details</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="add-name">Full Name *</Label>
-              <Input
-                id="add-name"
-                value={addForm.name}
-                onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
-                placeholder="Enter full name"
-              />
+          <div className="space-y-6">
+            {/* Customer Information */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-muted-foreground">Customer Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="add-name">Full Name *</Label>
+                  <Input
+                    id="add-name"
+                    value={addForm.name}
+                    onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
+                    placeholder="Enter full name"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-mobile">Mobile Number *</Label>
+                  <Input
+                    id="add-mobile"
+                    value={addForm.mobile}
+                    onChange={(e) => setAddForm({ ...addForm, mobile: e.target.value })}
+                    placeholder="+91 98765 43210"
+                    required
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="add-email">Email Address (Optional)</Label>
+                  <Input
+                    id="add-email"
+                    type="email"
+                    value={addForm.email}
+                    onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
+                    placeholder="user@email.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-status">Status *</Label>
+                  <Select
+                    value={addForm.status}
+                    onValueChange={(value) => setAddForm({ ...addForm, status: value as UserStatus })}
+                  >
+                    <SelectTrigger id="add-status">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.values(UserStatus).map((status) => (
+                        <SelectItem key={status} value={status}>
+                          {status}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="add-email">Email Address *</Label>
-              <Input
-                id="add-email"
-                type="email"
-                value={addForm.email}
-                onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
-                placeholder="user@email.com"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="add-mobile">Mobile Number</Label>
-              <Input
-                id="add-mobile"
-                value={addForm.mobile}
-                onChange={(e) => setAddForm({ ...addForm, mobile: e.target.value })}
-                placeholder="+91 98765 43210"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="add-password">Password *</Label>
-              <Input
-                id="add-password"
-                type="password"
-                value={addForm.password}
-                onChange={(e) => setAddForm({ ...addForm, password: e.target.value })}
-                placeholder="Enter password"
-              />
+
+            {/* Address Information */}
+            <div className="space-y-4 border-t pt-4">
+              <h3 className="text-sm font-semibold text-muted-foreground">Address Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="add-type">Address Type (Optional)</Label>
+                  <Input
+                    id="add-type"
+                    value={addForm.type}
+                    onChange={(e) => setAddForm({ ...addForm, type: e.target.value })}
+                    placeholder="Home, Office, etc."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-pincode">Pincode *</Label>
+                  <Input
+                    id="add-pincode"
+                    value={addForm.pincode}
+                    onChange={(e) => setAddForm({ ...addForm, pincode: e.target.value })}
+                    placeholder="Enter pincode"
+                    required
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="add-locality">Locality *</Label>
+                  <Input
+                    id="add-locality"
+                    value={addForm.locality}
+                    onChange={(e) => setAddForm({ ...addForm, locality: e.target.value })}
+                    placeholder="Enter locality/area"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-apartment">Apartment/House No (Optional)</Label>
+                  <Input
+                    id="add-apartment"
+                    value={addForm.apartmentNo}
+                    onChange={(e) => setAddForm({ ...addForm, apartmentNo: e.target.value })}
+                    placeholder="Flat/House number"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-landmark">Landmark (Optional)</Label>
+                  <Input
+                    id="add-landmark"
+                    value={addForm.landmark}
+                    onChange={(e) => setAddForm({ ...addForm, landmark: e.target.value })}
+                    placeholder="Nearby landmark"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-state">State (Optional)</Label>
+                  <Input
+                    id="add-state"
+                    value={addForm.state}
+                    onChange={(e) => setAddForm({ ...addForm, state: e.target.value })}
+                    placeholder="Enter state"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-country">Country (Optional)</Label>
+                  <Input
+                    id="add-country"
+                    value={addForm.country}
+                    onChange={(e) => setAddForm({ ...addForm, country: e.target.value })}
+                    placeholder="Enter country"
+                  />
+                </div>
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -701,9 +819,9 @@ const RoleManagementPage = () => {
             </Button>
             <Button
               onClick={handleAddUser}
-              disabled={!addForm.name || !addForm.email || !addForm.password}
+              disabled={!addForm.name || !addForm.mobile || !addForm.pincode || !addForm.locality}
             >
-              Add User
+              Add Customer
             </Button>
           </DialogFooter>
         </DialogContent>

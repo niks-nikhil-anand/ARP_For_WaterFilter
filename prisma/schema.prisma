@@ -104,6 +104,9 @@ model User {
   password              String
   mobile                String?
   role                  UserRole       @default(USER)
+  adhaarNumber          String?
+  panNumber             String?
+  profileImageUrl       String?
   status                UserStatus     @default(PENDING)
   addresses             Address[]
   shops                 Shop[]
@@ -114,59 +117,70 @@ model User {
   serviceEvents         ServiceEvent[]
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt
+  amcs                  AMC[]
 }
 
 model Address {
   id          Int      @id @default(autoincrement())
   type        String?
-  pincode     String?
+  pincode     String // Required for delivery/service
   landmark    String?
   apartmentNo String?
   state       String?
   country     String?
-  locality    String?
-  phone       String?
+  locality    String // Required for location
+  phone       String // Required for contact
   altPhone    String?
-  user        User     @relation(fields: [userId], references: [id])
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId      Int
-  shop        Shop?    @relation(fields: [shopId], references: [id])
+  shop        Shop?    @relation(fields: [shopId], references: [id], onDelete: Cascade)
   shopId      Int?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([shopId])
 }
 
 // Represents the shop/store owner or admin
 model Shop {
-  id              Int            @id @default(autoincrement())
+  id              Int       @id @default(autoincrement())
   name            String
   shopName        String?
   alternateMobile String?
   gstNumber       String?
   panNumber       String?
-  user            User           @relation(fields: [userId], references: [id])
-  userId          Int            @unique
+  user            User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  userId          Int       @unique
   addresses       Address[]
 
-  agents          Agent[]
-  amcContracts    AMCContract[]
-  notifications   Notification[]
-  tickets         Ticket[]
+  agents        Agent[]
+  amcContracts  AMCContract[]
+  notifications Notification[]
+  tickets       Ticket[]
+  amcs          AMC[]          @relation("ShopAMCs")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
 
 // Dedicated model for Service Agents
 model Agent {
-  id        Int            @id @default(autoincrement())
-  user      User           @relation(fields: [userId], references: [id])
-  userId    Int            @unique
-  shop      Shop?          @relation(fields: [shopId], references: [id])
-  shopId    Int?
-  tasks     ServiceEvent[]
-  tickets   Ticket[]
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  id      Int            @id @default(autoincrement())
+  user    User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  userId  Int            @unique
+  shop    Shop?          @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  shopId  Int?
+  tasks   ServiceEvent[]
+  tickets Ticket[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([shopId])
 }
 
 // Core Product definition
@@ -178,15 +192,15 @@ model Product {
   company          String
   type             String
   color            String?
-  price            Float?
+  price            Decimal // Required for orders
   images           String[] // Array of image URLs
   featuredImageUrl String?
   offer            String?
-  discount         Float?
+  discount         Decimal?
   discountType     DiscountType?
   warrantyPeriod   String?
   status           UserStatus     @default(PENDING)
-  createdBy        User           @relation(fields: [createdById], references: [id])
+  createdBy        User           @relation(fields: [createdById], references: [id], onDelete: Restrict)
   createdById      Int
   orders           Order[]
   warranties       Warranty[]
@@ -194,142 +208,147 @@ model Product {
   serviceEvents    ServiceEvent[] // Includes warranty, AMC, repairs, tickets
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
-}
 
-// Defines a type of AMC contract/plan
-model AMCContract {
-  id            Int            @id @default(autoincrement())
-  name          String
-  duration      String
-  price         Float
-  status        AMCStatus      @default(ACTIVE)
-  shop          Shop           @relation(fields: [shopId], references: [id])
-  shopId        Int
-  services      AMCService[]
-  serviceEvents ServiceEvent[]
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-}
-
-// Specific service included in an AMCContract
-model AMCService {
-  id            Int         @id @default(autoincrement())
-  name          String
-  description   String?
-  amcContract   AMCContract @relation(fields: [amcContractId], references: [id])
-  amcContractId Int
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-}
-
-// 🎯 UNIFIED MODEL FOR WARRANTY, AMC, AND REPAIR
-model ServiceEvent {
-  id   Int              @id @default(autoincrement())
-  type ServiceEventType
-
-  // General Details
-  product    Product @relation(fields: [productId], references: [id])
-  productId  Int
-  customer   User?   @relation(fields: [customerId], references: [id])
-  customerId Int?
-  order      Order?  @relation(fields: [orderId], references: [id])
-  orderId    Int?
-
-  // Contract Details 
-  startDate     DateTime?
-  endDate       DateTime?
-  pricePaid     Float?
-  amcContract   AMCContract? @relation(fields: [amcContractId], references: [id])
-  amcContractId Int?
-
-  // Repair/Service Details 
-  remarks     String?
-  description String?
-  parts       String?
-  feedback    String?
-  assignedTo  Agent?  @relation(fields: [agentId], references: [id])
-  agentId     Int?
-
-  // Internal Notes/Data
-  details   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  @@index([status])
+  @@index([company])
+  @@index([type])
 }
 
 model Order {
-  id                    Int            @id @default(autoincrement())
-  product               Product        @relation(fields: [productId], references: [id])
-  productId             Int
+  id        Int     @id @default(autoincrement())
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productId Int
 
-  createdBy             User?          @relation(fields: [createdById], references: [id])
-  createdById           Int?
-  customerName          String
-  customerEmail         String?
-  customerPhone         String?
-  customerAltPhone      String?
-  addressType           String?
-  apartmentNo           String?
-  locality              String?
-  landmark              String?
-  pincode               String?
-  state                 String?
-  country               String?
-  status                OrderStatus    @default(PENDING) // PENDING when created, ACTIVE when payment completed
-  paymentMethod         PaymentMethod  @default(CASH)
-  paymentStatus         PaymentStatus  @default(PENDING)
-  transactionId         String? // For online payments
-  amountPaid            Float?
-  freeInstallation      Boolean        @default(false) // If free installation is included
-  installationCompleted Boolean        @default(false) // Track if installation is done
-  installationDate      DateTime? // When installation was completed
-  freeWarranty          Boolean        @default(false) // If free warranty is included
-  additionalWarranty    Boolean        @default(false) // If additional warranty was purchased
-  amcPurchased          Boolean        @default(false) // If AMC was purchased with order
-  serviceEvents         ServiceEvent[]
-  warranties            Warranty[]
-  amcs                  AMC[]
+  createdBy                  User?          @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdById                Int?
+  customerName               String
+  customerEmail              String?
+  customerPhone              String // Required for order fulfillment
+  customerAltPhone           String?
+  addressType                String?
+  apartmentNo                String?
+  locality                   String?
+  landmark                   String?
+  pincode                    String?
+  state                      String?
+  country                    String?
+  status                     OrderStatus    @default(PENDING) // PENDING when created, ACTIVE when payment completed
+  paymentMethod              PaymentMethod  @default(CASH)
+  paymentStatus              PaymentStatus  @default(PENDING)
+  transactionId              String? // For online payments
+  amountPaid                 Decimal?
+  freeInstallation           Boolean        @default(false) // If free installation is included
+  installationCompleted      Boolean        @default(false) // Track if installation is done
+  installationDate           DateTime? // When installation was completed
+  freeWarranty               Boolean        @default(false) // If free warranty is included
+  additionalWarranty         Boolean        @default(false) // If additional warranty was purchased
+  amcPurchased               Boolean        @default(false) // If AMC was purchased with order
+  serviceEvents              ServiceEvent[]
+  warranties                 Warranty[]
+  amcs                       AMC[]
   selectedAdditionalWarranty String? // e.g., "1year", "2year"
-  selectedAMC           String?        // e.g., "1year", "2year"
-  createdAt             DateTime       @default(now())
-  updatedAt             DateTime       @updatedAt
+  selectedAMC                String? // e.g., "1year", "2year"
+  deletedAt                  DateTime? // Soft delete support
+  createdAt                  DateTime       @default(now())
+  updatedAt                  DateTime       @updatedAt
+
+  @@index([status])
+  @@index([customerPhone])
+  @@index([createdAt])
+  @@index([productId, status])
+  @@index([paymentStatus])
 }
 
 // Warranty tracking model
 model Warranty {
-  id                  Int       @id @default(autoincrement())
-  product             Product   @relation(fields: [productId], references: [id])
-  productId           Int
-  order               Order     @relation(fields: [orderId], references: [id])
-  orderId             Int
-  warrantyType        String // "FREE" or "EXTENDED" or "BASIC"
-  startDate           DateTime
-  endDate             DateTime
-  durationMonths      Int // Duration in months
-  isActive            Boolean   @default(true)
-  additionalWarranty  Boolean   @default(false) // If this is an additional/extended warranty
-  warrantyAmount      Float? // Amount paid for extended warranty
-  termsAndConditions  String?
-  claimedDate         DateTime?
-  claimDescription    String?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  id                 Int       @id @default(autoincrement())
+  product            Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productId          Int
+  order              Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId            Int
+  warrantyType       String // "FREE" or "EXTENDED" or "BASIC"
+  startDate          DateTime
+  endDate            DateTime
+  durationMonths     Int // Duration in months
+  isActive           Boolean   @default(true)
+  additionalWarranty Boolean   @default(false) // If this is an additional/extended warranty
+  warrantyAmount     Decimal? // Amount paid for extended warranty
+  termsAndConditions String?
+  claimedDate        DateTime?
+  claimDescription   String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([isActive])
+  @@index([endDate])
+  @@index([orderId])
+  @@index([productId])
 }
 
 // AMC tracking model (Purchased AMC)
 model AMC {
-  id              Int       @id @default(autoincrement())
-  product         Product   @relation(fields: [productId], references: [id])
-  productId       Int
-  order           Order     @relation(fields: [orderId], references: [id])
-  orderId         Int
-  startDate       DateTime
-  endDate         DateTime
-  durationMonths  Int
-  isActive        Boolean   @default(true)
-  amountPaid      Float?
-  status          AMCStatus @default(ACTIVE)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id          Int    @id @default(autoincrement())
+  amcUniqueId String @unique
+
+  // Relations
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productId Int
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId   Int
+
+  // Customer who purchased the AMC
+  user   User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  userId Int
+
+  // Shop that manages/services the AMC
+  shop   Shop? @relation("ShopAMCs", fields: [shopId], references: [id], onDelete: SetNull)
+  shopId Int?
+
+  // AMC Contract Details
+  amcContract   AMCContract @relation(fields: [amcContractId], references: [id], onDelete: Restrict)
+  amcContractId Int
+
+  startDate      DateTime
+  endDate        DateTime
+  durationMonths Int
+
+  isActive     Boolean   @default(true)
+  amountPaid   Decimal?
+  status       AMCStatus @default(ACTIVE)
+  deletedAt    DateTime? // Soft delete support
+  cancelledAt  DateTime? // When AMC was cancelled
+  cancelReason String? // Reason for cancellation
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([status])
+  @@index([userId])
+  @@index([shopId])
+  @@index([endDate])
+  @@index([amcContractId])
+}
+
+// Defines a type of AMC contract/plan
+model AMCContract {
+  id             Int       @id @default(autoincrement())
+  invoiceNumber  String    @unique
+  name           String
+  duration       String // e.g., "12 months", "1 year"
+  durationMonths Int // Duration in months for consistency
+  price          Decimal
+  status         AMCStatus @default(ACTIVE)
+
+  shop   Shop @relation(fields: [shopId], references: [id], onDelete: Restrict)
+  shopId Int
+
+  serviceEvents ServiceEvent[]
+  noOfServices  Int
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  amcs          AMC[]
+
+  @@index([status])
+  @@index([shopId])
 }
 
 model Notification {
@@ -341,12 +360,16 @@ model Notification {
   isRead      Boolean              @default(false)
   link        String?
   metadata    Json?
-  recipient   User                 @relation(fields: [recipientId], references: [id])
+  recipient   User                 @relation(fields: [recipientId], references: [id], onDelete: Cascade)
   recipientId Int
-  shop        Shop?                @relation(fields: [shopId], references: [id])
+  shop        Shop?                @relation(fields: [shopId], references: [id], onDelete: Cascade)
   shopId      Int?
   createdAt   DateTime             @default(now())
   updatedAt   DateTime             @updatedAt
+
+  @@index([recipientId, isRead])
+  @@index([category])
+  @@index([priority])
 }
 
 // Service Booking Ticket Model
@@ -371,9 +394,9 @@ model Ticket {
   priority TicketPriority @default(MEDIUM)
 
   // Assignment
-  assignedToAgent Agent? @relation(fields: [agentId], references: [id])
+  assignedToAgent Agent? @relation(fields: [agentId], references: [id], onDelete: SetNull)
   agentId         Int?
-  shop            Shop?  @relation(fields: [shopId], references: [id])
+  shop            Shop?  @relation(fields: [shopId], references: [id], onDelete: SetNull)
   shopId          Int?
 
   // Internal Notes
@@ -386,4 +409,51 @@ model Ticket {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([priority])
+  @@index([agentId])
+  @@index([shopId])
+  @@index([status, priority])
+}
+
+// 🎯 UNIFIED MODEL FOR WARRANTY, AMC, AND REPAIR
+model ServiceEvent {
+  id   Int              @id @default(autoincrement())
+  type ServiceEventType
+
+  // General Details
+  product    Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productId  Int
+  customer   User?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerId Int?
+  order      Order?  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId    Int?
+
+  // Contract Details
+  startDate     DateTime?
+  endDate       DateTime?
+  pricePaid     Decimal?
+  amcContract   AMCContract? @relation(fields: [amcContractId], references: [id], onDelete: SetNull)
+  amcContractId Int?
+
+  // Repair/Service Details
+  remarks     String?
+  description String?
+  parts       String?
+  feedback    String?
+  assignedTo  Agent?  @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  agentId     Int?
+
+  // Internal Notes/Data
+  details   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@index([customerId])
+  @@index([agentId])
+  @@index([productId])
+  @@index([orderId])
+  @@index([type, customerId])
 }

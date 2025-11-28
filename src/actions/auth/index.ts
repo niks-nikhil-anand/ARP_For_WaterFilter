@@ -43,51 +43,51 @@ export async function signup(userData: {
     // Hash password
     const hashedPassword = await hashPassword(userData.password);
 
-    // Create user
-    const user = await prisma.user.create({
-      data: {
-        name: userData.name,
-        email: userData.email,
-        password: hashedPassword,
-        mobile: userData.mobile,
-        role: userData.role || UserRole.USER,
-        status: UserStatus.ACTIVE,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        mobile: true,
-        role: true,
-        status: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+    // Determine role - default to USER if not provided
+    const userRole = userData.role || UserRole.USER;
+
+    // Create user and Shop in a transaction if role is ADMIN
+    const result = await prisma.$transaction(async (tx) => {
+      // Create user
+      const user = await tx.user.create({
+        data: {
+          name: userData.name,
+          email: userData.email,
+          password: hashedPassword,
+          mobile: userData.mobile,
+          role: userRole,
+          status: UserStatus.ACTIVE,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          mobile: true,
+          role: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      // If role is ADMIN, create a Shop record
+      if (userRole === UserRole.ADMIN) {
+        await tx.shop.create({
+          data: {
+            name: userData.name, // Use user's name as default shop name
+            userId: user.id,
+          },
+        });
+      }
+
+      return user;
     });
 
-    // Generate JWT token
-    const token = await generateToken({
-      id: user.id,
-      email: user.email,
-      role: user.role,
-    });
-
-    // Set cookie using server-side cookies API
-    const cookieStore = await cookies();
-    cookieStore.set({
-      name: 'auth-token',
-      value: token,
-      httpOnly: true,
-      secure: false, // Set to true in production with HTTPS
-      sameSite: 'strict',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: '/',
-    });
-
+    // Don't auto-login - user should login manually after signup
     return {
       success: true,
-      data: { user, token },
-      message: 'Account created successfully'
+      data: { user: result },
+      message: 'Account created successfully. Please login to continue.'
     };
   } catch (error: any) {
     console.error('Signup error:', error);
@@ -148,6 +148,7 @@ export async function login(credentials: {
     // Generate JWT token
     const token = await generateToken({
       id: user.id,
+      name: user.name,
       email: user.email,
       role: user.role,
     });

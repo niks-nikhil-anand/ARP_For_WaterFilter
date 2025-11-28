@@ -120,20 +120,12 @@ const AdminSignup = () => {
       })
 
       if (result.success) {
-        setSuccess('Account created successfully! Redirecting...')
+        setSuccess('Account created successfully! Redirecting to login...')
 
-        // User is auto-logged in by the API, redirect to appropriate dashboard based on role
-        // Wait a bit longer to ensure cookie is properly set
+        // Redirect to login page after successful signup
         setTimeout(() => {
-          // Redirect based on role
-          if (role === 'superadmin') {
-            window.location.href = '/admin'
-          } else if (role === 'admin') {
-            window.location.href = '/shop'
-          } else {
-            window.location.href = '/auth/admin'
-          }
-        }, 1000)
+          window.location.href = '/auth/admin'
+        }, 1500)
       } else {
         setError(result.error || 'Signup failed. Please try again.')
       }

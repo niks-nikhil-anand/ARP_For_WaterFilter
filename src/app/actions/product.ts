@@ -205,8 +205,15 @@ export async function updateProduct(
       },
     })
 
+    // Convert Decimal fields to numbers for client components
+    const serializedProduct = {
+      ...product,
+      price: product.price ? Number(product.price) : null,
+      discount: product.discount ? Number(product.discount) : null,
+    }
+
     revalidatePath('/admin/product_details')
-    return { success: true, data: product }
+    return { success: true, data: serializedProduct }
   } catch (error) {
     console.error('Error updating product:', error)
     return { success: false, error: 'Failed to update product' }
@@ -261,9 +268,16 @@ export async function generateInvoice(productId: number) {
       return { success: false, error: 'Product not found' }
     }
 
+    // Convert Decimal fields to numbers for client components
+    const serializedProduct = {
+      ...product,
+      price: product.price ? Number(product.price) : null,
+      discount: product.discount ? Number(product.discount) : null,
+    }
+
     // TODO: Implement actual PDF generation
     // For now, return product data that can be used to generate invoice on client
-    return { success: true, data: product }
+    return { success: true, data: serializedProduct }
   } catch (error) {
     console.error('Error generating invoice:', error)
     return { success: false, error: 'Failed to generate invoice' }

@@ -48,7 +48,7 @@ export async function signup(userData: {
 
     // Create user and Shop in a transaction if role is ADMIN
     const result = await prisma.$transaction(async (tx) => {
-      // Create user
+      // Create user with PENDING status (requires admin approval)
       const user = await tx.user.create({
         data: {
           name: userData.name,
@@ -56,7 +56,7 @@ export async function signup(userData: {
           password: hashedPassword,
           mobile: userData.mobile,
           role: userRole,
-          status: UserStatus.ACTIVE,
+          status: UserStatus.PENDING,
         },
         select: {
           id: true,
@@ -124,11 +124,18 @@ export async function login(credentials: {
       };
     }
 
-    // Check if account is blocked
+    // Check account status
     if (user.status === UserStatus.BLOCKED) {
       return {
         success: false,
         error: 'Your account has been blocked. Please contact support.'
+      };
+    }
+
+    if (user.status === UserStatus.PENDING) {
+      return {
+        success: false,
+        error: 'Your account is pending approval. Please wait for admin approval before logging in.'
       };
     }
 

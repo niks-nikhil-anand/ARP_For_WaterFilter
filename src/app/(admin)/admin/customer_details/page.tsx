@@ -38,6 +38,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Eye,
   Pencil,
@@ -77,12 +78,14 @@ const RoleManagementPage = () => {
   const [itemsPerPage] = useState(8)
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false)
   const [isAddingUser, setIsAddingUser] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     loadUsers()
   }, [])
 
   const loadUsers = async () => {
+    setIsLoading(true)
     const result = await getUsers()
     if (result.success && result.data) {
       // Filter to only show users with role USER (customers)
@@ -92,6 +95,7 @@ const RoleManagementPage = () => {
       // toast.error('Failed to load users')
       console.error('Failed to load users')
     }
+    setIsLoading(false)
   }
 
   // Modal states
@@ -545,7 +549,46 @@ const RoleManagementPage = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {currentUsers.length === 0 ? (
+              {isLoading ? (
+                // Skeleton loading rows
+                Array.from({ length: itemsPerPage }).map((_, index) => (
+                  <TableRow key={index}>
+                    <TableCell>
+                      <Skeleton className="h-4 w-12" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-32" />
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-28" />
+                        <Skeleton className="h-4 w-36" />
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex justify-center">
+                        <Skeleton className="h-6 w-20" />
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <Skeleton className="h-4 w-40" />
+                        <Skeleton className="h-3 w-32" />
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Skeleton className="h-8 w-8 rounded-md" />
+                        <Skeleton className="h-8 w-8 rounded-md" />
+                        <Skeleton className="h-8 w-8 rounded-md" />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : currentUsers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-10">
                     <div className="flex flex-col items-center gap-2">

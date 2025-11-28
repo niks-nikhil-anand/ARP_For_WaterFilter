@@ -200,7 +200,7 @@ model Product {
   discount         Decimal?
   discountType     DiscountType?
   warrantyPeriod   String?
-  isVisibleWebsite Boolean        @default(true)
+  isVisibleWebsite Boolean        @default(false)
   status           UserStatus     @default(PENDING)
   createdBy        User           @relation(fields: [createdById], references: [id], onDelete: Restrict)
   createdById      Int

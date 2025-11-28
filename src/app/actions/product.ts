@@ -28,7 +28,15 @@ export async function getProducts() {
         createdAt: 'desc',
       },
     })
-    return { success: true, data: products }
+
+    // Convert Decimal fields to numbers for client components
+    const serializedProducts = products.map(product => ({
+      ...product,
+      price: product.price ? Number(product.price) : null,
+      discount: product.discount ? Number(product.discount) : null,
+    }))
+
+    return { success: true, data: serializedProducts }
   } catch (error) {
     console.error('Error fetching products:', error)
     return { success: false, error: 'Failed to fetch products' }
@@ -50,7 +58,19 @@ export async function getProductById(id: number) {
         },
       },
     })
-    return { success: true, data: product }
+
+    if (!product) {
+      return { success: true, data: null }
+    }
+
+    // Convert Decimal fields to numbers for client components
+    const serializedProduct = {
+      ...product,
+      price: product.price ? Number(product.price) : null,
+      discount: product.discount ? Number(product.discount) : null,
+    }
+
+    return { success: true, data: serializedProduct }
   } catch (error) {
     console.error('Error fetching product:', error)
     return { success: false, error: 'Failed to fetch product' }
@@ -103,7 +123,7 @@ export async function createProduct(data: {
         discount: data.discount,
         discountType: data.discountType,
         warrantyPeriod: data.warrantyPeriod,
-        isVisibleWebsite: data.isVisibleWebsite ?? true,
+        isVisibleWebsite: data.isVisibleWebsite ?? false,
         status: data.status || 'PENDING',
         createdBy: {
           connect: { id: currentUser.id },
@@ -121,8 +141,15 @@ export async function createProduct(data: {
       },
     })
 
+    // Convert Decimal fields to numbers for client components
+    const serializedProduct = {
+      ...product,
+      price: product.price ? Number(product.price) : null,
+      discount: product.discount ? Number(product.discount) : null,
+    }
+
     revalidatePath('/admin/product_details')
-    return { success: true, data: product }
+    return { success: true, data: serializedProduct }
   } catch (error) {
     console.error('Error creating product:', error)
     return { success: false, error: 'Failed to create product' }

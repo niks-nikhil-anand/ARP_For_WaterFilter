@@ -103,7 +103,7 @@ const ProductManagementPage = () => {
     price: '',
     discount: '',
     discountType: '',
-    isVisibleWebsite: true,
+    isVisibleWebsite: false,
     status: '',
   })
   const [addForm, setAddForm] = useState({
@@ -113,7 +113,7 @@ const ProductManagementPage = () => {
     color: '',
     warrantyPeriod: '',
     freeInstallation: false,
-    isVisibleWebsite: true,
+    isVisibleWebsite: false,
     price: '',
     discountType: 'PERCENTAGE',
     discount: '',
@@ -155,7 +155,7 @@ const ProductManagementPage = () => {
       price: product.price?.toString() || '',
       discount: product.discount?.toString() || '',
       discountType: product.discountType || 'PERCENTAGE',
-      isVisibleWebsite: product.isVisibleWebsite ?? true,
+      isVisibleWebsite: product.isVisibleWebsite ?? false,
       status: product.status || 'PENDING',
     })
     setEditDialogOpen(true)
@@ -217,7 +217,7 @@ const ProductManagementPage = () => {
       color: '',
       warrantyPeriod: '',
       freeInstallation: false,
-      isVisibleWebsite: true,
+      isVisibleWebsite: false,
       price: '',
       discountType: 'PERCENTAGE',
       discount: '',

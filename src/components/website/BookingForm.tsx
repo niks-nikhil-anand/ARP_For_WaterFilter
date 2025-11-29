@@ -127,7 +127,7 @@ const BookingForm = () => {
         // Error
         setSubmitStatus({
           type: 'error',
-          message: result.error || 'Failed to submit booking. Please try again.'
+          message: result.error || 'Failed to submit complaint. Please try again.'
         })
       }
     } catch (error: any) {
@@ -145,10 +145,10 @@ const BookingForm = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            Book a Service
+            Raise Complaint or Request Service
           </h2>
           <p className="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
-            Schedule your water purifier installation, repair, or maintenance service
+            Submit your complaint or service request for quick resolution
           </p>
         </div>
 
@@ -169,7 +169,7 @@ const BookingForm = () => {
               <CardContent className="text-center space-y-4">
                 <div className="space-y-2">
                   <p className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-                    Your booking request has been submitted successfully!
+                    Your complaint has been submitted successfully!
                   </p>
                   <p className="text-gray-600 dark:text-gray-400">
                     We appreciate your interest in our services. Our team will contact you shortly to confirm your appointment and discuss the details.
@@ -200,9 +200,9 @@ const BookingForm = () => {
           <div className="lg:col-span-2">
             <Card className="border-2 dark:bg-gray-900 dark:border-gray-800">
               <CardHeader>
-                <CardTitle className="text-2xl dark:text-white">Request a Service</CardTitle>
+                <CardTitle className="text-2xl dark:text-white">Raise a Complaint</CardTitle>
                 <CardDescription className="dark:text-gray-400">
-                  Fill out the form below and our team will get back to you shortly
+                  Fill out the form below to raise a complaint or request service
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -265,7 +265,7 @@ const BookingForm = () => {
                     {/* Service Type */}
                     <div>
                       <Label htmlFor="serviceType" className="text-gray-900 dark:text-white">
-                        Service Type *
+                       Service Type *
                       </Label>
                       <Select
                         value={formData.serviceType}
@@ -281,6 +281,7 @@ const BookingForm = () => {
                           <SelectItem value="maintenance">Maintenance</SelectItem>
                           <SelectItem value="amc">AMC Service</SelectItem>
                           <SelectItem value="consultation">Free Consultation</SelectItem>
+                          <SelectItem value="complaint">Complaint</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -363,7 +364,7 @@ const BookingForm = () => {
                   {/* Message */}
                   <div>
                     <Label htmlFor="message" className="text-gray-900 dark:text-white">
-                      Additional Information (Optional)
+                      Additional Information or Complaint Details (Optional)
                     </Label>
                     <Textarea
                       id="message"
@@ -401,7 +402,7 @@ const BookingForm = () => {
                     ) : (
                       <>
                         <Send className="mr-2 h-5 w-5" />
-                        Submit Booking Request
+                        Submit Complaint or Request Service
                       </>
                     )}
                   </Button>

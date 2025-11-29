@@ -89,6 +89,7 @@ const ShopDetailsPage = () => {
     email: '',
     mobile: '',
     password: '',
+    confirmPassword: '',
     role: 'ADMIN',
     shopName: '',
     alternateMobile: '',
@@ -98,7 +99,7 @@ const ShopDetailsPage = () => {
       apartmentNo: '',
       locality: '',
       state: '',
-      country: '',
+      country: 'India',
       pincode: '',
       phone: '',
     },
@@ -235,6 +236,11 @@ const ShopDetailsPage = () => {
   const handleAddShop = async () => {
     setIsAddingShop(true)
     try {
+      if (addForm.password !== addForm.confirmPassword) {
+        toast.error('Passwords do not match')
+        return
+      }
+
       // Create user with ADMIN role
       const userResult = await createUser({
         name: addForm.name,
@@ -280,6 +286,7 @@ const ShopDetailsPage = () => {
           email: '',
           mobile: '',
           password: '',
+          confirmPassword: '',
           role: 'ADMIN',
           shopName: '',
           alternateMobile: '',
@@ -289,7 +296,7 @@ const ShopDetailsPage = () => {
             apartmentNo: '',
             locality: '',
             state: '',
-            country: '',
+            country: 'India',
             pincode: '',
             phone: '',
           },
@@ -669,13 +676,22 @@ const ShopDetailsPage = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="add-mobile">Mobile Number</Label>
-                  <Input
-                    id="add-mobile"
-                    value={addForm.mobile}
-                    onChange={(e) => setAddForm({ ...addForm, mobile: e.target.value })}
-                    placeholder="+91 98765 43210"
-                    disabled={isAddingShop}
-                  />
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-10 w-12 items-center justify-center rounded-md border bg-muted text-sm text-muted-foreground">
+                      +91
+                    </div>
+                    <Input
+                      id="add-mobile"
+                      value={addForm.mobile}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 10)
+                        setAddForm({ ...addForm, mobile: value })
+                      }}
+                      placeholder="98765 43210"
+                      disabled={isAddingShop}
+                      className="flex-1"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="add-email">Email Address *</Label>
@@ -701,6 +717,18 @@ const ShopDetailsPage = () => {
                     disabled={isAddingShop}
                   />
                 </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="add-confirmPassword">Confirm Password *</Label>
+                  <Input
+                    id="add-confirmPassword"
+                    type="password"
+                    value={addForm.confirmPassword}
+                    onChange={(e) => setAddForm({ ...addForm, confirmPassword: e.target.value })}
+                    placeholder="Confirm password"
+                    required
+                    disabled={isAddingShop}
+                  />
+                </div>
               </div>
             </div>
 
@@ -720,13 +748,22 @@ const ShopDetailsPage = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="add-alternateMobile">Alternate Mobile</Label>
-                  <Input
-                    id="add-alternateMobile"
-                    value={addForm.alternateMobile}
-                    onChange={(e) => setAddForm({ ...addForm, alternateMobile: e.target.value })}
-                    placeholder="+91 98765 43210"
-                    disabled={isAddingShop}
-                  />
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-10 w-12 items-center justify-center rounded-md border bg-muted text-sm text-muted-foreground">
+                      +91
+                    </div>
+                    <Input
+                      id="add-alternateMobile"
+                      value={addForm.alternateMobile}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 10)
+                        setAddForm({ ...addForm, alternateMobile: value })
+                      }}
+                      placeholder="98765 43210"
+                      disabled={isAddingShop}
+                      className="flex-1"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="add-gstNumber">GST Number</Label>
@@ -780,7 +817,10 @@ const ShopDetailsPage = () => {
                   <Input
                     id="add-pincode"
                     value={addForm.address.pincode}
-                    onChange={(e) => setAddForm({ ...addForm, address: { ...addForm.address, pincode: e.target.value } })}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '').slice(0, 6)
+                      setAddForm({ ...addForm, address: { ...addForm.address, pincode: value } })
+                    }}
                     placeholder="Enter pincode"
                     disabled={isAddingShop}
                   />
@@ -800,19 +840,9 @@ const ShopDetailsPage = () => {
                   <Input
                     id="add-country"
                     value={addForm.address.country}
-                    onChange={(e) => setAddForm({ ...addForm, address: { ...addForm.address, country: e.target.value } })}
-                    placeholder="Enter country"
-                    disabled={isAddingShop}
-                  />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="add-phone">Phone</Label>
-                  <Input
-                    id="add-phone"
-                    value={addForm.address.phone}
-                    onChange={(e) => setAddForm({ ...addForm, address: { ...addForm.address, phone: e.target.value } })}
-                    placeholder="Enter phone number"
-                    disabled={isAddingShop}
+                    readOnly
+                    disabled
+                    className="bg-muted"
                   />
                 </div>
               </div>

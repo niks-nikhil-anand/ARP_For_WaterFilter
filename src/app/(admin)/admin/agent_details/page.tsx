@@ -45,26 +45,36 @@ import {
   Plus,
 } from 'lucide-react'
 
-import { getUsersByRole, deleteUser, updateUser, createUser } from '@/actions/admin/users'
-import { createAgent } from '@/app/actions/agent'
+import { getAgents, createAgent, updateAgent, deleteAgent } from '@/app/actions/agent'
 import { getShops } from '@/app/actions/shop'
 import { toast } from 'sonner'
+import { Skeleton } from '@/components/ui/skeleton'
 
-type AgentUser = {
+type AgentData = {
   id: number
-  name: string
-  email: string
-  mobile: string | null
-  role: string
-  status: string
-  agents: Array<{
+  userId: number
+  shopId: number | null
+  areaCover: string | null
+  user: {
     id: number
-    shopId: number
-    shop: {
+    name: string
+    email: string
+    mobile: string | null
+    role: string
+    status: string
+    addresses: Array<{
       id: number
-      name: string
-    }
-  }>
+      locality: string
+      pincode: string
+      state: string | null
+      landmark: string | null
+      apartmentNo: string | null
+    }>
+  }
+  shop: {
+    id: number
+    name: string
+  } | null
   createdAt: Date
   updatedAt: Date
 }
@@ -75,7 +85,7 @@ type Shop = {
 }
 
 const AgentUsersPage = () => {
-  const [agentUsers, setAgentUsers] = useState<AgentUser[]>([])
+  const [agents, setAgents] = useState<AgentData[]>([])
   const [shops, setShops] = useState<Shop[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
@@ -83,14 +93,22 @@ const AgentUsersPage = () => {
   const [addLoading, setAddLoading] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [addDialogOpen, setAddDialogOpen] = useState(false)
-  const [selectedUser, setSelectedUser] = useState<AgentUser | null>(null)
+  const [selectedAgent, setSelectedAgent] = useState<AgentData | null>(null)
+  
   const [editForm, setEditForm] = useState({
     name: '',
     email: '',
     mobile: '',
     status: '',
     shopId: '',
+    areaCover: '',
+    locality: '',
+    pincode: '',
+    state: '',
+    landmark: '',
+    apartmentNo: '',
   })
+
   const [addForm, setAddForm] = useState({
     name: '',
     email: '',
@@ -106,7 +124,7 @@ const AgentUsersPage = () => {
   })
 
   useEffect(() => {
-    loadAgentUsers()
+    loadAgents()
     loadShops()
   }, [])
 
@@ -114,13 +132,9 @@ const AgentUsersPage = () => {
     setShopsLoading(true)
     try {
       const result = await getShops()
-      console.log('Shops result:', result)
-
       if (result.success && result.data) {
-        console.log('Setting shops:', result.data.length, 'shops')
         setShops(result.data)
       } else {
-        console.error('Failed to load shops:', result.error)
         toast.error(result.error || 'Failed to load shops')
         setShops([])
       }
@@ -133,20 +147,20 @@ const AgentUsersPage = () => {
     }
   }
 
-  const loadAgentUsers = async () => {
+  const loadAgents = async () => {
     setLoading(true)
-    const result = await getUsersByRole('AGENT')
+    const result = await getAgents()
     if (result.success && result.data) {
-      setAgentUsers(result.data)
+      setAgents(result.data as unknown as AgentData[])
     } else {
-      console.error('Failed to load agent users')
-      toast.error('Failed to load agent users')
+      console.error('Failed to load agents')
+      toast.error('Failed to load agents')
     }
     setLoading(false)
   }
 
   // Enforce phone input: always show '+91 ' prefix, accept only digits after it, max 10 digits
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>, isEdit = false) => {
     const prefix = '+91 '
     const raw = e.target.value || ''
     // Extract digits only
@@ -158,56 +172,127 @@ const AgentUsersPage = () => {
     }
     // Limit to 10 digits
     digits = digits.slice(0, 10)
-    setAddForm({
-      ...addForm,
-      mobile: prefix + digits
-    })
-  }
-
-  const handleDeleteUser = async (user: AgentUser) => {
-    const confirmed = confirm(`Delete user ${user.name || user.email}?`)
-    if (!confirmed) return
-
-    const result = await deleteUser(user.id)
-    if (result.success) {
-      loadAgentUsers()
-      toast.success('User deleted successfully')
+    
+    if (isEdit) {
+      setEditForm({
+        ...editForm,
+        mobile: prefix + digits
+      })
     } else {
-      toast.error('Failed to delete user')
+      setAddForm({
+        ...addForm,
+        mobile: prefix + digits
+      })
     }
   }
 
-  const handleEdit = (user: AgentUser) => {
-    setSelectedUser(user)
-    const assignedShop = user.agents && user.agents.length > 0 ? user.agents[0].shopId.toString() : 'none'
+  // Enforce pincode input: digits only, max 6 digits
+  const handlePincodeChange = (e: React.ChangeEvent<HTMLInputElement>, isEdit = false) => {
+    const raw = e.target.value || ''
+    const digits = raw.replace(/\D/g, '').slice(0, 6)
+    
+    if (isEdit) {
+      setEditForm({
+        ...editForm,
+        pincode: digits
+      })
+    } else {
+      setAddForm({
+        ...addForm,
+        pincode: digits
+      })
+    }
+  }
+
+  const handleDeleteAgent = async (agent: AgentData) => {
+    const confirmed = confirm(`Delete agent ${agent.user.name || agent.user.email}?`)
+    if (!confirmed) return
+
+    const result = await deleteAgent(agent.id)
+    if (result.success) {
+      loadAgents()
+      toast.success('Agent deleted successfully')
+    } else {
+      toast.error('Failed to delete agent')
+    }
+  }
+
+  const handleEdit = (agent: AgentData) => {
+    setSelectedAgent(agent)
+    const address = agent.user.addresses && agent.user.addresses.length > 0 ? agent.user.addresses[0] : null
+    
     setEditForm({
-      name: user.name || '',
-      email: user.email || '',
-      mobile: user.mobile || '',
-      status: user.status || 'ACTIVE',
-      shopId: assignedShop,
+      name: agent.user.name || '',
+      email: agent.user.email || '',
+      mobile: agent.user.mobile || '',
+      status: agent.user.status || 'ACTIVE',
+      shopId: agent.shopId ? agent.shopId.toString() : 'none',
+      areaCover: agent.areaCover || '',
+      locality: address?.locality || '',
+      pincode: address?.pincode || '',
+      state: address?.state || '',
+      landmark: address?.landmark || '',
+      apartmentNo: address?.apartmentNo || '',
     })
     setEditDialogOpen(true)
   }
 
   const handleSaveEdit = async () => {
-    if (!selectedUser) return
+    if (!selectedAgent) return
 
-    const result = await updateUser(selectedUser.id, {
+    // Validate required fields
+    if (!editForm.name || !editForm.mobile) {
+      toast.error('Name and mobile number are required')
+      return
+    }
+
+    const phoneDigits = editForm.mobile.replace(/\D/g, '').replace(/^91/, '')
+    if (phoneDigits.length !== 10) {
+      toast.error('Please enter a valid 10-digit mobile number')
+      return
+    }
+
+    if (!editForm.locality || !editForm.pincode || !editForm.state) {
+      toast.error('Address details (locality, pincode, state) are required')
+      return
+    }
+
+    if (editForm.pincode.length !== 6) {
+      toast.error('Please enter a valid 6-digit pincode')
+      return
+    }
+
+    if (!editForm.areaCover) {
+      toast.error('Area cover is required')
+      return
+    }
+
+    const shopId = editForm.shopId && editForm.shopId !== 'none' ? parseInt(editForm.shopId) : undefined
+
+    const formattedMobile = editForm.mobile.startsWith('+91') ? editForm.mobile : `+91 ${phoneDigits}`
+
+    const result = await updateAgent(selectedAgent.id, {
       name: editForm.name,
-      email: editForm.email,
-      mobile: editForm.mobile,
-      status: editForm.status,
-      shopId: editForm.shopId && editForm.shopId !== 'none' ? parseInt(editForm.shopId) : null,
+      mobile: formattedMobile,
+      status: editForm.status as any,
+      shopId: shopId,
+      areaCover: editForm.areaCover,
+      address: {
+        locality: editForm.locality,
+        pincode: editForm.pincode,
+        state: editForm.state,
+        landmark: editForm.landmark,
+        apartmentNo: editForm.apartmentNo,
+      }
     })
 
     if (result.success) {
-      loadAgentUsers()
+      loadAgents()
       setEditDialogOpen(false)
-      setSelectedUser(null)
-      toast.success('User updated successfully')
+      setSelectedAgent(null)
+      toast.success('Agent updated successfully')
     } else {
-      toast.error(result.error || 'Failed to update user')
+      toast.error(result.error || 'Failed to update agent')
     }
   }
 
@@ -231,6 +316,12 @@ const AgentUsersPage = () => {
 
       if (!addForm.locality || !addForm.pincode || !addForm.state) {
         toast.error('Address details (locality, pincode, state) are required')
+        return
+      }
+
+      if (addForm.pincode.length !== 6) {
+        toast.error('Please enter a valid 6-digit pincode')
+        setAddLoading(false)
         return
       }
 
@@ -266,7 +357,7 @@ const AgentUsersPage = () => {
       })
 
       if (result.success) {
-        await loadAgentUsers()
+        await loadAgents()
         setAddDialogOpen(false)
         setAddForm({
           name: '',
@@ -294,10 +385,10 @@ const AgentUsersPage = () => {
   }
 
   // Filter users based on search term
-  const filteredUsers = agentUsers.filter((user) =>
-    user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.mobile?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredAgents = agents.filter((agent) =>
+    agent.user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    agent.user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    agent.user.mobile?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   const getStatusBadge = (status: string) => {
@@ -347,7 +438,7 @@ const AgentUsersPage = () => {
                 <Users className="h-4 w-4" />
                 <span className="text-sm font-medium">Total Agents</span>
               </div>
-              <p className="text-2xl font-bold">{agentUsers.length}</p>
+              <p className="text-2xl font-bold">{agents.length}</p>
             </div>
             <div className="border rounded-lg p-4">
               <div className="flex items-center gap-2 text-muted-foreground mb-2">
@@ -355,7 +446,7 @@ const AgentUsersPage = () => {
                 <span className="text-sm font-medium">Active</span>
               </div>
               <p className="text-2xl font-bold">
-                {agentUsers.filter((u) => u.status === 'ACTIVE').length}
+                {agents.filter((a) => a.user.status === 'ACTIVE').length}
               </p>
             </div>
             <div className="border rounded-lg p-4">
@@ -364,7 +455,7 @@ const AgentUsersPage = () => {
                 <span className="text-sm font-medium">Blocked</span>
               </div>
               <p className="text-2xl font-bold">
-                {agentUsers.filter((u) => u.status === 'BLOCKED').length}
+                {agents.filter((a) => a.user.status === 'BLOCKED').length}
               </p>
             </div>
           </div>
@@ -380,70 +471,134 @@ const AgentUsersPage = () => {
             />
           </div>
 
+
+
           {/* Table */}
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
                   <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Mobile</TableHead>
+                  <TableHead>Contact Detail</TableHead>
+                  <TableHead>Shop</TableHead>
+                  <TableHead>Area Cover</TableHead>
+                  <TableHead>Address Details</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Created At</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-10">
-                      <p className="text-muted-foreground">Loading...</p>
-                    </TableCell>
-                  </TableRow>
-                ) : filteredUsers.length === 0 ? (
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <TableRow key={index}>
+                      <TableCell><Skeleton className="h-4 w-[150px]" /></TableCell>
+                      <TableCell>
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-[200px]" />
+                          <Skeleton className="h-4 w-[150px]" />
+                        </div>
+                      </TableCell>
+                      <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
+                      <TableCell>
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-[250px]" />
+                          <Skeleton className="h-4 w-[100px]" />
+                        </div>
+                      </TableCell>
+                      <TableCell><Skeleton className="h-6 w-[80px] rounded-full" /></TableCell>
+                      <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto rounded-md" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : filteredAgents.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-10">
                       <div className="flex flex-col items-center gap-2">
                         <Users className="h-10 w-10 text-muted-foreground" />
                         <p className="text-muted-foreground">
-                          {searchTerm ? 'No users found matching your search' : 'No agent users found'}
+                          {searchTerm ? 'No agents found matching your search' : 'No agents found'}
                         </p>
                       </div>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredUsers.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">#{user.id}</TableCell>
-                      <TableCell>{user.name || '-'}</TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>{user.mobile || '-'}</TableCell>
-                      <TableCell>{getStatusBadge(user.status)}</TableCell>
-                      <TableCell>{formatDate(user.createdAt)}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(user)}
-                            title="Edit user"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteUser(user)}
-                            title="Delete user"
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  filteredAgents.map((agent) => {
+                    const address = agent.user.addresses[0]
+                    return (
+                      <TableRow key={agent.id}>
+                        <TableCell className="font-medium">
+                          <div className="flex flex-col">
+                            <span className="font-semibold">{agent.user.name}</span>
+                            <span className="text-xs text-muted-foreground">ID: #{agent.id}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1 text-sm">
+                              <span className="text-muted-foreground">Ph:</span>
+                              {agent.user.mobile || '-'}
+                            </div>
+                            <div className="flex items-center gap-1 text-sm">
+                              <span className="text-muted-foreground">Email:</span>
+                              {agent.user.email}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {agent.shop ? (
+                            <div className="flex flex-col">
+                              <span className="font-medium">{agent.shop.name}</span>
+                              <span className="text-xs text-muted-foreground">ID: #{agent.shop.id}</span>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground italic">Unassigned</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {agent.areaCover ? (
+                            <Badge variant="outline">{agent.areaCover}</Badge>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {address ? (
+                            <div className="flex flex-col gap-0.5 text-sm max-w-[250px]">
+                              <span>{address.locality}</span>
+                              <span className="text-muted-foreground">
+                                {address.landmark ? `${address.landmark}, ` : ''}
+                                {address.state} - {address.pincode}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground italic">No address</span>
+                          )}
+                        </TableCell>
+                        <TableCell>{getStatusBadge(agent.user.status)}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(agent)}
+                              title="Edit agent"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteAgent(agent)}
+                              title="Delete agent"
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
                 )}
               </TableBody>
             </Table>
@@ -482,7 +637,7 @@ const AgentUsersPage = () => {
                   <Input
                     id="add-mobile"
                     value={addForm.mobile}
-                    onChange={handlePhoneChange}
+                    onChange={(e) => handlePhoneChange(e, false)}
                     placeholder="+91 XXXXX XXXXX"
                   />
                 </div>
@@ -568,7 +723,7 @@ const AgentUsersPage = () => {
                   <Input
                     id="add-pincode"
                     value={addForm.pincode}
-                    onChange={(e) => setAddForm({ ...addForm, pincode: e.target.value })}
+                    onChange={(e) => handlePincodeChange(e, false)}
                     placeholder="Enter pincode"
                   />
                 </div>
@@ -616,88 +771,171 @@ const AgentUsersPage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Edit User Dialog */}
+      {/* Edit Agent Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit User</DialogTitle>
+            <DialogTitle>Edit Agent</DialogTitle>
             <DialogDescription>
-              Update user information
+              Update agent information and assignment
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-name">Name</Label>
-              <Input
-                id="edit-name"
-                value={editForm.name}
-                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                placeholder="Enter name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-email">Email</Label>
-              <Input
-                id="edit-email"
-                type="email"
-                value={editForm.email}
-                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                placeholder="Enter email"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-mobile">Mobile</Label>
-              <Input
-                id="edit-mobile"
-                value={editForm.mobile}
-                onChange={(e) => setEditForm({ ...editForm, mobile: e.target.value })}
-                placeholder="Enter mobile number"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-status">Status</Label>
-              <Select
-                value={editForm.status}
-                onValueChange={(value) => setEditForm({ ...editForm, status: value })}
-              >
-                <SelectTrigger id="edit-status">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ACTIVE">Active</SelectItem>
-                  <SelectItem value="BLOCKED">Blocked</SelectItem>
-                  <SelectItem value="PENDING">Pending</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-shop">Assign to Shop</Label>
-              <Select
-                value={editForm.shopId}
-                onValueChange={(value) => setEditForm({ ...editForm, shopId: value })}
-                disabled={shopsLoading}
-              >
-                <SelectTrigger id="edit-shop">
-                  <SelectValue placeholder={shopsLoading ? "Loading shops..." : "Select shop"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {shopsLoading ? (
-                    <div className="p-2 text-center text-sm text-muted-foreground">
-                      Loading shops...
-                    </div>
-                  ) : (
-                    <>
-                      <SelectItem value="none">No Shop</SelectItem>
-                      {shops.map((shop) => (
-                        <SelectItem key={shop.id} value={shop.id.toString()}>
-                          {shop.name}
-                        </SelectItem>
-                      ))}
-                    </>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-6 py-4">
+            {/* Personal Details Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Personal Details</CardTitle>
+                <CardDescription>Basic information about the agent</CardDescription>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-name">Name *</Label>
+                  <Input
+                    id="edit-name"
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    placeholder="Enter agent name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-mobile">Mobile Number *</Label>
+                  <Input
+                    id="edit-mobile"
+                    value={editForm.mobile}
+                    onChange={(e) => handlePhoneChange(e, true)}
+                    placeholder="+91 XXXXX XXXXX"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-email">Email</Label>
+                  <Input
+                    id="edit-email"
+                    type="email"
+                    value={editForm.email}
+                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                    placeholder="Enter email (optional)"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-status">Status</Label>
+                  <Select
+                    value={editForm.status}
+                    onValueChange={(value) => setEditForm({ ...editForm, status: value })}
+                  >
+                    <SelectTrigger id="edit-status">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ACTIVE">Active</SelectItem>
+                      <SelectItem value="BLOCKED">Blocked</SelectItem>
+                      <SelectItem value="PENDING">Pending</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Shop Assignment Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Shop Assignment</CardTitle>
+                <CardDescription>Assign the agent to a shop and area</CardDescription>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-shop">Assign to Shop *</Label>
+                  <Select
+                    value={editForm.shopId}
+                    onValueChange={(value) => setEditForm({ ...editForm, shopId: value })}
+                    disabled={shopsLoading}
+                  >
+                    <SelectTrigger id="edit-shop">
+                      <SelectValue placeholder={shopsLoading ? "Loading shops..." : "Select shop"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {shopsLoading ? (
+                        <div className="p-2 text-center text-sm text-muted-foreground">
+                          Loading shops...
+                        </div>
+                      ) : (
+                        <>
+                          <SelectItem value="none">No Shop</SelectItem>
+                          {shops.map((shop) => (
+                            <SelectItem key={shop.id} value={shop.id.toString()}>
+                              {shop.name}
+                            </SelectItem>
+                          ))}
+                        </>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-area-cover">Area Cover *</Label>
+                  <Input
+                    id="edit-area-cover"
+                    value={editForm.areaCover}
+                    onChange={(e) => setEditForm({ ...editForm, areaCover: e.target.value })}
+                    placeholder="e.g., North Zone"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Address Details Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Address Details</CardTitle>
+                <CardDescription>Residential address of the agent</CardDescription>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-locality">Locality *</Label>
+                  <Input
+                    id="edit-locality"
+                    value={editForm.locality}
+                    onChange={(e) => setEditForm({ ...editForm, locality: e.target.value })}
+                    placeholder="Enter locality"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-pincode">Pincode *</Label>
+                  <Input
+                    id="edit-pincode"
+                    value={editForm.pincode}
+                    onChange={(e) => handlePincodeChange(e, true)}
+                    placeholder="Enter pincode"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-state">State *</Label>
+                  <Input
+                    id="edit-state"
+                    value={editForm.state}
+                    onChange={(e) => setEditForm({ ...editForm, state: e.target.value })}
+                    placeholder="Enter state"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-landmark">Landmark</Label>
+                  <Input
+                    id="edit-landmark"
+                    value={editForm.landmark}
+                    onChange={(e) => setEditForm({ ...editForm, landmark: e.target.value })}
+                    placeholder="Enter landmark"
+                  />
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label htmlFor="edit-apartment">Apartment No.</Label>
+                  <Input
+                    id="edit-apartment"
+                    value={editForm.apartmentNo}
+                    onChange={(e) => setEditForm({ ...editForm, apartmentNo: e.target.value })}
+                    placeholder="Enter apartment no."
+                  />
+                </div>
+              </CardContent>
+            </Card>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>

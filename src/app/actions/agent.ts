@@ -162,6 +162,14 @@ export async function updateAgent(
     mobile?: string
     shopId?: number
     status?: UserStatus
+    areaCover?: string
+    address?: {
+      locality: string
+      pincode: string
+      state: string
+      landmark?: string
+      apartmentNo?: string
+    }
   }
 ) {
   try {
@@ -187,14 +195,49 @@ export async function updateAgent(
         })
       }
 
-      // Update Agent details (Shop link)
-      if (data.shopId) {
+      // Update Agent details (Shop link & Area Cover)
+      if (data.shopId || data.areaCover !== undefined) {
         await tx.agent.update({
           where: { id },
           data: {
-            shopId: data.shopId
+            shopId: data.shopId,
+            areaCover: data.areaCover
           }
         })
+      }
+
+      // Update Address details
+      if (data.address) {
+        // Check if address exists
+        const existingAddress = await tx.address.findFirst({
+          where: { userId: agent.userId }
+        })
+
+        if (existingAddress) {
+          await tx.address.update({
+            where: { id: existingAddress.id },
+            data: {
+              locality: data.address.locality,
+              pincode: data.address.pincode,
+              state: data.address.state,
+              landmark: data.address.landmark,
+              apartmentNo: data.address.apartmentNo
+            }
+          })
+        } else {
+          // Create new address if not exists
+          await tx.address.create({
+            data: {
+              userId: agent.userId,
+              locality: data.address.locality,
+              pincode: data.address.pincode,
+              state: data.address.state,
+              landmark: data.address.landmark,
+              apartmentNo: data.address.apartmentNo,
+              phone: data.mobile || agent.user.mobile || '' // Use updated mobile or existing
+            }
+          })
+        }
       }
 
       return await tx.agent.findUnique({

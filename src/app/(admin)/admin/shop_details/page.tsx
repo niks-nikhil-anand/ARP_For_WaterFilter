@@ -22,20 +22,12 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
   Trash2,
   Search,
   Store,
   Pencil,
   Eye,
   Plus,
-  Loader2,
   Phone,
   Mail,
   MapPin,
@@ -45,6 +37,7 @@ import { getUsersByRole, deleteUser, updateUser, createUser } from '@/actions/ad
 import { getShops, createOrUpdateShop } from '@/app/actions/shop'
 import { createAddress, updateAddress } from '@/app/actions/address'
 import { toast } from 'sonner'
+import { ShopForm, ShopFormData } from '@/components/shop/ShopForm'
 
 type AdminUser = {
   id: number
@@ -66,46 +59,8 @@ const ShopDetailsPage = () => {
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null)
-  const [editForm, setEditForm] = useState({
-    name: '',
-    email: '',
-    mobile: '',
-    status: '',
-    shopName: '',
-    alternateMobile: '',
-    gstNumber: '',
-    panNumber: '',
-    address: {
-      apartmentNo: '',
-      locality: '',
-      state: '',
-      country: '',
-      pincode: '',
-      phone: '',
-    },
-  })
-  const [addForm, setAddForm] = useState({
-    name: '',
-    email: '',
-    mobile: '',
-    password: '',
-    confirmPassword: '',
-    role: 'ADMIN',
-    shopName: '',
-    alternateMobile: '',
-    gstNumber: '',
-    panNumber: '',
-    address: {
-      apartmentNo: '',
-      locality: '',
-      state: '',
-      country: 'India',
-      pincode: '',
-      phone: '',
-    },
-  })
   const [addressId, setAddressId] = useState<number | null>(null)
-  const [isAddingShop, setIsAddingShop] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     loadAdminUsers()
@@ -164,11 +119,19 @@ const ShopDetailsPage = () => {
     const shop = user.shops && user.shops[0]
     const address = shop?.addresses && shop.addresses[0]
     setAddressId(address?.id || null)
-    setEditForm({
-      name: user.name || '',
-      email: user.email || '',
-      mobile: user.mobile || '',
-      status: user.status || 'ACTIVE',
+    setEditDialogOpen(true)
+  }
+
+  const getInitialDataForEdit = (): Partial<ShopFormData> => {
+    if (!selectedUser) return {}
+    const shop = selectedUser.shops && selectedUser.shops[0]
+    const address = shop?.addresses && shop.addresses[0]
+
+    return {
+      name: selectedUser.name || '',
+      email: selectedUser.email || '',
+      mobile: selectedUser.mobile || '',
+      status: selectedUser.status || 'ACTIVE',
       shopName: shop?.shopName || '',
       alternateMobile: shop?.alternateMobile || '',
       gstNumber: shop?.gstNumber || '',
@@ -181,46 +144,48 @@ const ShopDetailsPage = () => {
         pincode: address?.pincode || '',
         phone: address?.phone || '',
       },
-    })
-    setEditDialogOpen(true)
+    }
   }
 
-  const handleSaveEdit = async () => {
+  const handleUpdateShop = async (data: ShopFormData) => {
     if (!selectedUser) return
+    setIsSubmitting(true)
 
     // Update user details
     const userResult = await updateUser(selectedUser.id, {
-      name: editForm.name,
-      email: editForm.email,
-      mobile: editForm.mobile,
-      status: editForm.status,
+      name: data.name,
+      email: data.email,
+      mobile: data.mobile,
+      status: data.status,
     })
 
     let addressResult = { success: true }
     
     // Create or update shop for this user
     const shopResult = await createOrUpdateShop(selectedUser.id, {
-      name: editForm.name,
-      shopName: editForm.shopName,
-      alternateMobile: editForm.alternateMobile,
-      gstNumber: editForm.gstNumber,
-      panNumber: editForm.panNumber,
+      name: data.name,
+      shopName: data.shopName,
+      alternateMobile: data.alternateMobile,
+      gstNumber: data.gstNumber,
+      panNumber: data.panNumber,
     })
 
     // Update or create address if shop was created/updated successfully
     if (shopResult.success && shopResult.data) {
       if (addressId) {
         // Update existing address
-        addressResult = await updateAddress(addressId, editForm.address)
-      } else if (editForm.address.apartmentNo || editForm.address.locality) {
+        addressResult = await updateAddress(addressId, data.address)
+      } else if (data.address.apartmentNo || data.address.locality) {
         // Create new address if any field is filled
         addressResult = await createAddress({
-          ...editForm.address,
+          ...data.address,
           shopId: shopResult.data.id,
           userId: selectedUser.id,
         })
       }
     }
+
+    setIsSubmitting(false)
 
     if (userResult.success && shopResult.success && addressResult.success) {
       loadAdminUsers()
@@ -233,26 +198,28 @@ const ShopDetailsPage = () => {
     }
   }
 
-  const handleAddShop = async () => {
-    setIsAddingShop(true)
+  const handleCreateShop = async (data: ShopFormData) => {
+    setIsSubmitting(true)
     try {
-      if (addForm.password !== addForm.confirmPassword) {
+      if (data.password !== data.confirmPassword) {
         toast.error('Passwords do not match')
+        setIsSubmitting(false)
         return
       }
 
       // Create user with ADMIN role
       const userResult = await createUser({
-        name: addForm.name,
-        email: addForm.email,
-        mobile: addForm.mobile,
-        password: addForm.password,
+        name: data.name,
+        email: data.email,
+        mobile: data.mobile,
+        password: data.password!,
         role: 'ADMIN' as any,
         status: 'ACTIVE' as any,
       })
 
       if (!userResult.success || !userResult.data) {
         toast.error(userResult.error || 'Failed to create shop owner')
+        setIsSubmitting(false)
         return
       }
 
@@ -260,19 +227,19 @@ const ShopDetailsPage = () => {
 
       // Create shop for the new user
       const shopResult = await createOrUpdateShop(userId, {
-        name: addForm.name,
-        shopName: addForm.shopName,
-        alternateMobile: addForm.alternateMobile,
-        gstNumber: addForm.gstNumber,
-        panNumber: addForm.panNumber,
+        name: data.name,
+        shopName: data.shopName,
+        alternateMobile: data.alternateMobile,
+        gstNumber: data.gstNumber,
+        panNumber: data.panNumber,
       })
 
       // Create address if any field is filled
       let addressResult = { success: true }
       if (shopResult.success && shopResult.data &&
-          (addForm.address.apartmentNo || addForm.address.locality)) {
+          (data.address.apartmentNo || data.address.locality)) {
         addressResult = await createAddress({
-          ...addForm.address,
+          ...data.address,
           shopId: shopResult.data.id,
           userId: userId,
         })
@@ -281,32 +248,12 @@ const ShopDetailsPage = () => {
       if (userResult.success && shopResult.success && addressResult.success) {
         loadAdminUsers()
         setAddDialogOpen(false)
-        setAddForm({
-          name: '',
-          email: '',
-          mobile: '',
-          password: '',
-          confirmPassword: '',
-          role: 'ADMIN',
-          shopName: '',
-          alternateMobile: '',
-          gstNumber: '',
-          panNumber: '',
-          address: {
-            apartmentNo: '',
-            locality: '',
-            state: '',
-            country: 'India',
-            pincode: '',
-            phone: '',
-          },
-        })
         toast.success('Shop owner and shop created successfully')
       } else {
         toast.error('Failed to create shop')
       }
     } finally {
-      setIsAddingShop(false)
+      setIsSubmitting(false)
     }
   }
 
@@ -658,384 +605,31 @@ const ShopDetailsPage = () => {
               Create a new shop owner account and shop
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-6">
-            {/* Owner Information */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-muted-foreground">Owner Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="add-name">Owner Name *</Label>
-                  <Input
-                    id="add-name"
-                    value={addForm.name}
-                    onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
-                    placeholder="Enter owner name"
-                    required
-                    disabled={isAddingShop}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="add-mobile">Mobile Number</Label>
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-10 w-12 items-center justify-center rounded-md border bg-muted text-sm text-muted-foreground">
-                      +91
-                    </div>
-                    <Input
-                      id="add-mobile"
-                      value={addForm.mobile}
-                      onChange={(e) => {
-                        const value = e.target.value.replace(/\D/g, '').slice(0, 10)
-                        setAddForm({ ...addForm, mobile: value })
-                      }}
-                      placeholder="98765 43210"
-                      disabled={isAddingShop}
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="add-email">Email Address *</Label>
-                  <Input
-                    id="add-email"
-                    type="email"
-                    value={addForm.email}
-                    onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
-                    placeholder="owner@email.com"
-                    required
-                    disabled={isAddingShop}
-                  />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="add-password">Password *</Label>
-                  <Input
-                    id="add-password"
-                    type="password"
-                    value={addForm.password}
-                    onChange={(e) => setAddForm({ ...addForm, password: e.target.value })}
-                    placeholder="Enter password"
-                    required
-                    disabled={isAddingShop}
-                  />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="add-confirmPassword">Confirm Password *</Label>
-                  <Input
-                    id="add-confirmPassword"
-                    type="password"
-                    value={addForm.confirmPassword}
-                    onChange={(e) => setAddForm({ ...addForm, confirmPassword: e.target.value })}
-                    placeholder="Confirm password"
-                    required
-                    disabled={isAddingShop}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Shop Information */}
-            <div className="space-y-4 border-t pt-4">
-              <h3 className="text-sm font-semibold text-muted-foreground">Shop Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="add-shopName">Shop Name</Label>
-                  <Input
-                    id="add-shopName"
-                    value={addForm.shopName}
-                    onChange={(e) => setAddForm({ ...addForm, shopName: e.target.value })}
-                    placeholder="Enter shop name"
-                    disabled={isAddingShop}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="add-alternateMobile">Alternate Mobile</Label>
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-10 w-12 items-center justify-center rounded-md border bg-muted text-sm text-muted-foreground">
-                      +91
-                    </div>
-                    <Input
-                      id="add-alternateMobile"
-                      value={addForm.alternateMobile}
-                      onChange={(e) => {
-                        const value = e.target.value.replace(/\D/g, '').slice(0, 10)
-                        setAddForm({ ...addForm, alternateMobile: value })
-                      }}
-                      placeholder="98765 43210"
-                      disabled={isAddingShop}
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="add-gstNumber">GST Number</Label>
-                  <Input
-                    id="add-gstNumber"
-                    value={addForm.gstNumber}
-                    onChange={(e) => setAddForm({ ...addForm, gstNumber: e.target.value })}
-                    placeholder="Enter GST number"
-                    disabled={isAddingShop}
-                  />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="add-panNumber">PAN Number</Label>
-                  <Input
-                    id="add-panNumber"
-                    value={addForm.panNumber}
-                    onChange={(e) => setAddForm({ ...addForm, panNumber: e.target.value })}
-                    placeholder="Enter PAN number"
-                    disabled={isAddingShop}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Address Information */}
-            <div className="space-y-4 border-t pt-4">
-              <h3 className="text-sm font-semibold text-muted-foreground">Address Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="add-locality">Locality/Area</Label>
-                  <Input
-                    id="add-locality"
-                    value={addForm.address.locality}
-                    onChange={(e) => setAddForm({ ...addForm, address: { ...addForm.address, locality: e.target.value } })}
-                    placeholder="Enter locality or area"
-                    disabled={isAddingShop}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="add-apartmentNo">Apartment/Building No.</Label>
-                  <Input
-                    id="add-apartmentNo"
-                    value={addForm.address.apartmentNo}
-                    onChange={(e) => setAddForm({ ...addForm, address: { ...addForm.address, apartmentNo: e.target.value } })}
-                    placeholder="Flat/Building number"
-                    disabled={isAddingShop}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="add-pincode">Pincode</Label>
-                  <Input
-                    id="add-pincode"
-                    value={addForm.address.pincode}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/\D/g, '').slice(0, 6)
-                      setAddForm({ ...addForm, address: { ...addForm.address, pincode: value } })
-                    }}
-                    placeholder="Enter pincode"
-                    disabled={isAddingShop}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="add-state">State</Label>
-                  <Input
-                    id="add-state"
-                    value={addForm.address.state}
-                    onChange={(e) => setAddForm({ ...addForm, address: { ...addForm.address, state: e.target.value } })}
-                    placeholder="Enter state"
-                    disabled={isAddingShop}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="add-country">Country</Label>
-                  <Input
-                    id="add-country"
-                    value={addForm.address.country}
-                    readOnly
-                    disabled
-                    className="bg-muted"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setAddDialogOpen(false)}
-              disabled={isAddingShop}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleAddShop}
-              disabled={!addForm.name || !addForm.email || !addForm.password || isAddingShop}
-            >
-              {isAddingShop ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Adding Shop...
-                </>
-              ) : (
-                'Add Shop'
-              )}
-            </Button>
-          </DialogFooter>
+          <ShopForm
+            mode="add"
+            onSubmit={handleCreateShop}
+            isSubmitting={isSubmitting}
+            onCancel={() => setAddDialogOpen(false)}
+          />
         </DialogContent>
       </Dialog>
 
       {/* Edit Shop Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Shop Details</DialogTitle>
             <DialogDescription>
               Update shop owner and shop information
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-name">Owner Name</Label>
-              <Input
-                id="edit-name"
-                value={editForm.name}
-                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                placeholder="Enter owner name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-email">Email</Label>
-              <Input
-                id="edit-email"
-                type="email"
-                value={editForm.email}
-                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                placeholder="Enter email"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-mobile">Mobile Number</Label>
-              <Input
-                id="edit-mobile"
-                value={editForm.mobile}
-                onChange={(e) => setEditForm({ ...editForm, mobile: e.target.value })}
-                placeholder="Enter mobile number"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-status">Status</Label>
-              <Select
-                value={editForm.status}
-                onValueChange={(value) => setEditForm({ ...editForm, status: value })}
-              >
-                <SelectTrigger id="edit-status">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ACTIVE">Active</SelectItem>
-                  <SelectItem value="BLOCKED">Blocked</SelectItem>
-                  <SelectItem value="PENDING">Pending</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="border-t pt-4">
-              <h3 className="font-semibold mb-3">Shop Information</h3>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-shopName">Shop Name</Label>
-              <Input
-                id="edit-shopName"
-                value={editForm.shopName}
-                onChange={(e) => setEditForm({ ...editForm, shopName: e.target.value })}
-                placeholder="Enter shop name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-alternateMobile">Alternate Mobile</Label>
-              <Input
-                id="edit-alternateMobile"
-                value={editForm.alternateMobile}
-                onChange={(e) => setEditForm({ ...editForm, alternateMobile: e.target.value })}
-                placeholder="Enter alternate mobile number"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-gstNumber">GST Number</Label>
-              <Input
-                id="edit-gstNumber"
-                value={editForm.gstNumber}
-                onChange={(e) => setEditForm({ ...editForm, gstNumber: e.target.value })}
-                placeholder="Enter GST number"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-panNumber">PAN Number</Label>
-              <Input
-                id="edit-panNumber"
-                value={editForm.panNumber}
-                onChange={(e) => setEditForm({ ...editForm, panNumber: e.target.value })}
-                placeholder="Enter PAN number"
-              />
-            </div>
-            <div className="border-t pt-4">
-              <h3 className="font-semibold mb-3">Address Information</h3>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-apartmentNo">Apartment/Building No.</Label>
-              <Input
-                id="edit-apartmentNo"
-                value={editForm.address.apartmentNo}
-                onChange={(e) => setEditForm({ ...editForm, address: { ...editForm.address, apartmentNo: e.target.value } })}
-                placeholder="Enter apartment/building number"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-locality">Locality/Area</Label>
-              <Input
-                id="edit-locality"
-                value={editForm.address.locality}
-                onChange={(e) => setEditForm({ ...editForm, address: { ...editForm.address, locality: e.target.value } })}
-                placeholder="Enter locality or area"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-state">State</Label>
-                <Input
-                  id="edit-state"
-                  value={editForm.address.state}
-                  onChange={(e) => setEditForm({ ...editForm, address: { ...editForm.address, state: e.target.value } })}
-                  placeholder="Enter state"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-country">Country</Label>
-                <Input
-                  id="edit-country"
-                  value={editForm.address.country}
-                  onChange={(e) => setEditForm({ ...editForm, address: { ...editForm.address, country: e.target.value } })}
-                  placeholder="Enter country"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-pincode">Pincode</Label>
-                <Input
-                  id="edit-pincode"
-                  value={editForm.address.pincode}
-                  onChange={(e) => setEditForm({ ...editForm, address: { ...editForm.address, pincode: e.target.value } })}
-                  placeholder="Enter pincode"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-phone">Phone</Label>
-                <Input
-                  id="edit-phone"
-                  value={editForm.address.phone}
-                  onChange={(e) => setEditForm({ ...editForm, address: { ...editForm.address, phone: e.target.value } })}
-                  placeholder="Enter phone number"
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveEdit}>
-              Save Changes
-            </Button>
-          </DialogFooter>
+          <ShopForm
+            mode="edit"
+            initialData={getInitialDataForEdit()}
+            onSubmit={handleUpdateShop}
+            isSubmitting={isSubmitting}
+            onCancel={() => setEditDialogOpen(false)}
+          />
         </DialogContent>
       </Dialog>
     </div>

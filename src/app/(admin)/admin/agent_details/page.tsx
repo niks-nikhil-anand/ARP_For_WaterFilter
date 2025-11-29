@@ -10,6 +10,13 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -87,7 +94,7 @@ const AgentUsersPage = () => {
   const [addForm, setAddForm] = useState({
     name: '',
     email: '',
-    mobile: '',
+    mobile: '+91 ',
     password: '',
     shopId: '',
     areaCover: '',
@@ -136,6 +143,25 @@ const AgentUsersPage = () => {
       toast.error('Failed to load agent users')
     }
     setLoading(false)
+  }
+
+  // Enforce phone input: always show '+91 ' prefix, accept only digits after it, max 10 digits
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const prefix = '+91 '
+    const raw = e.target.value || ''
+    // Extract digits only
+    let digits = raw.replace(/\D/g, '')
+    // If user pasted full international like '919876543210' or '+919876543210', strip leading country code
+    if (digits.startsWith('91')) {
+      // remove only a single leading '91' if present
+      digits = digits.replace(/^91/, '')
+    }
+    // Limit to 10 digits
+    digits = digits.slice(0, 10)
+    setAddForm({
+      ...addForm,
+      mobile: prefix + digits
+    })
   }
 
   const handleDeleteUser = async (user: AgentUser) => {
@@ -195,8 +221,21 @@ const AgentUsersPage = () => {
         return
       }
 
+      // Validate phone number length
+      const phoneDigits = addForm.mobile.replace(/\D/g, '').replace(/^91/, '')
+      if (phoneDigits.length !== 10) {
+        toast.error('Please enter a valid 10-digit mobile number')
+        setAddLoading(false)
+        return
+      }
+
       if (!addForm.locality || !addForm.pincode || !addForm.state) {
         toast.error('Address details (locality, pincode, state) are required')
+        return
+      }
+
+      if (!addForm.areaCover) {
+        toast.error('Area cover is required')
         return
       }
 
@@ -207,10 +246,13 @@ const AgentUsersPage = () => {
         return
       }
 
+      // Format mobile number to remove space: +91 12345 -> +9112345
+      const formattedMobile = `+91${phoneDigits}`
+
       const result = await createAgent({
         name: addForm.name,
         email: addForm.email || undefined,
-        mobile: addForm.mobile,
+        mobile: formattedMobile,
         shopId: shopId,
         areaCover: addForm.areaCover || undefined,
         address: {
@@ -219,7 +261,7 @@ const AgentUsersPage = () => {
           state: addForm.state,
           landmark: addForm.landmark || undefined,
           apartmentNo: addForm.apartmentNo || undefined,
-          phone: addForm.mobile,
+          phone: formattedMobile,
         },
       })
 
@@ -229,7 +271,7 @@ const AgentUsersPage = () => {
         setAddForm({
           name: '',
           email: '',
-          mobile: '',
+          mobile: '+91 ',
           password: '',
           shopId: '',
           areaCover: '',
@@ -418,131 +460,147 @@ const AgentUsersPage = () => {
               Create a new agent account and assign to a shop
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="add-name">Name *</Label>
-              <Input
-                id="add-name"
-                value={addForm.name}
-                onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
-                placeholder="Enter agent name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="add-email">Email</Label>
-              <Input
-                id="add-email"
-                type="email"
-                value={addForm.email}
-                onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
-                placeholder="Enter email (optional)"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="add-mobile">Mobile Number *</Label>
-              <Input
-                id="add-mobile"
-                value={addForm.mobile}
-                onChange={(e) => setAddForm({ ...addForm, mobile: e.target.value })}
-                placeholder="Enter mobile number"
-              />
-            </div>
+          <div className="space-y-6 py-4">
+            {/* Personal Details Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Personal Details</CardTitle>
+                <CardDescription>Basic information about the agent</CardDescription>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="add-name">Name *</Label>
+                  <Input
+                    id="add-name"
+                    value={addForm.name}
+                    onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
+                    placeholder="Enter agent name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-mobile">Mobile Number *</Label>
+                  <Input
+                    id="add-mobile"
+                    value={addForm.mobile}
+                    onChange={handlePhoneChange}
+                    placeholder="+91 XXXXX XXXXX"
+                  />
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label htmlFor="add-email">Email</Label>
+                  <Input
+                    id="add-email"
+                    type="email"
+                    value={addForm.email}
+                    onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
+                    placeholder="Enter email (optional)"
+                  />
+                </div>
+              </CardContent>
+            </Card>
 
-            {/* Address Fields */}
-            <div className="border-t pt-4 mt-4">
-              <h4 className="font-semibold mb-3 text-sm">Address Details</h4>
-              <div className="space-y-3">
+            {/* Shop Assignment Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Shop Assignment</CardTitle>
+                <CardDescription>Assign the agent to a shop and area</CardDescription>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="add-shop">Assign to Shop *</Label>
+                  <Select
+                    value={addForm.shopId}
+                    onValueChange={(value) => setAddForm({ ...addForm, shopId: value })}
+                    disabled={shopsLoading}
+                  >
+                    <SelectTrigger id="add-shop">
+                      <SelectValue placeholder={shopsLoading ? "Loading shops..." : shops.length === 0 ? "No shops available" : "Select shop"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {shopsLoading ? (
+                        <div className="p-2 text-center text-sm text-muted-foreground">
+                          Loading shops...
+                        </div>
+                      ) : shops.length === 0 ? (
+                        <div className="p-2 text-center text-sm text-muted-foreground">
+                          No shops available
+                        </div>
+                      ) : (
+                        shops.map((shop) => (
+                          <SelectItem key={shop.id} value={shop.id.toString()}>
+                            {shop.name}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-area-cover">Area Cover *</Label>
+                  <Input
+                    id="add-area-cover"
+                    value={addForm.areaCover}
+                    onChange={(e) => setAddForm({ ...addForm, areaCover: e.target.value })}
+                    placeholder="e.g., North Zone"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Address Details Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Address Details</CardTitle>
+                <CardDescription>Residential address of the agent</CardDescription>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="add-locality">Locality *</Label>
                   <Input
                     id="add-locality"
                     value={addForm.locality}
                     onChange={(e) => setAddForm({ ...addForm, locality: e.target.value })}
-                    placeholder="Enter locality/area"
+                    placeholder="Enter locality"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="add-pincode">Pincode *</Label>
-                    <Input
-                      id="add-pincode"
-                      value={addForm.pincode}
-                      onChange={(e) => setAddForm({ ...addForm, pincode: e.target.value })}
-                      placeholder="Enter pincode"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="add-state">State *</Label>
-                    <Input
-                      id="add-state"
-                      value={addForm.state}
-                      onChange={(e) => setAddForm({ ...addForm, state: e.target.value })}
-                      placeholder="Enter state"
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-pincode">Pincode *</Label>
+                  <Input
+                    id="add-pincode"
+                    value={addForm.pincode}
+                    onChange={(e) => setAddForm({ ...addForm, pincode: e.target.value })}
+                    placeholder="Enter pincode"
+                  />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="add-landmark">Landmark</Label>
-                    <Input
-                      id="add-landmark"
-                      value={addForm.landmark}
-                      onChange={(e) => setAddForm({ ...addForm, landmark: e.target.value })}
-                      placeholder="Enter landmark (optional)"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="add-apartment">Apartment No.</Label>
-                    <Input
-                      id="add-apartment"
-                      value={addForm.apartmentNo}
-                      onChange={(e) => setAddForm({ ...addForm, apartmentNo: e.target.value })}
-                      placeholder="Enter apartment no. (optional)"
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-state">State *</Label>
+                  <Input
+                    id="add-state"
+                    value={addForm.state}
+                    onChange={(e) => setAddForm({ ...addForm, state: e.target.value })}
+                    placeholder="Enter state"
+                  />
                 </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="add-area-cover">Area Cover</Label>
-              <Input
-                id="add-area-cover"
-                value={addForm.areaCover}
-                onChange={(e) => setAddForm({ ...addForm, areaCover: e.target.value })}
-                placeholder="Enter area cover (e.g., North Zone, District 5)"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="add-shop">Assign to Shop *</Label>
-              <Select
-                value={addForm.shopId}
-                onValueChange={(value) => setAddForm({ ...addForm, shopId: value })}
-                disabled={shopsLoading}
-              >
-                <SelectTrigger id="add-shop">
-                  <SelectValue placeholder={shopsLoading ? "Loading shops..." : shops.length === 0 ? "No shops available" : "Select shop"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {shopsLoading ? (
-                    <div className="p-2 text-center text-sm text-muted-foreground">
-                      Loading shops...
-                    </div>
-                  ) : shops.length === 0 ? (
-                    <div className="p-2 text-center text-sm text-muted-foreground">
-                      No shops available
-                    </div>
-                  ) : (
-                    shops.map((shop) => (
-                      <SelectItem key={shop.id} value={shop.id.toString()}>
-                        {shop.name}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-landmark">Landmark</Label>
+                  <Input
+                    id="add-landmark"
+                    value={addForm.landmark}
+                    onChange={(e) => setAddForm({ ...addForm, landmark: e.target.value })}
+                    placeholder="Enter landmark"
+                  />
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label htmlFor="add-apartment">Apartment No.</Label>
+                  <Input
+                    id="add-apartment"
+                    value={addForm.apartmentNo}
+                    onChange={(e) => setAddForm({ ...addForm, apartmentNo: e.target.value })}
+                    placeholder="Enter apartment no."
+                  />
+                </div>
+              </CardContent>
+            </Card>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddDialogOpen(false)} disabled={addLoading}>
@@ -550,7 +608,7 @@ const AgentUsersPage = () => {
             </Button>
             <Button
               onClick={handleAddAgent}
-              disabled={addLoading || !addForm.name || !addForm.mobile || !addForm.locality || !addForm.pincode || !addForm.state || !addForm.shopId || addForm.shopId === 'none'}
+              disabled={addLoading || !addForm.name || !addForm.mobile || !addForm.locality || !addForm.pincode || !addForm.state || !addForm.shopId || addForm.shopId === 'none' || !addForm.areaCover}
             >
               {addLoading ? 'Creating...' : 'Add Agent'}
             </Button>

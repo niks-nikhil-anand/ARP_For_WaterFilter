@@ -309,7 +309,7 @@ export const AddAMCContractDialog = ({
                                         setAddForm(prev => ({ ...prev, customerId: customer.id.toString() }))
                                         setCustomerOpen(false)
                                       }}
-                                      className="cursor-pointer py-3 data-[selected='true']:bg-blue-50 data-[selected='true']:text-blue-700 dark:data-[selected='true']:bg-blue-900/20 dark:data-[selected='true']:text-blue-300"
+                                      className="cursor-pointer py-3 data-[selected='true']:bg-blue-100 data-[selected='true']:text-black data-[selected='true']:font-bold dark:data-[selected='true']:bg-blue-900/20 dark:data-[selected='true']:text-white"
                                     >
                                       <Check
                                         className={`mr-2 h-4 w-4 shrink-0 ${
@@ -408,7 +408,7 @@ export const AddAMCContractDialog = ({
                                         setAddForm(prev => ({ ...prev, agentId: agent.id.toString() }))
                                         setAgentOpen(false)
                                       }}
-                                      className="cursor-pointer py-3 data-[selected='true']:bg-blue-50 data-[selected='true']:text-blue-700 dark:data-[selected='true']:bg-blue-900/20 dark:data-[selected='true']:text-blue-300"
+                                      className="cursor-pointer py-3 data-[selected='true']:bg-blue-50 data-[selected='true']:text-black data-[selected='true']:font-bold dark:data-[selected='true']:bg-blue-900/20 dark:data-[selected='true']:text-white"
                                     >
                                       <Check
                                         className={`mr-2 h-4 w-4 ${
@@ -509,7 +509,7 @@ export const AddAMCContractDialog = ({
                                       setAddForm(prev => ({ ...prev, productId: product.id.toString() }))
                                       setProductOpen(false)
                                     }}
-                                    className="cursor-pointer py-3 data-[selected='true']:bg-blue-50 data-[selected='true']:text-blue-700 dark:data-[selected='true']:bg-blue-900/20 dark:data-[selected='true']:text-blue-300"
+                                    className="cursor-pointer py-3 data-[selected='true']:bg-blue-50 data-[selected='true']:text-black data-[selected='true']:font-bold dark:data-[selected='true']:bg-blue-900/20 dark:data-[selected='true']:text-white"
                                   >
                                     <Check
                                       className={`mr-2 h-4 w-4 ${

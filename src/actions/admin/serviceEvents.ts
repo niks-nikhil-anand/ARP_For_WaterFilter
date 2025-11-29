@@ -45,7 +45,17 @@ export async function getServiceEvents() {
       }
     })
 
-    return { success: true, data: events }
+    // Serialize Decimal fields
+    const serializedEvents = events.map(event => ({
+      ...event,
+      pricePaid: event.pricePaid ? Number(event.pricePaid) : null,
+      amcContract: event.amcContract ? {
+        ...event.amcContract,
+        price: Number(event.amcContract.price)
+      } : null
+    }))
+
+    return { success: true, data: serializedEvents }
   } catch (error: any) {
     console.error('Get service events error:', error)
     return { success: false, error: error.message }
@@ -96,7 +106,12 @@ export async function createServiceEvent(data: {
       }
     })
 
-    return { success: true, data: event }
+    const serializedEvent = {
+      ...event,
+      pricePaid: event.pricePaid ? Number(event.pricePaid) : null
+    }
+
+    return { success: true, data: serializedEvent }
   } catch (error: any) {
     console.error('Create service event error:', error)
     return { success: false, error: error.message }
@@ -122,7 +137,12 @@ export async function updateServiceEvent(id: number, data: {
       }
     })
 
-    return { success: true, data: event }
+    const serializedEvent = {
+      ...event,
+      pricePaid: event.pricePaid ? Number(event.pricePaid) : null
+    }
+
+    return { success: true, data: serializedEvent }
   } catch (error: any) {
     console.error('Update service event error:', error)
     return { success: false, error: error.message }
@@ -218,7 +238,12 @@ export async function getAMCContracts() {
       }
     })
 
-    return { success: true, data: contracts }
+    const serializedContracts = contracts.map(c => ({
+      ...c,
+      price: Number(c.price)
+    }))
+
+    return { success: true, data: serializedContracts }
   } catch (error: any) {
     console.error('Get AMC contracts error:', error)
     return { success: false, error: error.message }
@@ -243,6 +268,20 @@ export async function getAllAMCs() {
             customerName: true,
             customerEmail: true,
             customerPhone: true,
+            amountPaid: true,
+          }
+        },
+        amcContract: {
+          include: {
+            agent: {
+              include: {
+                user: {
+                  select: {
+                    name: true
+                  }
+                }
+              }
+            }
           }
         }
       },
@@ -251,7 +290,23 @@ export async function getAllAMCs() {
       }
     })
 
-    return { success: true, data: amcs }
+    const serializedAMCs = amcs.map(amc => ({
+      ...amc,
+      order: {
+        ...amc.order,
+        amountPaid: amc.order.amountPaid ? Number(amc.order.amountPaid) : null
+      },
+      amcContract: {
+        ...amc.amcContract,
+        price: Number(amc.amcContract.price),
+        discount: amc.amcContract.discount ? Number(amc.amcContract.discount) : null,
+        finalPrice: Number(amc.amcContract.finalPrice),
+        paymentPaid: Number(amc.amcContract.paymentPaid),
+        paymentDue: Number(amc.amcContract.paymentDue),
+      }
+    }))
+
+    return { success: true, data: serializedAMCs }
   } catch (error: any) {
     console.error('Get all AMCs error:', error)
     return { success: false, error: error.message }
@@ -412,7 +467,35 @@ export async function createAMCContract(data: {
       }
     })
 
-    return { success: true, data: { contract, amc, order } }
+    // Serialize return data
+    const serializedContract = {
+      ...contract,
+      price: Number(contract.price),
+      discount: contract.discount ? Number(contract.discount) : null,
+      finalPrice: Number(contract.finalPrice),
+      paymentPaid: Number(contract.paymentPaid),
+      paymentDue: Number(contract.paymentDue),
+    }
+
+    const serializedOrder = {
+      ...order,
+      amountPaid: order.amountPaid ? Number(order.amountPaid) : null
+    }
+    
+    // amc has product(price), order(amountPaid), amcContract(price, etc.)
+    // We need to serialize deep relations if they are returned
+    const serializedAmc = {
+      ...amc,
+      product: {
+        ...amc.product,
+        price: Number(amc.product.price),
+        discount: amc.product.discount ? Number(amc.product.discount) : null
+      },
+      order: serializedOrder,
+      amcContract: serializedContract
+    }
+
+    return { success: true, data: { contract: serializedContract, amc: serializedAmc, order: serializedOrder } }
   } catch (error: any) {
     console.error('Create AMC contract error:', error)
     return { success: false, error: error.message }

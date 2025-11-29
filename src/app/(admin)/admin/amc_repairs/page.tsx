@@ -96,13 +96,18 @@ const AMCRepairsPage = () => {
           name: amc.order.customerName,
           email: amc.order.customerEmail
         },
-        assignedTo: null,
-        amcContract: null,
-        description: `AMC Contract (${amc.durationMonths} months)`,
+        assignedTo: amc.amcContract?.agent ? {
+          id: amc.amcContract.agent.id,
+          user: {
+            name: amc.amcContract.agent.user.name
+          }
+        } : null,
+        amcContract: amc.amcContract,
+        description: `AMC Contract (${amc.amcContract?.duration || 'N/A'})`,
         remarks: null,
         parts: null,
         feedback: null,
-        pricePaid: amc.amountPaid,
+        pricePaid: amc.amcContract?.paymentPaid || amc.order?.amountPaid,
         startDate: amc.startDate,
         endDate: amc.endDate,
         createdAt: amc.createdAt,

@@ -92,18 +92,17 @@ const BookingForm = () => {
     }
 
     try {
-      // Create ticket using the server action
-      const result = await commonActions.createTicket({
-        customerName: formData.name,
-        customerEmail: formData.email,
-        customerPhone: `+91${localDigits}`,
-        customerAddress: formData.address,
+      // Create complaint using the server action
+      const result = await commonActions.createComplaint({
+        name: formData.name,
+        email: formData.email,
+        phone: `+91${localDigits}`,
+        address: formData.address,
         serviceType: formData.serviceType,
         productType: formData.productType || undefined,
-        description: formData.message || undefined,
+        additionalInfo: formData.message || undefined,
         preferredDate: formData.preferredDate || undefined,
         preferredTime: formData.preferredTime || undefined,
-        priority: 'MEDIUM',
       })
 
       if (result.success) {

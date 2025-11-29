@@ -118,6 +118,7 @@ model User {
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt
   amcs                  AMC[]
+  complaints            Complaint[]
 }
 
 model Address {
@@ -339,9 +340,9 @@ model AMCContract {
   discountType DiscountType?
   finalPrice   Decimal
 
-  paymentPaid   Decimal
-  paymentDue    Decimal
-  paymentNotes String?
+  paymentPaid     Decimal
+  paymentDue      Decimal
+  paymentNotes    String?
   nextPaymentDate DateTime?
 
   paymentMethod PaymentMethod?
@@ -350,25 +351,20 @@ model AMCContract {
 
   description String?
 
-
   status AMCStatus @default(ACTIVE)
 
   shop   Shop @relation(fields: [shopId], references: [id], onDelete: Restrict)
   shopId Int
 
-
-  agent Agent? @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  agent   Agent? @relation(fields: [agentId], references: [id], onDelete: SetNull)
   agentId Int?
-
-
 
   serviceEvents ServiceEvent[]
   noOfServices  Int
 
-
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  amcs          AMC[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  amcs      AMC[]
 
   @@index([status])
   @@index([shopId])
@@ -479,4 +475,23 @@ model ServiceEvent {
   @@index([productId])
   @@index([orderId])
   @@index([type, customerId])
+}
+
+model Complaint {
+  id Int @id @default(autoincrement())
+
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId Int
+
+  serviceType    String
+  preferredDate  DateTime?
+  preferredTime  String?
+  address        String
+  productType    String?
+  additionalInfo String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }

@@ -168,14 +168,15 @@ model Shop {
 
 // Dedicated model for Service Agents
 model Agent {
-  id        Int            @id @default(autoincrement())
-  user      User           @relation(fields: [userId], references: [id], onDelete: Restrict)
-  userId    Int            @unique
-  shop      Shop?          @relation(fields: [shopId], references: [id], onDelete: SetNull)
-  shopId    Int?
-  areaCover String? // Area or zone the agent covers
-  tasks     ServiceEvent[]
-  tickets   Ticket[]
+  id           Int            @id @default(autoincrement())
+  user         User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  userId       Int            @unique
+  shop         Shop?          @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  shopId       Int?
+  areaCover    String? // Area or zone the agent covers
+  tasks        ServiceEvent[]
+  tickets      Ticket[]
+  amcContracts AMCContract[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -310,12 +311,6 @@ model AMC {
   amcContract   AMCContract @relation(fields: [amcContractId], references: [id], onDelete: Restrict)
   amcContractId Int
 
-  startDate      DateTime
-  endDate        DateTime
-  durationMonths Int
-
-  isActive     Boolean   @default(true)
-  amountPaid   Decimal?
   status       AMCStatus @default(ACTIVE)
   deletedAt    DateTime? // Soft delete support
   cancelledAt  DateTime? // When AMC was cancelled
@@ -326,25 +321,51 @@ model AMC {
   @@index([status])
   @@index([userId])
   @@index([shopId])
-  @@index([endDate])
   @@index([amcContractId])
 }
 
 // Defines a type of AMC contract/plan
 model AMCContract {
-  id             Int       @id @default(autoincrement())
-  invoiceNumber  String    @unique
-  name           String
-  duration       String // e.g., "12 months", "1 year"
-  durationMonths Int // Duration in months for consistency
-  price          Decimal
-  status         AMCStatus @default(ACTIVE)
+  id            Int    @id @default(autoincrement())
+  invoiceNumber String @unique
+
+  // AMC Duration & Pricing
+  startDate DateTime
+  endDate   DateTime
+  duration  String
+
+  price        Decimal
+  discount     Decimal?
+  discountType DiscountType?
+  finalPrice   Decimal
+
+  paymentPaid   Decimal
+  paymentDue    Decimal
+  paymentNotes String?
+  nextPaymentDate DateTime?
+
+  paymentMethod PaymentMethod?
+  paymentStatus PaymentStatus  @default(PENDING)
+  transactionId String? // For online payments
+
+  description String?
+
+
+  status AMCStatus @default(ACTIVE)
 
   shop   Shop @relation(fields: [shopId], references: [id], onDelete: Restrict)
   shopId Int
 
+
+  agent Agent? @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  agentId Int?
+
+
+
   serviceEvents ServiceEvent[]
   noOfServices  Int
+
+
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   amcs          AMC[]

@@ -33,7 +33,7 @@ export async function getServiceEvents() {
         amcContract: {
           select: {
             id: true,
-            name: true,
+            invoiceNumber: true,
             duration: true,
             price: true,
             status: true,
@@ -208,13 +208,13 @@ export async function getAMCContracts() {
     const contracts = await prisma.aMCContract.findMany({
       select: {
         id: true,
-        name: true,
+        invoiceNumber: true,
         duration: true,
         price: true,
         status: true,
       },
       orderBy: {
-        name: 'asc'
+        createdAt: 'desc'
       }
     })
 
@@ -254,6 +254,111 @@ export async function getAllAMCs() {
     return { success: true, data: amcs }
   } catch (error: any) {
     console.error('Get all AMCs error:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+export async function createAMCContract(data: {
+  productId: number
+  customerId: number
+  agentId?: number
+  startDate: Date
+  duration: string
+  price: number
+  discount?: number
+  discountType?: 'PERCENTAGE' | 'FLAT_RATE'
+  paymentPaid: number
+  paymentMethod?: 'CASH' | 'ONLINE' | 'UPI' | 'CARD' | 'NET_BANKING'
+  remarks?: string
+  noOfServices: number
+}) {
+  try {
+    // Calculate final price based on discount
+    let finalPrice = data.price
+    if (data.discount && data.discountType) {
+      if (data.discountType === 'PERCENTAGE') {
+        finalPrice = data.price - (data.price * data.discount / 100)
+      } else {
+        finalPrice = data.price - data.discount
+      }
+    }
+
+    // Calculate payment due
+    const paymentDue = finalPrice - data.paymentPaid
+
+    // Calculate end date based on duration
+    const startDate = new Date(data.startDate)
+    let endDate = new Date(startDate)
+
+    // Parse duration (e.g., "1 year", "6 months", "2 years")
+    const durationMatch = data.duration.match(/(\d+)\s*(year|month|day)s?/i)
+    if (durationMatch) {
+      const amount = parseInt(durationMatch[1])
+      const unit = durationMatch[2].toLowerCase()
+
+      if (unit === 'year') {
+        endDate.setFullYear(endDate.getFullYear() + amount)
+      } else if (unit === 'month') {
+        endDate.setMonth(endDate.getMonth() + amount)
+      } else if (unit === 'day') {
+        endDate.setDate(endDate.getDate() + amount)
+      }
+    }
+
+    // Get the shop for the current admin/agent
+    const shop = await prisma.shop.findFirst({
+      orderBy: {
+        createdAt: 'asc'
+      }
+    })
+
+    if (!shop) {
+      return { success: false, error: 'No shop found' }
+    }
+
+    // Generate invoice number
+    const lastContract = await prisma.aMCContract.findFirst({
+      orderBy: {
+        createdAt: 'desc'
+      }
+    })
+
+    const invoiceNumber = `AMC-${Date.now()}-${(lastContract?.id || 0) + 1}`
+
+    // Create AMC Contract
+    const contract = await prisma.aMCContract.create({
+      data: {
+        invoiceNumber,
+        startDate,
+        endDate,
+        duration: data.duration,
+        price: data.price,
+        discount: data.discount || null,
+        discountType: data.discountType || null,
+        finalPrice,
+        paymentPaid: data.paymentPaid,
+        paymentDue,
+        paymentNotes: data.remarks,
+        paymentMethod: data.paymentMethod || 'CASH',
+        paymentStatus: paymentDue > 0 ? 'PENDING' : 'COMPLETED',
+        shopId: shop.id,
+        agentId: data.agentId,
+        noOfServices: data.noOfServices,
+        description: data.remarks
+      },
+      include: {
+        shop: true,
+        agent: {
+          include: {
+            user: true
+          }
+        }
+      }
+    })
+
+    return { success: true, data: contract }
+  } catch (error: any) {
+    console.error('Create AMC contract error:', error)
     return { success: false, error: error.message }
   }
 }

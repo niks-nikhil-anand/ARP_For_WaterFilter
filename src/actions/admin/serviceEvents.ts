@@ -273,6 +273,24 @@ export async function createAMCContract(data: {
   noOfServices: number
 }) {
   try {
+    // Get customer details
+    const customer = await prisma.user.findUnique({
+      where: { id: data.customerId }
+    })
+
+    if (!customer) {
+      return { success: false, error: 'Customer not found' }
+    }
+
+    // Get product details
+    const product = await prisma.product.findUnique({
+      where: { id: data.productId }
+    })
+
+    if (!product) {
+      return { success: false, error: 'Product not found' }
+    }
+
     // Calculate final price based on discount
     let finalPrice = data.price
     if (data.discount && data.discountType) {
@@ -325,6 +343,22 @@ export async function createAMCContract(data: {
 
     const invoiceNumber = `AMC-${Date.now()}-${(lastContract?.id || 0) + 1}`
 
+    // Create Order for the AMC
+    const order = await prisma.order.create({
+      data: {
+        productId: data.productId,
+        customerName: customer.name,
+        customerEmail: customer.email || '',
+        customerPhone: customer.mobile || '',
+        status: 'COMPLETED', // AMC order is completed immediately
+        paymentMethod: data.paymentMethod || 'CASH',
+        paymentStatus: paymentDue > 0 ? 'PENDING' : 'COMPLETED',
+        amountPaid: data.paymentPaid,
+        amcPurchased: true,
+        createdById: data.customerId
+      }
+    })
+
     // Create AMC Contract
     const contract = await prisma.aMCContract.create({
       data: {
@@ -356,7 +390,29 @@ export async function createAMCContract(data: {
       }
     })
 
-    return { success: true, data: contract }
+    // Generate unique AMC ID
+    const amcUniqueId = `AMC-${product.id}-${customer.id}-${Date.now()}`
+
+    // Create AMC record linking everything together
+    const amc = await prisma.aMC.create({
+      data: {
+        amcUniqueId,
+        productId: data.productId,
+        orderId: order.id,
+        userId: data.customerId,
+        shopId: shop.id,
+        amcContractId: contract.id,
+        status: 'ACTIVE'
+      },
+      include: {
+        product: true,
+        user: true,
+        order: true,
+        amcContract: true
+      }
+    })
+
+    return { success: true, data: { contract, amc, order } }
   } catch (error: any) {
     console.error('Create AMC contract error:', error)
     return { success: false, error: error.message }

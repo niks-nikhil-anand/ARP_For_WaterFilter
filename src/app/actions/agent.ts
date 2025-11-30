@@ -42,6 +42,7 @@ export async function createAgent(data: {
   name: string
   email?: string
   mobile: string
+  password?: string
   shopId: number
   areaCover?: string
   address?: {
@@ -53,6 +54,7 @@ export async function createAgent(data: {
     phone: string
   }
 }) {
+  console.log('createAgent called with:', { ...data, password: '***' })
   try {
     // Validate required fields
     if (!data.name || !data.mobile) {
@@ -74,12 +76,18 @@ export async function createAgent(data: {
     })
 
     if (!shop) {
+      console.log('Shop not found:', data.shopId)
       return { success: false, error: 'Selected shop not found' }
     }
 
+    console.log('Shop found:', shop.id)
+
     // 1. Create User
-    // For now, we'll set a default password. In a real app, we might send an invite email.
-    const hashedPassword = await hash('password123', 10)
+    // Use provided password or default if not provided (though frontend should enforce it)
+    const passwordToHash = data.password || 'password123'
+    console.log('Hashing password...')
+    const hashedPassword = await hash(passwordToHash, 10)
+    console.log('Password hashed')
 
     // Generate unique email if not provided
     const userEmail = data.email || `agent_${Date.now()}@temp.local`
@@ -90,9 +98,11 @@ export async function createAgent(data: {
     })
 
     if (existingUser) {
+      console.log('Email already exists:', userEmail)
       return { success: false, error: 'Email already exists' }
     }
 
+    console.log('Starting transaction...')
     const result = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
@@ -160,6 +170,7 @@ export async function updateAgent(
   data: {
     name?: string
     mobile?: string
+    password?: string
     shopId?: number
     status?: UserStatus
     areaCover?: string
@@ -184,14 +195,20 @@ export async function updateAgent(
       }
 
       // Update User details
-      if (data.name || data.mobile || data.status) {
+      if (data.name || data.mobile || data.status || data.password) {
+        const updateData: any = {
+          name: data.name,
+          mobile: data.mobile,
+          status: data.status
+        }
+
+        if (data.password) {
+          updateData.password = await hash(data.password, 10)
+        }
+
         await tx.user.update({
           where: { id: agent.userId },
-          data: {
-            name: data.name,
-            mobile: data.mobile,
-            status: data.status
-          }
+          data: updateData
         })
       }
 

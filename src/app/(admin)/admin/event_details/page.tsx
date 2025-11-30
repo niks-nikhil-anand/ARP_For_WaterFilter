@@ -26,7 +26,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import { Calendar, Search, Filter, CheckCircle, Ticket, User, Wrench } from 'lucide-react'
-import { getServiceEvents, createTicketForEvent, updateServiceEvent, getAgents } from '@/actions/admin/serviceEvents'
+import { getServiceEvents, createTicketForEvent, getAgents, resolveServiceEvent } from '@/actions/admin/serviceEvents'
 import { PaginationControls } from '@/components/ui/pagination-controls'
 import { SkeletonTable } from '@/components/common/SkeletonTable'
 
@@ -134,20 +134,18 @@ export default function EventDetailsPage() {
     if (!selectedEvent) return
 
     setResolving(true)
-    const updateData: any = {
+
+    const resolveData: any = {
       status: resolveStatus,
+      remarks: resolveRemarks,
     }
 
-    if (resolveStatus === 'COMPLETED') {
-      updateData.remarks = resolveRemarks
-    } else if (resolveStatus === 'SCHEDULED') {
-      updateData.actionDate = scheduledDate ? new Date(scheduledDate) : undefined
-      updateData.scheduledRemarks = scheduledRemarks
-    } else {
-      updateData.remarks = resolveRemarks
+    if (resolveStatus === 'SCHEDULED') {
+      resolveData.actionDate = scheduledDate ? new Date(scheduledDate) : undefined
+      resolveData.scheduledRemarks = scheduledRemarks
     }
 
-    const result = await updateServiceEvent(selectedEvent.id, updateData)
+    const result = await resolveServiceEvent(selectedEvent.id, resolveData)
     setResolving(false)
 
     if (result.success) {

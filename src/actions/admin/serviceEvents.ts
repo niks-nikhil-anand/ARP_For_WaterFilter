@@ -716,3 +716,37 @@ export async function createAMCContract(data: {
     return { success: false, error: error.message }
   }
 }
+
+export async function resolveServiceEvent(id: number, data: {
+  status: 'PENDING' | 'SCHEDULED' | 'COMPLETED' | 'CANCELLED'
+  remarks?: string
+  actionDate?: Date
+  scheduledRemarks?: string
+}) {
+  try {
+    // Validation
+    if (data.status === 'SCHEDULED' && !data.actionDate) {
+      return { success: false, error: 'Scheduled date is required when status is SCHEDULED' }
+    }
+
+    const updateData: any = {
+      status: data.status,
+      remarks: data.remarks, // General remarks or completion remarks
+    }
+
+    if (data.status === 'SCHEDULED') {
+      updateData.actionDate = data.actionDate
+      updateData.scheduledRemarks = data.scheduledRemarks
+    }
+
+    const event = await prisma.serviceEvent.update({
+      where: { id },
+      data: updateData
+    })
+
+    return { success: true, data: event }
+  } catch (error: any) {
+    console.error('Resolve service event error:', error)
+    return { success: false, error: error.message }
+  }
+}

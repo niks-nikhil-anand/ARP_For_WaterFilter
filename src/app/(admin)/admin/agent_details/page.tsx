@@ -94,12 +94,14 @@ const AgentUsersPage = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [selectedAgent, setSelectedAgent] = useState<AgentData | null>(null)
-  
+
   const [editForm, setEditForm] = useState({
     name: '',
     email: '',
     mobile: '',
     status: '',
+    password: '',
+    confirmPassword: '',
     shopId: '',
     areaCover: '',
     locality: '',
@@ -114,6 +116,7 @@ const AgentUsersPage = () => {
     email: '',
     mobile: '+91 ',
     password: '',
+    confirmPassword: '',
     shopId: '',
     areaCover: '',
     locality: '',
@@ -172,7 +175,7 @@ const AgentUsersPage = () => {
     }
     // Limit to 10 digits
     digits = digits.slice(0, 10)
-    
+
     if (isEdit) {
       setEditForm({
         ...editForm,
@@ -190,7 +193,7 @@ const AgentUsersPage = () => {
   const handlePincodeChange = (e: React.ChangeEvent<HTMLInputElement>, isEdit = false) => {
     const raw = e.target.value || ''
     const digits = raw.replace(/\D/g, '').slice(0, 6)
-    
+
     if (isEdit) {
       setEditForm({
         ...editForm,
@@ -220,12 +223,14 @@ const AgentUsersPage = () => {
   const handleEdit = (agent: AgentData) => {
     setSelectedAgent(agent)
     const address = agent.user.addresses && agent.user.addresses.length > 0 ? agent.user.addresses[0] : null
-    
+
     setEditForm({
       name: agent.user.name || '',
       email: agent.user.email || '',
       mobile: agent.user.mobile || '',
       status: agent.user.status || 'ACTIVE',
+      password: '',
+      confirmPassword: '',
       shopId: agent.shopId ? agent.shopId.toString() : 'none',
       areaCover: agent.areaCover || '',
       locality: address?.locality || '',
@@ -271,10 +276,23 @@ const AgentUsersPage = () => {
 
     const formattedMobile = editForm.mobile.startsWith('+91') ? editForm.mobile : `+91 ${phoneDigits}`
 
+    // Validate password if provided
+    if (editForm.password) {
+      if (editForm.password.length < 6) {
+        toast.error('Password must be at least 6 characters long')
+        return
+      }
+      if (editForm.password !== editForm.confirmPassword) {
+        toast.error('Passwords do not match')
+        return
+      }
+    }
+
     const result = await updateAgent(selectedAgent.id, {
       name: editForm.name,
       mobile: formattedMobile,
       status: editForm.status as any,
+      password: editForm.password || undefined,
       shopId: shopId,
       areaCover: editForm.areaCover,
       address: {
@@ -303,6 +321,7 @@ const AgentUsersPage = () => {
       // Validate required fields
       if (!addForm.name || !addForm.mobile) {
         toast.error('Name and mobile number are required')
+        setAddLoading(false)
         return
       }
 
@@ -314,8 +333,22 @@ const AgentUsersPage = () => {
         return
       }
 
+      // Validate password
+      if (!addForm.password || addForm.password.length < 6) {
+        toast.error('Password must be at least 6 characters long')
+        setAddLoading(false)
+        return
+      }
+
+      if (addForm.password !== addForm.confirmPassword) {
+        toast.error('Passwords do not match')
+        setAddLoading(false)
+        return
+      }
+
       if (!addForm.locality || !addForm.pincode || !addForm.state) {
         toast.error('Address details (locality, pincode, state) are required')
+        setAddLoading(false)
         return
       }
 
@@ -327,6 +360,7 @@ const AgentUsersPage = () => {
 
       if (!addForm.areaCover) {
         toast.error('Area cover is required')
+        setAddLoading(false)
         return
       }
 
@@ -334,6 +368,7 @@ const AgentUsersPage = () => {
 
       if (!shopId) {
         toast.error('Please select a shop')
+        setAddLoading(false)
         return
       }
 
@@ -344,6 +379,7 @@ const AgentUsersPage = () => {
         name: addForm.name,
         email: addForm.email || undefined,
         mobile: formattedMobile,
+        password: addForm.password,
         shopId: shopId,
         areaCover: addForm.areaCover || undefined,
         address: {
@@ -364,6 +400,7 @@ const AgentUsersPage = () => {
           email: '',
           mobile: '+91 ',
           password: '',
+          confirmPassword: '',
           shopId: '',
           areaCover: '',
           locality: '',
@@ -651,6 +688,26 @@ const AgentUsersPage = () => {
                     placeholder="Enter email (optional)"
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-password">Password *</Label>
+                  <Input
+                    id="add-password"
+                    type="password"
+                    value={addForm.password}
+                    onChange={(e) => setAddForm({ ...addForm, password: e.target.value })}
+                    placeholder="Enter password"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-confirm-password">Confirm Password *</Label>
+                  <Input
+                    id="add-confirm-password"
+                    type="password"
+                    value={addForm.confirmPassword}
+                    onChange={(e) => setAddForm({ ...addForm, confirmPassword: e.target.value })}
+                    placeholder="Confirm password"
+                  />
+                </div>
               </CardContent>
             </Card>
 
@@ -807,6 +864,26 @@ const AgentUsersPage = () => {
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="edit-password">New Password</Label>
+                  <Input
+                    id="edit-password"
+                    type="password"
+                    value={editForm.password}
+                    onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                    placeholder="Leave blank to keep current"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-confirm-password">Confirm New Password</Label>
+                  <Input
+                    id="edit-confirm-password"
+                    type="password"
+                    value={editForm.confirmPassword}
+                    onChange={(e) => setEditForm({ ...editForm, confirmPassword: e.target.value })}
+                    placeholder="Confirm new password"
+                  />
+                </div>
+                <div className="space-y-2 col-span-2">
                   <Label htmlFor="edit-email">Email</Label>
                   <Input
                     id="edit-email"

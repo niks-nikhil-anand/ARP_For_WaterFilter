@@ -434,6 +434,12 @@ model Ticket {
   // Internal Notes
   internalNotes   String? // Notes for internal team
   resolutionNotes String? // Notes about how it was resolved
+  
+  // Resolution Details
+  timeSpent       Decimal?
+  amountCollected Decimal?
+  partsReplaced   String?
+  workDescription String?
 
   // Metadata
   source   String? @default("WEBSITE") // WEBSITE, PHONE, EMAIL, etc.

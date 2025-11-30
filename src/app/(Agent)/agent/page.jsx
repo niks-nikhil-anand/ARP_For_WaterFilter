@@ -27,10 +27,15 @@ import {
   Filter,
   ChevronLeft,
   ChevronRight,
-  ArrowUpDown
+  ArrowUpDown,
+  History,
+  CalendarDays,
+  ListTodo
 } from 'lucide-react'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getCurrentAgentData } from '@/actions/agent/profile'
-import { getAgentTickets } from '@/actions/agent/tickets'
+import { getAgentTickets, resolveTicket } from '@/actions/agent/tickets'
+import { toast } from 'sonner'
 
 const AgentPage = () => {
   // Agent data state
@@ -69,7 +74,7 @@ const AgentPage = () => {
 
   // Filter and Sort state
   const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState('All')
+  const [activeTab, setActiveTab] = useState('today')
   const [priorityFilter, setPriorityFilter] = useState('All')
   const [sortBy, setSortBy] = useState('dateDesc')
 
@@ -101,26 +106,36 @@ const AgentPage = () => {
     })
   }
 
-  const handleResolveSubmit = (e) => {
+  const handleResolveSubmit = async (e) => {
     e.preventDefault()
 
-    // Update ticket status
-    setTickets(tickets.map(ticket =>
-      ticket.id === selectedTicket.id
-        ? { ...ticket, status: 'Resolved', resolveData }
-        : ticket
-    ))
+    try {
+      const result = await resolveTicket({
+        ticketId: selectedTicket.id.replace('TKT-', ''), // Assuming ID format TKT-123
+        ...resolveData,
+        ticketId: parseInt(selectedTicket.id.replace('TKT-', ''))
+      })
 
-    // Close dialog
-    setIsResolveDialogOpen(false)
+      if (result.success) {
+        // Update ticket status locally
+        setTickets(tickets.map(ticket =>
+          ticket.id === selectedTicket.id
+            ? { ...ticket, status: 'Resolved', resolveData }
+            : ticket
+        ))
 
-    // Show success message
-    alert(`Ticket ${selectedTicket.id} has been successfully resolved!`)
+        // Close dialog
+        setIsResolveDialogOpen(false)
 
-    console.log('Resolution Data:', {
-      ticketId: selectedTicket.id,
-      ...resolveData
-    })
+        // Show success message
+        toast.success(`Ticket ${selectedTicket.id} has been successfully resolved!`)
+      } else {
+        toast.error(result.error || 'Failed to resolve ticket')
+      }
+    } catch (error) {
+      console.error('Resolution error:', error)
+      toast.error('An unexpected error occurred')
+    }
   }
 
   const handleInputChange = (e) => {
@@ -143,10 +158,39 @@ const AgentPage = () => {
       )
     }
 
-    // Status filter
-    if (statusFilter !== 'All') {
-      filtered = filtered.filter(ticket => ticket.status === statusFilter)
+    // Tab filter
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+
+    if (activeTab === 'today') {
+      filtered = filtered.filter(ticket => {
+        if (!ticket.preferredDate) return false // Or handle as you see fit
+        const ticketDate = new Date(ticket.preferredDate)
+        ticketDate.setHours(0, 0, 0, 0)
+        return ticketDate.getTime() === today.getTime() && ticket.status !== 'Resolved'
+      })
+    } else if (activeTab === 'upcoming') {
+      filtered = filtered.filter(ticket => {
+        if (!ticket.preferredDate) return false
+        const ticketDate = new Date(ticket.preferredDate)
+        ticketDate.setHours(0, 0, 0, 0)
+        return ticketDate >= tomorrow && ticket.status !== 'Resolved'
+      })
+    } else if (activeTab === 'backlog') {
+      filtered = filtered.filter(ticket => {
+        if (!ticket.preferredDate) return true // Assume no date means backlog if not resolved? Or maybe just old created dates?
+        // Let's stick to preferredDate < today for backlog
+        const ticketDate = new Date(ticket.preferredDate)
+        ticketDate.setHours(0, 0, 0, 0)
+        return ticketDate < today && ticket.status !== 'Resolved'
+      })
+    } else if (activeTab === 'resolved') {
+      filtered = filtered.filter(ticket => ticket.status === 'Resolved')
     }
+    // 'all' case needs no filter here, but we might want to filter out resolved if not requested?
+    // The user asked for "All" filter, so show everything.
 
     // Priority filter
     if (priorityFilter !== 'All') {
@@ -172,7 +216,7 @@ const AgentPage = () => {
     })
 
     return filtered
-  }, [tickets, searchQuery, statusFilter, priorityFilter, sortBy])
+  }, [tickets, searchQuery, activeTab, priorityFilter, sortBy])
 
   // Pagination
   const totalPages = Math.ceil(filteredAndSortedTickets.length / itemsPerPage)
@@ -324,22 +368,32 @@ const AgentPage = () => {
                   />
                 </div>
 
-                {/* Status Filter */}
-                <div>
-                  <Label htmlFor="statusFilter" className="dark:text-white flex items-center gap-2 mb-2">
-                    <Filter className="h-4 w-4" />
-                    Status
-                  </Label>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="dark:bg-gray-800 dark:border-gray-700 dark:text-white">
-                      <SelectValue placeholder="All Status" />
-                    </SelectTrigger>
-                    <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-                      <SelectItem value="All">All Status</SelectItem>
-                      <SelectItem value="Pending">Pending</SelectItem>
-                      <SelectItem value="Resolved">Resolved</SelectItem>
-                    </SelectContent>
-                  </Select>
+                {/* Tabs Filter */}
+                <div className="md:col-span-4 mb-4">
+                  <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    <TabsList className="grid w-full grid-cols-5 dark:bg-gray-800">
+                      <TabsTrigger value="today" className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        Today
+                      </TabsTrigger>
+                      <TabsTrigger value="upcoming" className="flex items-center gap-2">
+                        <CalendarDays className="h-4 w-4" />
+                        Upcoming
+                      </TabsTrigger>
+                      <TabsTrigger value="backlog" className="flex items-center gap-2">
+                        <History className="h-4 w-4" />
+                        Backlogs
+                      </TabsTrigger>
+                      <TabsTrigger value="resolved" className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4" />
+                        Resolved
+                      </TabsTrigger>
+                      <TabsTrigger value="all" className="flex items-center gap-2">
+                        <ListTodo className="h-4 w-4" />
+                        All
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
                 </div>
 
                 {/* Priority Filter */}

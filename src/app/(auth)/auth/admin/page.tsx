@@ -36,7 +36,7 @@ import {
 const AdminLoginContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [role, setRole] = useState("");
+  const [role, setRole] = useState("superadmin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -124,8 +124,7 @@ const AdminLoginContent = () => {
       }
 
       setSuccess(
-        `Login successful! Redirecting to ${
-          role === "superadmin" ? "admin panel" : "shop dashboard"
+        `Login successful! Redirecting to ${role === "superadmin" ? "admin panel" : "shop dashboard"
         }...`
       );
 
@@ -223,12 +222,7 @@ const AdminLoginContent = () => {
                       <span>Super Admin</span>
                     </div>
                   </SelectItem>
-                  <SelectItem value="admin">
-                    <div className="flex items-center gap-2">
-                      <Store className="h-4 w-4 text-blue-600" />
-                      <span>Admin (Shop Owner)</span>
-                    </div>
-                  </SelectItem>
+
                 </SelectContent>
               </Select>
             </div>

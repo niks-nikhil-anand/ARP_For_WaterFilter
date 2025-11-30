@@ -34,6 +34,7 @@ export const AddAMCContractDialog = ({
 }: AddAMCContractDialogProps) => {
   const [isCreating, setIsCreating] = useState(false)
   const [formStep, setFormStep] = useState(1)
+  const [processingStep, setProcessingStep] = useState(0)
 
   // Combobox states
   const [productOpen, setProductOpen] = useState(false)
@@ -219,6 +220,15 @@ export const AddAMCContractDialog = ({
     }
 
     setIsCreating(true)
+    setProcessingStep(1) // Validation
+
+    // Simulate a brief delay for visual effect
+    await new Promise(resolve => setTimeout(resolve, 600))
+    setProcessingStep(2) // AMC Record
+
+    await new Promise(resolve => setTimeout(resolve, 800))
+    setProcessingStep(3) // Contract
+
     const result = await createAMCContract({
       productId: parseInt(addForm.productId),
       customerId: parseInt(addForm.customerId),
@@ -234,7 +244,12 @@ export const AddAMCContractDialog = ({
       noOfServices: parseInt(addForm.noOfServices),
       serviceDates: addForm.serviceDates.map(d => new Date(d))
     })
+
+    setProcessingStep(4) // Scheduling
+    await new Promise(resolve => setTimeout(resolve, 600))
+
     setIsCreating(false)
+    setProcessingStep(0)
 
     if (result.success) {
       toast.success('AMC Contract created successfully')
@@ -799,6 +814,7 @@ export const AddAMCContractDialog = ({
                       disabled={isCreating}
                       className="h-11"
                       min="1"
+                      max="12"
                     />
                   </div>
                 </CardContent>
@@ -811,18 +827,15 @@ export const AddAMCContractDialog = ({
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      Review and adjust the scheduled dates for each service.
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[400px] overflow-y-auto pr-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {addForm.serviceDates.map((date, index) => (
-                        <div key={index} className="flex items-center gap-3 p-3 border rounded-lg bg-muted/20">
-                          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                        <div key={index} className="flex items-center gap-3 p-3 border rounded-lg bg-muted/30">
+                          <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
                             {index + 1}
                           </div>
-                          <div className="flex-1 space-y-1">
-                            <Label htmlFor={`service-${index}`} className="text-xs font-medium text-muted-foreground">
-                              Service #{index + 1} - Scheduled Date
+                          <div className="flex-1">
+                            <Label htmlFor={`service-${index}`} className="text-xs text-muted-foreground">
+                              Service {index + 1}
                             </Label>
                             <Input
                               id={`service-${index}`}
@@ -833,12 +846,18 @@ export const AddAMCContractDialog = ({
                                 newDates[index] = e.target.value
                                 setAddForm({ ...addForm, serviceDates: newDates })
                               }}
-                              className="h-9"
+                              disabled={isCreating}
+                              className="h-9 mt-1"
                             />
                           </div>
                         </div>
                       ))}
                     </div>
+                    {addForm.serviceDates.length === 0 && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        Enter start date and number of services to generate schedule.
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -846,56 +865,108 @@ export const AddAMCContractDialog = ({
           )}
         </div>
 
-        <DialogFooter className="flex justify-between">
+        <DialogFooter className="flex justify-between items-center mt-6 border-t pt-4">
+          <Button
+            variant="outline"
+            onClick={() => {
+              if (formStep > 1) setFormStep(formStep - 1)
+              else onOpenChange(false)
+            }}
+            disabled={isCreating}
+          >
+            {formStep === 1 ? 'Cancel' : 'Back'}
+          </Button>
+          
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                onOpenChange(false)
-                resetForm()
-              }}
-              disabled={isCreating}
-            >
-              Cancel
-            </Button>
-          </div>
-          <div className="flex gap-2">
-            {formStep > 1 && (
-              <Button
-                variant="outline"
-                onClick={() => setFormStep(formStep - 1)}
-                disabled={isCreating}
-              >
-                Back
-              </Button>
-            )}
             {formStep < 3 ? (
-              <Button
-                onClick={() => {
-                  if (formStep === 1) {
-                    if (!addForm.productId || !addForm.customerId) {
-                      toast.error('Product and Customer are required')
-                      return
-                    }
-                  } else if (formStep === 2) {
-                    if (!addForm.price || !addForm.paymentPaid) {
-                      toast.error('Price and Payment Paid are required')
-                      return
-                    }
-                  }
-                  setFormStep(formStep + 1)
-                }}
-                disabled={isCreating}
-              >
-                Next
+              <Button onClick={() => setFormStep(formStep + 1)}>
+                Next Step
               </Button>
             ) : (
-              <Button onClick={handleAddAMC} disabled={isCreating}>
-                {isCreating ? 'Creating...' : 'Create AMC Contract'}
+              <Button 
+                onClick={handleAddAMC} 
+                disabled={isCreating}
+                className="bg-green-600 hover:bg-green-700 text-white min-w-[120px]"
+              >
+                {isCreating ? 'Creating...' : 'Create Contract'}
               </Button>
             )}
           </div>
         </DialogFooter>
+
+        {/* Processing Overlay */}
+        {isCreating && (
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center rounded-lg">
+            <Card className="w-[400px] shadow-2xl border-primary/20 animate-in fade-in zoom-in duration-300">
+              <CardHeader className="text-center pb-2">
+                <CardTitle className="text-xl text-primary">Creating AMC Contract</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6 py-6">
+                <div className="space-y-4">
+                  {/* Step 1: Validation */}
+                  <div className="flex items-center gap-3">
+                    <div className={`h-8 w-8 rounded-full flex items-center justify-center transition-colors duration-500 ${
+                      processingStep > 1 ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600 animate-pulse'
+                    }`}>
+                      {processingStep > 1 ? <Check className="h-5 w-5" /> : <Search className="h-4 w-4" />}
+                    </div>
+                    <div className="flex-1">
+                      <p className={`font-medium transition-colors ${processingStep > 1 ? 'text-green-700' : 'text-foreground'}`}>
+                        Validating Data
+                      </p>
+                      <p className="text-xs text-muted-foreground">Checking customer & product details...</p>
+                    </div>
+                  </div>
+
+                  {/* Step 2: AMC Record */}
+                  <div className={`flex items-center gap-3 transition-opacity duration-500 ${processingStep >= 2 ? 'opacity-100' : 'opacity-40'}`}>
+                    <div className={`h-8 w-8 rounded-full flex items-center justify-center transition-colors duration-500 ${
+                      processingStep > 2 ? 'bg-green-100 text-green-600' : (processingStep === 2 ? 'bg-blue-100 text-blue-600 animate-pulse' : 'bg-muted text-muted-foreground')
+                    }`}>
+                      {processingStep > 2 ? <Check className="h-5 w-5" /> : <Package className="h-4 w-4" />}
+                    </div>
+                    <div className="flex-1">
+                      <p className={`font-medium transition-colors ${processingStep > 2 ? 'text-green-700' : 'text-foreground'}`}>
+                        AMC Records
+                      </p>
+                      <p className="text-xs text-muted-foreground">Verifying existing AMC status...</p>
+                    </div>
+                  </div>
+
+                  {/* Step 3: Contract Creation */}
+                  <div className={`flex items-center gap-3 transition-opacity duration-500 ${processingStep >= 3 ? 'opacity-100' : 'opacity-40'}`}>
+                    <div className={`h-8 w-8 rounded-full flex items-center justify-center transition-colors duration-500 ${
+                      processingStep > 3 ? 'bg-green-100 text-green-600' : (processingStep === 3 ? 'bg-blue-100 text-blue-600 animate-pulse' : 'bg-muted text-muted-foreground')
+                    }`}>
+                      {processingStep > 3 ? <Check className="h-5 w-5" /> : <User className="h-4 w-4" />}
+                    </div>
+                    <div className="flex-1">
+                      <p className={`font-medium transition-colors ${processingStep > 3 ? 'text-green-700' : 'text-foreground'}`}>
+                        Generating Contract
+                      </p>
+                      <p className="text-xs text-muted-foreground">Creating contract & order records...</p>
+                    </div>
+                  </div>
+
+                  {/* Step 4: Service Events */}
+                  <div className={`flex items-center gap-3 transition-opacity duration-500 ${processingStep >= 4 ? 'opacity-100' : 'opacity-40'}`}>
+                    <div className={`h-8 w-8 rounded-full flex items-center justify-center transition-colors duration-500 ${
+                      processingStep > 4 ? 'bg-green-100 text-green-600' : (processingStep === 4 ? 'bg-blue-100 text-blue-600 animate-pulse' : 'bg-muted text-muted-foreground')
+                    }`}>
+                      {processingStep > 4 ? <Check className="h-5 w-5" /> : <Calendar className="h-4 w-4" />}
+                    </div>
+                    <div className="flex-1">
+                      <p className={`font-medium transition-colors ${processingStep > 4 ? 'text-green-700' : 'text-foreground'}`}>
+                        Scheduling Services
+                      </p>
+                      <p className="text-xs text-muted-foreground">Creating {addForm.noOfServices} service events...</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   )

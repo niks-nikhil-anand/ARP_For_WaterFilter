@@ -212,6 +212,7 @@ model Product {
   orders           Order[]
   warranties       Warranty[]
   amcs             AMC[]
+  amcContracts     AMCContract[]
   serviceEvents    ServiceEvent[] // Includes warranty, AMC, repairs, tickets
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
@@ -297,11 +298,11 @@ model AMC {
   id          Int    @id @default(autoincrement())
   amcUniqueId String @unique
 
-  // Relations
-  // Relations
-  products   Product[]
-  // Removed single productId
+ 
 
+
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productId Int
 
   // Customer who purchased the AMC
   user   User @relation(fields: [userId], references: [id], onDelete: Restrict)
@@ -331,6 +332,8 @@ model AMCContract {
   id            Int    @id @default(autoincrement())
   invoiceNumber String @unique
 
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productId Int
   // Parent AMC
   amc   AMC @relation(fields: [amcId], references: [id], onDelete: Cascade)
   amcId Int

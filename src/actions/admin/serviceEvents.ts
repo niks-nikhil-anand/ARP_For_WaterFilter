@@ -12,40 +12,57 @@ export async function getServiceEvents(
 ) {
   try {
     let dateFilter: any = {}
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
 
-    const yesterday = new Date(today)
-    yesterday.setDate(yesterday.getDate() - 1)
+    // Helper to get start of day in IST (UTC+5:30)
+    const getISTStartOfDay = (offsetDays = 0) => {
+      const now = new Date()
+      const options = { timeZone: 'Asia/Kolkata', year: 'numeric', month: 'numeric', day: 'numeric' } as const
+      const formatter = new Intl.DateTimeFormat('en-US', options)
+      const parts = formatter.formatToParts(now)
+      
+      const year = parseInt(parts.find(p => p.type === 'year')?.value || '0')
+      const month = parseInt(parts.find(p => p.type === 'month')?.value || '0') - 1
+      const day = parseInt(parts.find(p => p.type === 'day')?.value || '0')
+
+      // Create UTC date for 00:00:00 of that day
+      const date = new Date(Date.UTC(year, month, day + offsetDays, 0, 0, 0, 0))
+      
+      // Subtract 5.5 hours to get IST midnight in UTC
+      date.setHours(date.getHours() - 5)
+      date.setMinutes(date.getMinutes() - 30)
+      
+      return date
+    }
+
+    const todayStart = getISTStartOfDay(0)
+    const tomorrowStart = getISTStartOfDay(1)
+    const yesterdayStart = getISTStartOfDay(-1)
 
     // 1. Handle Date Range Filter (Tabs)
     if (filter === 'today') {
       dateFilter = {
         actionDate: {
-          gte: today,
-          lt: tomorrow
+          gte: todayStart,
+          lt: tomorrowStart
         }
       }
     } else if (filter === 'yesterday') {
       dateFilter = {
         actionDate: {
-          gte: yesterday,
-          lt: today
+          gte: yesterdayStart,
+          lt: todayStart
         }
       }
     } else if (filter === 'upcoming') {
       dateFilter = {
         actionDate: {
-          gte: tomorrow
+          gte: tomorrowStart
         }
       }
     } else if (filter === 'backlog') {
       dateFilter = {
         actionDate: {
-          lt: today
+          lt: todayStart
         },
         status: {
           notIn: ['COMPLETED', 'CANCELLED']

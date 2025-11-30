@@ -13,6 +13,7 @@ export async function getPublicProducts() {
     const products = await prisma.product.findMany({
       where: {
         status: 'ACTIVE', // Only show active products to public
+        isVisibleWebsite: true, // Only show products marked for website visibility
       },
       include: {
         createdBy: {

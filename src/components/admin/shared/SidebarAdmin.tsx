@@ -18,6 +18,7 @@ import {
   Ticket,
   FileText,
   MessageSquare,
+  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -39,6 +40,14 @@ const SidebarAdmin: React.FC<SidebarAdminProps> = ({ className }) => {
       ],
     },
     {
+      title: "Events",
+      items: [
+       { icon: Calendar, label: "Events", href: "/admin/event_details" },
+       { icon: Ticket, label: "Tickets", href: "/admin/tickets" },
+       
+      ],
+    },
+    {
       title: "Management",
       items: [
        { icon: Users, label: "Customers", href: "/admin/customer_details" },
@@ -51,11 +60,7 @@ const SidebarAdmin: React.FC<SidebarAdminProps> = ({ className }) => {
     {
       title: "Services",
       items: [
-        {
-          icon: Ticket,
-          label: "Tickets",
-          href: "/admin/tickets",
-        },
+        
         {
           icon: MessageSquare,
           label: "Complaints",

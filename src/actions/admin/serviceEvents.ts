@@ -3,9 +3,42 @@
 import { prisma } from '@/lib/prisma'
 import { ServiceEventType } from '@/generated/prisma'
 
-export async function getServiceEvents() {
+export async function getServiceEvents(filter?: 'today' | 'yesterday' | 'upcoming' | 'all') {
   try {
+    let dateFilter: any = {}
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+
+    if (filter === 'today') {
+      dateFilter = {
+        actionDate: {
+          gte: today,
+          lt: tomorrow
+        }
+      }
+    } else if (filter === 'yesterday') {
+      dateFilter = {
+        actionDate: {
+          gte: yesterday,
+          lt: today
+        }
+      }
+    } else if (filter === 'upcoming') {
+      dateFilter = {
+        actionDate: {
+          gte: tomorrow
+        }
+      }
+    }
+
     const events = await prisma.serviceEvent.findMany({
+      where: dateFilter,
       include: {
         product: {
           select: {
@@ -38,10 +71,16 @@ export async function getServiceEvents() {
             price: true,
             status: true,
           }
+        },
+        ticket: {
+          select: {
+            id: true,
+            status: true
+          }
         }
       },
       orderBy: {
-        createdAt: 'desc'
+        actionDate: 'asc' // Sort by action date for schedule view
       }
     })
 
@@ -147,6 +186,7 @@ export async function updateServiceEvent(id: number, data: {
   remarks?: string
   feedback?: string
   agentId?: number
+  status?: 'PENDING' | 'SCHEDULED' | 'COMPLETED' | 'CANCELLED'
 }) {
   try {
     const event = await prisma.serviceEvent.update({
@@ -156,6 +196,7 @@ export async function updateServiceEvent(id: number, data: {
         remarks: data.remarks,
         feedback: data.feedback,
         agentId: data.agentId,
+        status: data.status,
       }
     })
 
@@ -179,6 +220,48 @@ export async function deleteServiceEvent(id: number) {
     return { success: true }
   } catch (error: any) {
     console.error('Delete service event error:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+export async function createTicketForEvent(eventId: number) {
+  try {
+    const event = await prisma.serviceEvent.findUnique({
+      where: { id: eventId },
+      include: {
+        customer: {
+          include: {
+            addresses: { take: 1 }
+          }
+        },
+        product: true
+      }
+    })
+
+    if (!event || !event.customer) {
+      return { success: false, error: 'Event or customer not found' }
+    }
+
+    const ticket = await prisma.ticket.create({
+      data: {
+        customerName: event.customer.name,
+        customerEmail: event.customer.email,
+        customerPhone: event.customer.mobile || '',
+        customerAddress: event.customer.addresses[0]?.locality || '',
+        serviceType: event.type,
+        productType: event.product.type,
+        description: event.description || `${event.type} Service Request`,
+        status: 'OPEN',
+        priority: 'MEDIUM',
+        serviceEvent: {
+          connect: { id: event.id }
+        }
+      }
+    })
+
+    return { success: true, data: ticket }
+  } catch (error: any) {
+    console.error('Create ticket for event error:', error)
     return { success: false, error: error.message }
   }
 }

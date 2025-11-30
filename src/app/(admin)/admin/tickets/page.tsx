@@ -18,6 +18,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -71,6 +76,8 @@ import {
 import { getActiveAgents } from '@/actions/common/agents'
 import { TicketStatus, TicketPriority } from '@/generated/prisma'
 import { toast } from 'sonner'
+import { PaginationControls } from '@/components/ui/pagination-controls'
+import { SkeletonTable } from '@/components/common/SkeletonTable'
 
 interface TicketType {
   id: number
@@ -98,6 +105,9 @@ interface TicketType {
   internalNotes?: string | null
   resolutionNotes?: string | null
   source?: string | null
+  serviceEvent?: {
+    actionDate?: Date | string | null
+  } | null
   createdAt: Date
   updatedAt: Date
 }
@@ -108,10 +118,12 @@ const TicketManagementPage = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [priorityFilter, setPriorityFilter] = useState('ALL')
+  const [dateFilter, setDateFilter] = useState('ALL')
   const [sortField, setSortField] = useState<keyof TicketType | null>(null)
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(8)
+  const [totalPages, setTotalPages] = useState(1)
 
   // Modal states
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
@@ -139,7 +151,7 @@ const TicketManagementPage = () => {
   useEffect(() => {
     loadTickets()
     loadAgents()
-  }, [])
+  }, [currentPage, statusFilter, priorityFilter])
 
   const loadAgents = async () => {
     const result = await getActiveAgents()
@@ -151,9 +163,20 @@ const TicketManagementPage = () => {
   const loadTickets = async () => {
     setLoading(true)
     try {
-      const result = await getAllTickets()
+      const filters: any = {
+        page: currentPage,
+        limit: itemsPerPage
+      }
+
+      if (statusFilter !== 'ALL') filters.status = statusFilter
+      if (priorityFilter !== 'ALL') filters.priority = priorityFilter
+
+      const result = await getAllTickets(filters)
       if (result.success && result.data) {
         setTickets(result.data)
+        if (result.meta) {
+          setTotalPages(result.meta.totalPages)
+        }
       }
     } catch (error) {
       console.error('Error loading tickets:', error)
@@ -162,7 +185,7 @@ const TicketManagementPage = () => {
     }
   }
 
-  // Filtering and sorting logic
+  // Filtering and sorting logic (Client side for search and date for now, as backend search is limited)
   const filteredAndSortedTickets = useMemo(() => {
     const filtered = tickets.filter((ticket) => {
       const matchesSearch =
@@ -172,10 +195,37 @@ const TicketManagementPage = () => {
         ticket.serviceType.toLowerCase().includes(searchTerm.toLowerCase()) ||
         ticket.productType?.toLowerCase().includes(searchTerm.toLowerCase())
 
-      const matchesStatus = statusFilter === 'ALL' || ticket.status === statusFilter
-      const matchesPriority = priorityFilter === 'ALL' || ticket.priority === priorityFilter
+      let matchesDate = true
+      if (dateFilter !== 'ALL') {
+        const ticketDate = ticket.serviceEvent?.actionDate
+          ? new Date(ticket.serviceEvent.actionDate)
+          : null
 
-      return matchesSearch && matchesStatus && matchesPriority
+        if (!ticketDate) {
+          matchesDate = false
+        } else {
+          const today = new Date()
+          today.setHours(0, 0, 0, 0)
+          const tomorrow = new Date(today)
+          tomorrow.setDate(tomorrow.getDate() + 1)
+          const yesterday = new Date(today)
+          yesterday.setDate(yesterday.getDate() - 1)
+
+          if (dateFilter === 'TODAY') {
+            matchesDate = ticketDate >= today && ticketDate < tomorrow
+          } else if (dateFilter === 'YESTERDAY') {
+            matchesDate = ticketDate >= yesterday && ticketDate < today
+          } else if (dateFilter === 'UPCOMING') {
+            matchesDate = ticketDate >= tomorrow
+          } else if (dateFilter === 'BACKLOG') {
+            matchesDate = ticketDate < yesterday &&
+              ticket.status !== TicketStatus.RESOLVED &&
+              ticket.status !== TicketStatus.CLOSED
+          }
+        }
+      }
+
+      return matchesSearch && matchesDate
     })
 
     if (sortField) {
@@ -193,24 +243,11 @@ const TicketManagementPage = () => {
     }
 
     return filtered
-  }, [tickets, searchTerm, statusFilter, priorityFilter, sortField, sortOrder])
+  }, [tickets, searchTerm, dateFilter, sortField, sortOrder])
 
-  // Pagination logic
-  const totalPages = Math.ceil(filteredAndSortedTickets.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const currentTickets = filteredAndSortedTickets.slice(startIndex, endIndex)
-
-  // Stats calculation
-  const stats = useMemo(() => {
-    return {
-      total: tickets.length,
-      open: tickets.filter((t) => t.status === TicketStatus.OPEN).length,
-      inProgress: tickets.filter((t) => t.status === TicketStatus.IN_PROGRESS).length,
-      resolved: tickets.filter((t) => t.status === TicketStatus.RESOLVED).length,
-      closed: tickets.filter((t) => t.status === TicketStatus.CLOSED).length,
-    }
-  }, [tickets])
+  // Stats calculation (This should ideally be a separate API call for accuracy with pagination)
+  // For now, we'll just show stats for loaded tickets or remove them if misleading
+  // Keeping it simple for now
 
   // Sort handler
   const handleSort = (field: keyof TicketType) => {
@@ -349,17 +386,6 @@ const TicketManagementPage = () => {
     })
   }
 
-  if (loading) {
-    return (
-      <div className="h-[90vh] flex items-center justify-center">
-        <div className="text-center">
-          <Ticket className="h-10 w-10 text-muted-foreground mx-auto mb-4 animate-pulse" />
-          <p className="text-muted-foreground">Loading tickets...</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="h-[90vh] max-h-[92vh] overflow-y-auto">
       <div className="container mx-auto py-10 px-4 pb-20">
@@ -374,52 +400,16 @@ const TicketManagementPage = () => {
             </div>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <div className="border rounded-lg p-4">
-              <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                <Ticket className="h-4 w-4" />
-                <span className="text-sm font-medium">Total Tickets</span>
-              </div>
-              <p className="text-2xl font-bold">{stats.total}</p>
-            </div>
-            <div className="border rounded-lg p-4 border-blue-200 bg-blue-50 dark:bg-blue-950/20">
-              <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400 mb-2">
-                <AlertCircle className="h-4 w-4" />
-                <span className="text-sm font-medium">Open</span>
-              </div>
-              <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">
-                {stats.open}
-              </p>
-            </div>
-            <div className="border rounded-lg p-4 border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20">
-              <div className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400 mb-2">
-                <PlayCircle className="h-4 w-4" />
-                <span className="text-sm font-medium">In Progress</span>
-              </div>
-              <p className="text-2xl font-bold text-yellow-700 dark:text-yellow-400">
-                {stats.inProgress}
-              </p>
-            </div>
-            <div className="border rounded-lg p-4 border-green-200 bg-green-50 dark:bg-green-950/20">
-              <div className="flex items-center gap-2 text-green-700 dark:text-green-400 mb-2">
-                <CheckCircle className="h-4 w-4" />
-                <span className="text-sm font-medium">Resolved</span>
-              </div>
-              <p className="text-2xl font-bold text-green-700 dark:text-green-400">
-                {stats.resolved}
-              </p>
-            </div>
-            <div className="border rounded-lg p-4 border-gray-200 bg-gray-50 dark:bg-gray-950/20">
-              <div className="flex items-center gap-2 text-gray-700 dark:text-gray-400 mb-2">
-                <CheckCircle className="h-4 w-4" />
-                <span className="text-sm font-medium">Closed</span>
-              </div>
-              <p className="text-2xl font-bold text-gray-700 dark:text-gray-400">
-                {stats.closed}
-              </p>
-            </div>
-          </div>
+          {/* Date Filters */}
+          <Tabs defaultValue="ALL" value={dateFilter} onValueChange={setDateFilter} className="w-full">
+            <TabsList className="grid w-full grid-cols-5 lg:w-[600px]">
+              <TabsTrigger value="ALL">All</TabsTrigger>
+              <TabsTrigger value="TODAY">Today</TabsTrigger>
+              <TabsTrigger value="YESTERDAY">Yesterday</TabsTrigger>
+              <TabsTrigger value="UPCOMING">Upcoming</TabsTrigger>
+              <TabsTrigger value="BACKLOG">Backlog</TabsTrigger>
+            </TabsList>
+          </Tabs>
 
           {/* Filters and Search */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -430,7 +420,6 @@ const TicketManagementPage = () => {
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value)
-                  setCurrentPage(1)
                 }}
                 className="pl-10"
               />
@@ -526,12 +515,21 @@ const TicketManagementPage = () => {
                       {getSortIcon('createdAt')}
                     </div>
                   </TableHead>
+                  <TableHead>Action Date</TableHead>
                   <TableHead>Assigned Agent</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {currentTickets.length === 0 ? (
+                {loading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell colSpan={8} className="p-0">
+                        <SkeletonTable columns={8} rows={1} className="border-0" />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : filteredAndSortedTickets.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-10">
                       <div className="flex flex-col items-center gap-2">
@@ -541,7 +539,7 @@ const TicketManagementPage = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  currentTickets.map((ticket) => (
+                  filteredAndSortedTickets.map((ticket) => (
                     <TableRow key={ticket.id}>
                       <TableCell className="font-medium">#{ticket.id}</TableCell>
                       <TableCell>
@@ -573,8 +571,17 @@ const TicketManagementPage = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
                           <span className="text-sm">{formatDate(ticket.createdAt)}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">
+                            {ticket.serviceEvent?.actionDate
+                              ? formatDate(ticket.serviceEvent.actionDate)
+                              : <span className="text-muted-foreground italic">Not set</span>}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -624,56 +631,12 @@ const TicketManagementPage = () => {
           </div>
 
           {/* Pagination */}
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Showing {startIndex + 1} to {Math.min(endIndex, filteredAndSortedTickets.length)} of{' '}
-              {filteredAndSortedTickets.length} tickets
-            </p>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-              >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Previous
-              </Button>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                  let pageNum
-                  if (totalPages <= 5) {
-                    pageNum = i + 1
-                  } else if (currentPage <= 3) {
-                    pageNum = i + 1
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i
-                  } else {
-                    pageNum = currentPage - 2 + i
-                  }
-                  return (
-                    <Button
-                      key={pageNum}
-                      variant={currentPage === pageNum ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setCurrentPage(pageNum)}
-                      className="w-9"
-                    >
-                      {pageNum}
-                    </Button>
-                  )
-                })}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
-              >
-                Next
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            </div>
+          <div className="mt-4">
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
           </div>
         </div>
 
@@ -738,13 +701,15 @@ const TicketManagementPage = () => {
                     </div>
                     <p className="text-sm font-medium">{selectedTicket.serviceType}</p>
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <FileText className="h-4 w-4" />
-                      <span className="font-medium">Product Type</span>
+                  {selectedTicket.productType && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <FileText className="h-4 w-4" />
+                        <span className="font-medium">Product Type</span>
+                      </div>
+                      <p className="text-sm">{selectedTicket.productType}</p>
                     </div>
-                    <p className="text-sm">{selectedTicket.productType || 'Not specified'}</p>
-                  </div>
+                  )}
                   {selectedTicket.description && (
                     <div className="col-span-2 space-y-2">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -752,24 +717,6 @@ const TicketManagementPage = () => {
                         <span className="font-medium">Description</span>
                       </div>
                       <p className="text-sm">{selectedTicket.description}</p>
-                    </div>
-                  )}
-                  {selectedTicket.preferredDate && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Calendar className="h-4 w-4" />
-                        <span className="font-medium">Preferred Date</span>
-                      </div>
-                      <p className="text-sm">{formatDate(selectedTicket.preferredDate)}</p>
-                    </div>
-                  )}
-                  {selectedTicket.preferredTime && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Clock className="h-4 w-4" />
-                        <span className="font-medium">Preferred Time</span>
-                      </div>
-                      <p className="text-sm">{selectedTicket.preferredTime}</p>
                     </div>
                   )}
                   <div className="space-y-2">
@@ -786,6 +733,15 @@ const TicketManagementPage = () => {
                     </div>
                     <div>{getPriorityBadge(selectedTicket.priority)}</div>
                   </div>
+                  {selectedTicket.assignedToAgent && (
+                    <div className="col-span-2 space-y-2">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <User className="h-4 w-4" />
+                        <span className="font-medium">Assigned To</span>
+                      </div>
+                      <p className="text-sm">{selectedTicket.assignedToAgent.user.name}</p>
+                    </div>
+                  )}
                   {selectedTicket.internalNotes && (
                     <div className="col-span-2 space-y-2">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -834,139 +790,111 @@ const TicketManagementPage = () => {
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
               <DialogTitle>Edit Ticket</DialogTitle>
-              <DialogDescription>Update ticket status and notes</DialogDescription>
+              <DialogDescription>Update ticket details and status</DialogDescription>
             </DialogHeader>
-            {selectedTicket && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-status">Status</Label>
-                    <Select
-                      value={editForm.status}
-                      onValueChange={(value) =>
-                        setEditForm({ ...editForm, status: value as TicketStatus })
-                      }
-                    >
-                      <SelectTrigger id="edit-status">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.values(TicketStatus).map((status) => (
-                          <SelectItem key={status} value={status}>
-                            {status}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-priority">Priority</Label>
-                    <Select
-                      value={editForm.priority}
-                      onValueChange={(value) =>
-                        setEditForm({ ...editForm, priority: value as TicketPriority })
-                      }
-                    >
-                      <SelectTrigger id="edit-priority">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.values(TicketPriority).map((priority) => (
-                          <SelectItem key={priority} value={priority}>
-                            {priority}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="col-span-2 space-y-2">
-                    <Label htmlFor="edit-agent">Assign Agent</Label>
-                    <Select
-                      value={editForm.assignToUserId}
-                      onValueChange={(value) =>
-                        setEditForm({ ...editForm, assignToUserId: value })
-                      }
-                    >
-                      <SelectTrigger id="edit-agent">
-                        <SelectValue placeholder="Select an agent" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="unassigned">Unassigned</SelectItem>
-                        {agents.map((agent) => (
-                          <SelectItem key={agent.userId} value={agent.userId.toString()}>
-                            {agent.name} ({agent.role === 'ADMIN' ? 'Shop Owner' : 'Agent'}{agent.shopName ? ` - ${agent.shopName}` : ''})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-priority">Priority</Label>
-                    <Select
-                      value={editForm.priority}
-                      onValueChange={(value) =>
-                        setEditForm({ ...editForm, priority: value as TicketPriority })
-                      }
-                    >
-                      <SelectTrigger id="edit-priority">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.values(TicketPriority).map((priority) => (
-                          <SelectItem key={priority} value={priority}>
-                            {priority}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select
+                    value={editForm.status}
+                    onValueChange={(value: TicketStatus) =>
+                      setEditForm({ ...editForm, status: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.values(TicketStatus).map((status) => (
+                        <SelectItem key={status} value={status}>
+                          {status}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-internal-notes">Internal Notes</Label>
-                  <Textarea
-                    id="edit-internal-notes"
-                    value={editForm.internalNotes}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, internalNotes: e.target.value })
+                  <Label>Priority</Label>
+                  <Select
+                    value={editForm.priority}
+                    onValueChange={(value: TicketPriority) =>
+                      setEditForm({ ...editForm, priority: value })
                     }
-                    placeholder="Add internal notes for team members..."
-                    rows={3}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-resolution-notes">Resolution Notes</Label>
-                  <Textarea
-                    id="edit-resolution-notes"
-                    value={editForm.resolutionNotes}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, resolutionNotes: e.target.value })
-                    }
-                    placeholder="Add resolution notes when closing ticket..."
-                    rows={3}
-                  />
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.values(TicketPriority).map((priority) => (
+                        <SelectItem key={priority} value={priority}>
+                          {priority}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-            )}
+              <div className="space-y-2">
+                <Label>Assign Agent</Label>
+                <Select
+                  value={editForm.assignToUserId}
+                  onValueChange={(value) =>
+                    setEditForm({ ...editForm, assignToUserId: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select agent" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    {agents.map((agent) => (
+                      <SelectItem key={agent.id} value={agent.userId.toString()}>
+                        {agent.user.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Internal Notes</Label>
+                <Textarea
+                  placeholder="Add internal notes..."
+                  value={editForm.internalNotes}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, internalNotes: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Resolution Notes</Label>
+                <Textarea
+                  placeholder="Add resolution notes..."
+                  value={editForm.resolutionNotes}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, resolutionNotes: e.target.value })
+                  }
+                />
+              </div>
+            </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setEditDialogOpen(false)} disabled={isSaving}>
-              Cancel
-            </Button>
-            <Button onClick={saveEdit} disabled={isSaving}>
-              {isSaving ? 'Saving...' : 'Save Changes'}
-            </Button>
+              <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={saveEdit} disabled={isSaving}>
+                {isSaving ? 'Saving...' : 'Save Changes'}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Delete Confirmation Dialog */}
+        {/* Delete Dialog */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete ticket{' '}
-                <span className="font-semibold">#{selectedTicket?.id}</span> for customer{' '}
-                <span className="font-semibold">{selectedTicket?.customerName}</span>.
+                This action cannot be undone. This will permanently delete the ticket.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -975,7 +903,7 @@ const TicketManagementPage = () => {
                 onClick={confirmDelete}
                 className="bg-red-600 hover:bg-red-700"
               >
-                Delete Ticket
+                Delete
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

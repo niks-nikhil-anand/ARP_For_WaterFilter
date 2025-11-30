@@ -24,10 +24,11 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
 import { Calendar, Search, Filter, CheckCircle, Ticket, User, Wrench } from 'lucide-react'
 import { getServiceEvents, createTicketForEvent, updateServiceEvent, getAgents } from '@/actions/admin/serviceEvents'
+import { PaginationControls } from '@/components/ui/pagination-controls'
+import { SkeletonTable } from '@/components/common/SkeletonTable'
 
 export default function EventDetailsPage() {
   const [events, setEvents] = useState<any[]>([])
@@ -37,6 +38,11 @@ export default function EventDetailsPage() {
   const [selectedMonth, setSelectedMonth] = useState<string>('all')
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL')
   const [search, setSearch] = useState('')
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [itemsPerPage] = useState(10)
 
   // Ticket Dialog State
   const [ticketOpen, setTicketOpen] = useState(false)
@@ -59,12 +65,15 @@ export default function EventDetailsPage() {
   const fetchEvents = async () => {
     setLoading(true)
     const [eventsResult, agentsResult] = await Promise.all([
-      getServiceEvents(filter, selectedMonth, selectedStatus),
+      getServiceEvents(filter, selectedMonth, selectedStatus, currentPage, itemsPerPage),
       getAgents()
     ])
 
     if (eventsResult.success) {
       setEvents(eventsResult.data || [])
+      if (eventsResult.meta) {
+        setTotalPages(eventsResult.meta.totalPages)
+      }
     } else {
       toast.error('Failed to fetch events')
     }
@@ -78,6 +87,11 @@ export default function EventDetailsPage() {
 
   useEffect(() => {
     fetchEvents()
+  }, [filter, selectedMonth, selectedStatus, currentPage])
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
   }, [filter, selectedMonth, selectedStatus])
 
   const handleTicketClick = (event: any) => {
@@ -145,103 +159,8 @@ export default function EventDetailsPage() {
     }
   }
 
-  // ... (rest of the component)
-
-  {/* Resolve Dialog */ }
-  <Dialog open={resolveOpen} onOpenChange={setResolveOpen}>
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>Update Service Event</DialogTitle>
-        <DialogDescription>
-          Update the status and details of this service event.
-        </DialogDescription>
-      </DialogHeader>
-      <div className="space-y-4 py-4">
-        <div className="space-y-2">
-          <Label>Event Details</Label>
-          <div className="text-sm text-muted-foreground p-3 bg-muted rounded-md">
-            <p><strong>Customer:</strong> {selectedEvent?.customer?.name}</p>
-            <p><strong>Product:</strong> {selectedEvent?.product?.productName}</p>
-            <p><strong>Current Status:</strong> {selectedEvent?.status}</p>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Status</Label>
-          <Select value={resolveStatus} onValueChange={setResolveStatus}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="PENDING">Pending</SelectItem>
-              <SelectItem value="SCHEDULED">Scheduled</SelectItem>
-              <SelectItem value="COMPLETED">Completed</SelectItem>
-              <SelectItem value="CANCELLED">Cancelled</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {resolveStatus === 'COMPLETED' && (
-          <div className="space-y-2">
-            <Label htmlFor="remarks">Completion Remarks</Label>
-            <Textarea
-              id="remarks"
-              placeholder="Enter details about the service completion..."
-              value={resolveRemarks}
-              onChange={(e) => setResolveRemarks(e.target.value)}
-              rows={3}
-            />
-          </div>
-        )}
-
-        {resolveStatus === 'SCHEDULED' && (
-          <>
-            <div className="space-y-2">
-              <Label htmlFor="scheduledDate">Scheduled Date</Label>
-              <Input
-                id="scheduledDate"
-                type="date"
-                value={scheduledDate}
-                onChange={(e) => setScheduledDate(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="scheduledRemarks">Scheduling Remarks</Label>
-              <Textarea
-                id="scheduledRemarks"
-                placeholder="Enter scheduling details..."
-                value={scheduledRemarks}
-                onChange={(e) => setScheduledRemarks(e.target.value)}
-                rows={3}
-              />
-            </div>
-          </>
-        )}
-
-        {(resolveStatus === 'PENDING' || resolveStatus === 'CANCELLED') && (
-          <div className="space-y-2">
-            <Label htmlFor="generalRemarks">Remarks</Label>
-            <Textarea
-              id="generalRemarks"
-              placeholder="Enter remarks..."
-              value={resolveRemarks}
-              onChange={(e) => setResolveRemarks(e.target.value)}
-              rows={3}
-            />
-          </div>
-        )}
-      </div>
-      <DialogFooter>
-        <Button variant="outline" onClick={() => setResolveOpen(false)} disabled={resolving}>
-          Cancel
-        </Button>
-        <Button onClick={handleConfirmResolve} disabled={resolving} className="bg-green-600 hover:bg-green-700">
-          {resolving ? 'Updating...' : 'Confirm Update'}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
-
+  // Client-side search filtering (since backend search isn't implemented yet for all fields)
+  // Note: For large datasets, search should be moved to backend
   const filteredEvents = events.filter(event =>
     event.customer?.name.toLowerCase().includes(search.toLowerCase()) ||
     event.product?.productName?.toLowerCase().includes(search.toLowerCase()) ||
@@ -343,20 +262,9 @@ export default function EventDetailsPage() {
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
-                      <TableCell><Skeleton className="h-4 w-8" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                      <TableCell>
-                        <div className="space-y-2">
-                          <Skeleton className="h-4 w-24" />
-                          <Skeleton className="h-3 w-32" />
-                        </div>
+                      <TableCell colSpan={9} className="p-0">
+                        <SkeletonTable columns={9} rows={1} className="border-0" />
                       </TableCell>
-                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                      <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
                     </TableRow>
                   ))
                 ) : filteredEvents.length === 0 ? (
@@ -469,6 +377,15 @@ export default function EventDetailsPage() {
                 )}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Pagination Controls */}
+          <div className="mt-4">
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
           </div>
         </CardContent>
       </Card>

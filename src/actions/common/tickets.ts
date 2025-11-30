@@ -19,6 +19,9 @@ export async function getAllTickets(filters?: {
   status?: TicketStatus
   priority?: TicketPriority
   shopId?: number
+  serviceType?: string
+  page?: number
+  limit?: number
 }) {
   try {
     const where: Prisma.TicketWhereInput = {}
@@ -32,23 +35,57 @@ export async function getAllTickets(filters?: {
     if (filters?.shopId) {
       where.shopId = filters.shopId
     }
+    if (filters?.serviceType) {
+      if (filters.serviceType === 'COMPLAINT') {
+        where.OR = [
+          { serviceType: 'COMPLAINT' },
+          { serviceType: 'Issue' },
+          { serviceType: 'Product Issue' },
+          { description: { contains: 'complaint', mode: 'insensitive' } },
+          { description: { contains: 'issue', mode: 'insensitive' } },
+          { description: { contains: 'problem', mode: 'insensitive' } }
+        ]
+      } else {
+        where.serviceType = filters.serviceType
+      }
+    }
 
-    const tickets = await prisma.ticket.findMany({
-      where,
-      include: {
-        assignedToAgent: {
-          include: {
-            user: true
-          }
+    // Pagination
+    const page = filters?.page || 1
+    const limit = filters?.limit || 100 // Default to 100 for backward compatibility
+    const skip = (page - 1) * limit
+
+    const [total, tickets] = await Promise.all([
+      prisma.ticket.count({ where }),
+      prisma.ticket.findMany({
+        where,
+        include: {
+          assignedToAgent: {
+            include: {
+              user: true
+            }
+          },
+          shop: true,
+          serviceEvent: true
         },
-        shop: true
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    })
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip: filters?.page ? skip : undefined,
+        take: filters?.page ? limit : undefined,
+      })
+    ])
     
-    return { success: true, data: tickets }
+    return { 
+      success: true, 
+      data: tickets,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    }
   } catch (error) {
     console.error('Failed to fetch tickets:', error)
     return { success: false, error: 'Failed to fetch tickets' }

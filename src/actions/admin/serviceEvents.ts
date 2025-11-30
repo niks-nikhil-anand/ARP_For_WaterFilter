@@ -6,7 +6,9 @@ import { ServiceEventType } from '@/generated/prisma'
 export async function getServiceEvents(
   filter?: 'today' | 'yesterday' | 'upcoming' | 'backlog' | 'all',
   month?: string,
-  status?: string
+  status?: string,
+  page?: number,
+  limit?: number
 ) {
   try {
     let dateFilter: any = {}
@@ -73,65 +75,78 @@ export async function getServiceEvents(
       statusFilter = { status: status }
     }
 
-    const events = await prisma.serviceEvent.findMany({
-      where: {
-        ...dateFilter,
-        ...statusFilter
-      },
-      include: {
-        product: {
-          select: {
-            id: true,
-            productName: true,
-            type: true, // Added product type
-          }
-        },
-        customer: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            mobile: true, // Added mobile
-            addresses: { // Added addresses
-              take: 1,
-              select: {
-                locality: true,
-                state: true,
-                pincode: true
+    const where = {
+      ...dateFilter,
+      ...statusFilter
+    }
+
+    // Pagination
+    const pageNum = page || 1
+    const take = limit || 100 // Default to 100 if not specified to avoid breaking existing calls
+    const skip = (pageNum - 1) * take
+
+    const [total, events] = await Promise.all([
+      prisma.serviceEvent.count({ where }),
+      prisma.serviceEvent.findMany({
+        where,
+        include: {
+          product: {
+            select: {
+              id: true,
+              productName: true,
+              type: true, // Added product type
+            }
+          },
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              mobile: true, // Added mobile
+              addresses: { // Added addresses
+                take: 1,
+                select: {
+                  locality: true,
+                  state: true,
+                  pincode: true
+                }
               }
+            }
+          },
+          assignedTo: {
+            select: {
+              id: true,
+              user: {
+                select: {
+                  name: true,
+                  email: true
+                }
+              }
+            }
+          },
+          amcContract: {
+            select: {
+              id: true,
+              invoiceNumber: true,
+              duration: true,
+              price: true,
+              status: true,
+            }
+          },
+          ticket: {
+            select: {
+              id: true,
+              status: true
             }
           }
         },
-        assignedTo: {
-          select: {
-            id: true,
-            user: {
-              select: {
-                name: true,
-              }
-            }
-          }
+        orderBy: {
+          actionDate: 'asc' // Sort by action date for schedule view
         },
-        amcContract: {
-          select: {
-            id: true,
-            invoiceNumber: true,
-            duration: true,
-            price: true,
-            status: true,
-          }
-        },
-        ticket: {
-          select: {
-            id: true,
-            status: true
-          }
-        }
-      },
-      orderBy: {
-        actionDate: 'asc' // Sort by action date for schedule view
-      }
-    })
+        skip: page ? skip : undefined,
+        take: page ? take : undefined,
+      })
+    ])
 
     // Serialize Decimal fields
     const serializedEvents = events.map(event => ({
@@ -142,7 +157,16 @@ export async function getServiceEvents(
       } : null
     }))
 
-    return { success: true, data: serializedEvents }
+    return { 
+      success: true, 
+      data: serializedEvents,
+      meta: {
+        total,
+        page: pageNum,
+        limit: take,
+        totalPages: Math.ceil(total / take)
+      }
+    }
   } catch (error: any) {
     console.error('Get service events error:', error)
     return { success: false, error: error.message }

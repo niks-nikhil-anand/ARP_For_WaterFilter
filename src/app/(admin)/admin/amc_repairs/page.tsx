@@ -1,268 +1,365 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
-import { Plus, Wrench, Eye, Package, FileText } from 'lucide-react'
+import { Input } from '@/components/ui/input'
 import {
-  getServiceEvents,
-  getProducts,
-  getCustomers,
-  getAgents,
-  getAllAMCs
-} from '@/actions/admin/serviceEvents'
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { toast } from 'sonner'
+import { Calendar, Search, Filter, CheckCircle, Ticket, User, Wrench, Plus, FileText, Phone, Mail, MapPin } from 'lucide-react'
+import { getServiceEvents, createTicketForEvent, updateServiceEvent, getAgents, getAllAMCs, createAMCContract } from '@/actions/admin/serviceEvents'
+import { getAllProducts } from '@/actions/admin/products'
+import { getUsersByRole } from '@/actions/admin/users'
 import { AddAMCContractDialog } from '@/components/admin/amc/AddAMCContractDialog'
+import { PaginationControls } from '@/components/ui/pagination-controls'
+import { SkeletonTable } from '@/components/common/SkeletonTable'
 
-type ServiceEvent = {
-  id: number
-  type: 'REPAIR' | 'AMC' | 'WARRANTY' | 'AMC_CONTRACT'
-  product: {
-    id: number
-    productName: string | null
-  }
-  customer?: {
-    id: number
-    name: string
-    email: string | null
-  } | null
-  assignedTo?: {
-    id: number
-    user: {
-      name: string
-    }
-  } | null
-  amcContract?: {
-    id: number
-    name: string
-    duration: string
-    price: number
-    status: string
-  } | null
-  description?: string | null
-  remarks?: string | null
-  parts?: string | null
-  feedback?: string | null
-  pricePaid?: number | null
-  startDate?: Date | null
-  endDate?: Date | null
-  createdAt: Date
-  updatedAt: Date
-}
-
-const AMCRepairsPage = () => {
-  const [events, setEvents] = useState<ServiceEvent[]>([])
-  const [products, setProducts] = useState<{id: number, productName: string | null}[]>([])
-  const [customers, setCustomers] = useState<{id: number, name: string, email: string | null}[]>([])
-  const [agents, setAgents] = useState<{id: number, user: {name: string}}[]>([])
+export default function AMCRepairsPage() {
+  const [events, setEvents] = useState<any[]>([])
+  const [amcs, setAmcs] = useState<any[]>([])
+  const [agents, setAgents] = useState<any[]>([])
+  const [products, setProducts] = useState<any[]>([])
+  const [customers, setCustomers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState<'all' | 'amc' | 'repair'>('all')
+  const [search, setSearch] = useState('')
+  const [addAMCOpen, setAddAMCOpen] = useState(false)
 
-  const [addDialogOpen, setAddDialogOpen] = useState(false)
-  const [viewDialogOpen, setViewDialogOpen] = useState(false)
-  const [selectedEvent, setSelectedEvent] = useState<ServiceEvent | null>(null)
+  // Pagination State (Client-side)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(10)
 
-  useEffect(() => {
-    loadData()
-  }, [])
+  // Ticket Dialog State
+  const [ticketOpen, setTicketOpen] = useState(false)
+  const [creatingTicket, setCreatingTicket] = useState(false)
+  const [selectedAgentId, setSelectedAgentId] = useState<string>('')
 
-  const loadData = async () => {
+  // View Dialog State
+  const [viewOpen, setViewOpen] = useState(false)
+
+  // Resolve Dialog State
+  const [resolveOpen, setResolveOpen] = useState(false)
+  const [selectedEvent, setSelectedEvent] = useState<any>(null)
+  const [resolveRemarks, setResolveRemarks] = useState('')
+  const [resolving, setResolving] = useState(false)
+
+  const [resolveStatus, setResolveStatus] = useState<string>('COMPLETED')
+  const [scheduledDate, setScheduledDate] = useState<string>('')
+  const [scheduledRemarks, setScheduledRemarks] = useState('')
+
+  const fetchData = async () => {
     setLoading(true)
-    const [eventsRes, amcsRes, productsRes, customersRes, agentsRes] = await Promise.all([
-      getServiceEvents(),
+    const [eventsResult, amcsResult, agentsResult, productsResult, customersResult] = await Promise.all([
+      getServiceEvents('all'), // Fetch all for client-side filtering/pagination
       getAllAMCs(),
-      getProducts(),
-      getCustomers(),
-      getAgents()
+      getAgents(),
+      getAllProducts(),
+      getUsersByRole('USER')
     ])
 
-    let allEvents: ServiceEvent[] = []
-
-    if (eventsRes.success && eventsRes.data) {
-      allEvents = [...eventsRes.data] as ServiceEvent[]
+    if (eventsResult.success) {
+      setEvents(eventsResult.data || [])
+    } else {
+      toast.error('Failed to fetch events')
     }
 
-    if (amcsRes.success && amcsRes.data) {
-      const mappedAMCs = amcsRes.data.map((amc: any) => {
-        const latestContract = amc.contracts && amc.contracts.length > 0 ? amc.contracts[0] : null
-        return {
-          id: amc.id,
-          type: 'AMC_CONTRACT' as const,
-          product: {
-            id: amc.product.id,
-            productName: amc.product.productName
-          },
-          customer: latestContract ? {
-            id: latestContract.order.id, // Using order ID as proxy
-            name: latestContract.order.customerName,
-            email: latestContract.order.customerEmail
-          } : {
-            id: amc.user.id,
-            name: amc.user.name,
-            email: amc.user.email
-          },
-          assignedTo: latestContract?.agent ? {
-            id: latestContract.agent.id,
-            user: {
-              name: latestContract.agent.user.name
-            }
-          } : null,
-          amcContract: latestContract,
-          description: `AMC Contract (${latestContract?.duration || 'N/A'})`,
-          remarks: null,
-          parts: null,
-          feedback: null,
-          pricePaid: latestContract?.paymentPaid || null,
-          startDate: latestContract?.startDate,
-          endDate: latestContract?.endDate,
-          createdAt: amc.createdAt,
-          updatedAt: amc.updatedAt
-        }
-      })
-      allEvents = [...allEvents, ...mappedAMCs]
+    if (amcsResult.success) {
+      setAmcs(amcsResult.data || [])
+    } else {
+      toast.error('Failed to fetch AMCs')
     }
 
-    // Sort by createdAt desc
-    allEvents.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    if (agentsResult.success) {
+      setAgents(agentsResult.data || [])
+    }
 
-    setEvents(allEvents)
-    if (productsRes.success && productsRes.data) setProducts(productsRes.data)
-    if (customersRes.success && customersRes.data) setCustomers(customersRes.data)
-    if (agentsRes.success && agentsRes.data) setAgents(agentsRes.data)
+    if (productsResult.success) {
+      setProducts(productsResult.data || [])
+    }
+
+    if (customersResult.success) {
+      setCustomers(customersResult.data || [])
+    }
 
     setLoading(false)
   }
 
-  const formatDate = (date: Date | null | undefined) => {
-    if (!date) return 'N/A'
-    return new Date(date).toLocaleDateString('en-IN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    })
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  const handleTicketClick = (event: any) => {
+    setSelectedEvent(event)
+    setSelectedAgentId(event.assignedTo?.id?.toString() || '')
+    setTicketOpen(true)
   }
 
-  const formatCurrency = (amount: number | null | undefined) => {
-    if (!amount) return '₹0'
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(amount)
-  }
+  const handleConfirmCreateTicket = async () => {
+    if (!selectedEvent) return
 
-  const getTypeBadge = (type: string) => {
-    const variants: Record<string, string> = {
-      REPAIR: 'bg-orange-100 text-orange-800',
-      AMC: 'bg-blue-100 text-blue-800',
-      WARRANTY: 'bg-green-100 text-green-800',
-      AMC_CONTRACT: 'bg-purple-100 text-purple-800',
+    setCreatingTicket(true)
+    const result = await createTicketForEvent(selectedEvent.id, selectedAgentId ? parseInt(selectedAgentId) : undefined)
+    setCreatingTicket(false)
+
+    if (result.success) {
+      toast.success('Ticket created successfully')
+      setTicketOpen(false)
+      fetchData()
+    } else {
+      toast.error(result.error || 'Failed to create ticket')
     }
-    return <Badge className={variants[type] || 'bg-gray-100'}>{type.replace('_', ' ')}</Badge>
   }
 
-  const amcEvents = events.filter(e => e.type === 'AMC' || e.type === 'AMC_CONTRACT')
+  const handleViewClick = (event: any) => {
+    setSelectedEvent(event)
+    setViewOpen(true)
+  }
+
+  const handleResolveClick = (event: any) => {
+    setSelectedEvent(event)
+    setResolveStatus(event.status === 'COMPLETED' ? 'COMPLETED' : event.status)
+    setResolveRemarks(event.remarks || '')
+    setScheduledRemarks(event.scheduledRemarks || '')
+    setScheduledDate(event.actionDate ? new Date(event.actionDate).toISOString().split('T')[0] : '')
+    setResolveOpen(true)
+  }
+
+  const handleConfirmResolve = async () => {
+    if (!selectedEvent) return
+
+    setResolving(true)
+    const updateData: any = {
+      status: resolveStatus,
+    }
+
+    if (resolveStatus === 'COMPLETED') {
+      updateData.remarks = resolveRemarks
+    } else if (resolveStatus === 'SCHEDULED') {
+      updateData.actionDate = scheduledDate ? new Date(scheduledDate) : undefined
+      updateData.scheduledRemarks = scheduledRemarks
+    } else {
+      updateData.remarks = resolveRemarks
+    }
+
+    const result = await updateServiceEvent(selectedEvent.id, updateData)
+    setResolving(false)
+
+    if (result.success) {
+      toast.success('Event updated successfully')
+      setResolveOpen(false)
+      fetchData()
+    } else {
+      toast.error(result.error || 'Failed to update event')
+    }
+  }
+
+  const handleAMCAdded = () => {
+    fetchData()
+  }
+
+  // Merge and Filter Data
+  const mergedData = [
+    ...events.map(e => ({ ...e, dataType: 'EVENT' })),
+    ...amcs.map(a => ({ ...a, dataType: 'AMC', actionDate: a.createdAt, status: 'ACTIVE' })) // Normalize AMC data
+  ].sort((a, b) => new Date(b.actionDate).getTime() - new Date(a.actionDate).getTime())
+
+  const filteredData = mergedData.filter(item => {
+    const matchesSearch =
+      (item.customer?.name || item.user?.name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (item.product?.productName || '').toLowerCase().includes(search.toLowerCase()) ||
+      item.id.toString().includes(search)
+
+    if (filter === 'all') return matchesSearch
+    if (filter === 'amc') return matchesSearch && (item.type === 'AMC' || item.dataType === 'AMC')
+    if (filter === 'repair') return matchesSearch && item.type !== 'AMC' && item.dataType === 'EVENT'
+    return matchesSearch
+  })
+
+  // Pagination Logic
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage)
+  const paginatedData = filteredData.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'COMPLETED': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+      case 'PENDING': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+      case 'SCHEDULED': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+      case 'CANCELLED': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+      case 'ACTIVE': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+      default: return 'bg-gray-100 text-gray-800'
+    }
+  }
 
   return (
-    <div className="h-[90vh] max-h-[92vh] overflow-y-auto">
-      <div className="container mx-auto py-10 px-4 pb-20">
-        <div className="space-y-6">
-          {/* Header */}
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">AMC Management</h1>
-              <p className="text-muted-foreground mt-2">
-                Track and manage AMC contracts and visits
-              </p>
-            </div>
-            <Button onClick={() => setAddDialogOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add AMC Contract
-            </Button>
-          </div>
+    <div className="p-6 space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">AMC & Repairs</h1>
+          <p className="text-muted-foreground">Manage Annual Maintenance Contracts and repair requests.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => setAddAMCOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add AMC
+          </Button>
+        </div>
+      </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="border rounded-lg p-4">
-              <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                <FileText className="h-4 w-4" />
-                <span className="text-sm font-medium">Total AMC Records</span>
-              </div>
-              <p className="text-2xl font-bold">{amcEvents.length}</p>
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex flex-col md:flex-row justify-between gap-4">
+            <div className="flex flex-wrap gap-2 items-center w-full md:w-auto">
+              <Tabs value={filter} onValueChange={(v: any) => { setFilter(v); setCurrentPage(1); }} className="w-full md:w-auto">
+                <TabsList>
+                  <TabsTrigger value="all">All</TabsTrigger>
+                  <TabsTrigger value="amc">AMC</TabsTrigger>
+                  <TabsTrigger value="repair">Repairs</TabsTrigger>
+                </TabsList>
+              </Tabs>
             </div>
-            <div className="border rounded-lg p-4 border-blue-200 bg-blue-50 dark:bg-blue-950/20">
-              <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400 mb-2">
-                <FileText className="h-4 w-4" />
-                <span className="text-sm font-medium">AMC Visits</span>
-              </div>
-              <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">
-                {amcEvents.filter(e => e.type === 'AMC').length}
-              </p>
-            </div>
-            <div className="border rounded-lg p-4 border-purple-200 bg-purple-50 dark:bg-purple-950/20">
-              <div className="flex items-center gap-2 text-purple-700 dark:text-purple-400 mb-2">
-                <Package className="h-4 w-4" />
-                <span className="text-sm font-medium">AMC Contracts</span>
-              </div>
-              <p className="text-2xl font-bold text-purple-700 dark:text-purple-400">
-                {amcEvents.filter(e => e.type === 'AMC_CONTRACT').length}
-              </p>
+
+            <div className="relative w-full md:w-64">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search..."
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+                className="pl-8"
+              />
             </div>
           </div>
-
-          {/* Table */}
-          <div className="rounded-md border">
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border max-h-[750px] overflow-y-auto relative">
             <Table>
-              <TableHeader>
+              <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
                 <TableRow>
                   <TableHead>ID</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead>Product</TableHead>
                   <TableHead>Customer</TableHead>
-                  <TableHead>Technician</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Created</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Product</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell colSpan={7} className="p-0">
+                        <SkeletonTable columns={7} rows={1} className="border-0" />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : paginatedData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-10">
-                      Loading...
-                    </TableCell>
-                  </TableRow>
-                ) : events.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-10">
-                      <div className="flex flex-col items-center gap-2">
-                        <Wrench className="h-10 w-10 text-muted-foreground" />
-                        <p className="text-muted-foreground">No records found</p>
-                      </div>
+                    <TableCell colSpan={7} className="h-24 text-center">
+                      No records found.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  amcEvents.map((event) => (
-                    <TableRow key={`${event.type}-${event.id}`}>
-                      <TableCell className="font-medium">#{event.id}</TableCell>
-                      <TableCell>{getTypeBadge(event.type)}</TableCell>
-                      <TableCell>{event.product.productName || 'Unknown Product'}</TableCell>
-                      <TableCell>{event.customer?.name || 'N/A'}</TableCell>
-                      <TableCell>{event.assignedTo?.user.name || 'N/A'}</TableCell>
-                      <TableCell className="max-w-xs truncate">{event.description || 'N/A'}</TableCell>
-                      <TableCell>{formatDate(event.createdAt)}</TableCell>
+                  paginatedData.map((item) => (
+                    <TableRow key={`${item.dataType}-${item.id}`}>
+                      <TableCell className="font-medium">#{item.id}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={item.type === 'AMC' || item.dataType === 'AMC' ? 'border-blue-500 text-blue-500' : 'border-orange-500 text-orange-500'}>
+                          {item.dataType === 'AMC' ? 'AMC Contract' : item.type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{item.customer?.name || item.user?.name || 'Unknown'}</span>
+                          <span className="text-xs text-muted-foreground">{item.customer?.email || item.user?.email}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          {new Date(item.actionDate || item.createdAt).toLocaleDateString()}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">{item.product?.productName}</span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(item.status)} variant="secondary">
+                          {item.status}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setSelectedEvent(event)
-                            setViewDialogOpen(true)
-                          }}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        <div className="flex justify-end gap-2">
+                          {item.dataType === 'EVENT' && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0"
+                                onClick={() => handleViewClick(item)}
+                                title="View Details"
+                              >
+                                <span className="sr-only">View</span>
+                                <FileText className="h-4 w-4" />
+                              </Button>
+                              {!item.ticket && item.status !== 'CANCELLED' && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8"
+                                  onClick={() => handleTicketClick(item)}
+                                  title="Create Ticket"
+                                >
+                                  <Ticket className="h-4 w-4 mr-1" />
+                                  Ticket
+                                </Button>
+                              )}
+                              {item.status !== 'COMPLETED' && item.status !== 'CANCELLED' && (
+                                <Button
+                                  size="sm"
+                                  className="h-8 bg-green-600 hover:bg-green-700 text-white"
+                                  onClick={() => handleResolveClick(item)}
+                                  title="Resolve Event"
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-1" />
+                                  Resolve
+                                </Button>
+                              )}
+                            </>
+                          )}
+                          {item.dataType === 'AMC' && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0"
+                              // Add view logic for AMC contract if needed
+                              title="View Contract"
+                            >
+                              <FileText className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -270,85 +367,271 @@ const AMCRepairsPage = () => {
               </TableBody>
             </Table>
           </div>
-        </div>
-      </div>
 
-      {/* Add AMC Contract Dialog */}
+          {/* Pagination Controls */}
+          <div className="mt-4">
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       <AddAMCContractDialog
-        open={addDialogOpen}
-        onOpenChange={setAddDialogOpen}
-        products={products}
-        customers={customers}
+        open={addAMCOpen}
+        onOpenChange={setAddAMCOpen}
+        onSuccess={handleAMCAdded}
+        products={products.map(p => ({ id: p.id, productName: p.productName }))}
+        customers={customers.map(c => ({ id: c.id, name: c.name, email: c.email }))}
         agents={agents}
-        onSuccess={loadData}
       />
 
-      {/* View Dialog */}
-      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+      {/* Create Ticket Dialog */}
+      <Dialog open={ticketOpen} onOpenChange={setTicketOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create Support Ticket</DialogTitle>
+            <DialogDescription>
+              Review details before creating a ticket for this event.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <Label className="text-muted-foreground">Customer</Label>
+                <p className="font-medium">{selectedEvent?.customer?.name}</p>
+              </div>
+              <div>
+                <Label className="text-muted-foreground">Mobile</Label>
+                <p className="font-medium">{selectedEvent?.customer?.mobile || 'N/A'}</p>
+              </div>
+              <div className="col-span-2">
+                <Label className="text-muted-foreground">Email</Label>
+                <p className="font-medium">{selectedEvent?.customer?.email || 'N/A'}</p>
+              </div>
+              <div className="col-span-2">
+                <Label className="text-muted-foreground">Address</Label>
+                <p className="font-medium">
+                  {[
+                    selectedEvent?.customer?.addresses?.[0]?.locality,
+                    selectedEvent?.customer?.addresses?.[0]?.city,
+                    selectedEvent?.customer?.addresses?.[0]?.state,
+                    selectedEvent?.customer?.addresses?.[0]?.pincode
+                  ].filter(Boolean).join(', ') || 'No address found'}
+                </p>
+              </div>
+              <div>
+                <Label className="text-muted-foreground">Service Type</Label>
+                <p className="font-medium">{selectedEvent?.type}</p>
+              </div>
+              <div>
+                <Label className="text-muted-foreground">Product Type</Label>
+                <p className="font-medium">{selectedEvent?.product?.type || 'N/A'}</p>
+              </div>
+
+              <div className="col-span-2">
+                <Label className="text-muted-foreground mb-1 block">Assigned Agent</Label>
+                <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Agent" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    {agents.map((agent) => (
+                      <SelectItem key={agent.id} value={agent.id.toString()}>
+                        {agent.user.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="col-span-2">
+                <Label className="text-muted-foreground">Description</Label>
+                <p className="font-medium text-muted-foreground text-xs bg-muted p-2 rounded mt-1">
+                  {selectedEvent?.description || 'No description provided'}
+                </p>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTicketOpen(false)} disabled={creatingTicket}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmCreateTicket} disabled={creatingTicket}>
+              {creatingTicket ? 'Creating...' : 'Confirm Create Ticket'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Resolve Dialog */}
+      <Dialog open={resolveOpen} onOpenChange={setResolveOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Update Service Event</DialogTitle>
+            <DialogDescription>
+              Update the status and details of this service event.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Event Details</Label>
+              <div className="text-sm text-muted-foreground p-3 bg-muted rounded-md">
+                <p><strong>Customer:</strong> {selectedEvent?.customer?.name}</p>
+                <p><strong>Product:</strong> {selectedEvent?.product?.productName}</p>
+                <p><strong>Current Status:</strong> {selectedEvent?.status}</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={resolveStatus} onValueChange={setResolveStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PENDING">Pending</SelectItem>
+                  <SelectItem value="SCHEDULED">Scheduled</SelectItem>
+                  <SelectItem value="COMPLETED">Completed</SelectItem>
+                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {resolveStatus === 'COMPLETED' && (
+              <div className="space-y-2">
+                <Label htmlFor="remarks">Completion Remarks</Label>
+                <Textarea
+                  id="remarks"
+                  placeholder="Enter details about the service completion..."
+                  value={resolveRemarks}
+                  onChange={(e) => setResolveRemarks(e.target.value)}
+                  rows={3}
+                />
+              </div>
+            )}
+
+            {resolveStatus === 'SCHEDULED' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="scheduledDate">Scheduled Date</Label>
+                  <Input
+                    id="scheduledDate"
+                    type="date"
+                    value={scheduledDate}
+                    onChange={(e) => setScheduledDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="scheduledRemarks">Scheduling Remarks</Label>
+                  <Textarea
+                    id="scheduledRemarks"
+                    placeholder="Enter scheduling details..."
+                    value={scheduledRemarks}
+                    onChange={(e) => setScheduledRemarks(e.target.value)}
+                    rows={3}
+                  />
+                </div>
+              </>
+            )}
+
+            {(resolveStatus === 'PENDING' || resolveStatus === 'CANCELLED') && (
+              <div className="space-y-2">
+                <Label htmlFor="generalRemarks">Remarks</Label>
+                <Textarea
+                  id="generalRemarks"
+                  placeholder="Enter remarks..."
+                  value={resolveRemarks}
+                  onChange={(e) => setResolveRemarks(e.target.value)}
+                  rows={3}
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResolveOpen(false)} disabled={resolving}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmResolve} disabled={resolving} className="bg-green-600 hover:bg-green-700">
+              {resolving ? 'Updating...' : 'Confirm Update'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Details Dialog */}
+      <Dialog open={viewOpen} onOpenChange={setViewOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Service Event Details</DialogTitle>
+            <DialogTitle>Event Details #{selectedEvent?.id}</DialogTitle>
           </DialogHeader>
-          {selectedEvent && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground">Type</Label>
-                  <p>{getTypeBadge(selectedEvent.type)}</p>
+              <div>
+                <h4 className="font-semibold mb-2 flex items-center gap-2">
+                  <User className="h-4 w-4" /> Customer Details
+                </h4>
+                <div className="text-sm space-y-1 text-muted-foreground border p-3 rounded-md">
+                  <p><span className="font-medium text-foreground">Name:</span> {selectedEvent?.customer?.name}</p>
+                  <p><span className="font-medium text-foreground">Email:</span> {selectedEvent?.customer?.email}</p>
+                  <p><span className="font-medium text-foreground">Mobile:</span> {selectedEvent?.customer?.mobile || 'N/A'}</p>
+                  <p><span className="font-medium text-foreground">Address:</span> {[
+                    selectedEvent?.customer?.addresses?.[0]?.locality,
+                    selectedEvent?.customer?.addresses?.[0]?.city,
+                    selectedEvent?.customer?.addresses?.[0]?.state,
+                    selectedEvent?.customer?.addresses?.[0]?.pincode
+                  ].filter(Boolean).join(', ') || 'N/A'}</p>
                 </div>
-                <div>
-                  <Label className="text-muted-foreground">Product</Label>
-                  <p>{selectedEvent.product.productName}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Customer</Label>
-                  <p>{selectedEvent.customer?.name || 'N/A'}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Technician</Label>
-                  <p>{selectedEvent.assignedTo?.user.name || 'Unassigned'}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Created</Label>
-                  <p>{formatDate(selectedEvent.createdAt)}</p>
-                </div>
-                {selectedEvent.pricePaid && (
-                  <div>
-                    <Label className="text-muted-foreground">Price Paid</Label>
-                    <p>{formatCurrency(selectedEvent.pricePaid)}</p>
-                  </div>
-                )}
               </div>
-              {selectedEvent.description && (
-                <div>
-                  <Label className="text-muted-foreground">Description</Label>
-                  <p className="mt-1">{selectedEvent.description}</p>
+
+              <div>
+                <h4 className="font-semibold mb-2 flex items-center gap-2">
+                  <Wrench className="h-4 w-4" /> Service Info
+                </h4>
+                <div className="text-sm space-y-1 text-muted-foreground border p-3 rounded-md">
+                  <p><span className="font-medium text-foreground">Type:</span> {selectedEvent?.type}</p>
+                  <p><span className="font-medium text-foreground">Product:</span> {selectedEvent?.product?.productName}</p>
+                  <p><span className="font-medium text-foreground">Status:</span> <Badge variant="outline">{selectedEvent?.status}</Badge></p>
+                  <p><span className="font-medium text-foreground">Scheduled:</span> {selectedEvent?.actionDate && new Date(selectedEvent.actionDate).toLocaleDateString()}</p>
+                  <p><span className="font-medium text-foreground">Agent:</span> {selectedEvent?.assignedTo?.user?.name || 'Unassigned'}</p>
                 </div>
-              )}
-              {selectedEvent.remarks && (
-                <div>
-                  <Label className="text-muted-foreground">Remarks</Label>
-                  <p className="mt-1">{selectedEvent.remarks}</p>
-                </div>
-              )}
-              {selectedEvent.parts && (
-                <div>
-                  <Label className="text-muted-foreground">Parts Used</Label>
-                  <p className="mt-1">{selectedEvent.parts}</p>
-                </div>
-              )}
-              {selectedEvent.feedback && (
-                <div>
-                  <Label className="text-muted-foreground">Feedback</Label>
-                  <p className="mt-1">{selectedEvent.feedback}</p>
-                </div>
-              )}
+              </div>
             </div>
-          )}
+
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-semibold mb-2 flex items-center gap-2">
+                  <Ticket className="h-4 w-4" /> Ticket & Remarks
+                </h4>
+                <div className="text-sm space-y-3 text-muted-foreground border p-3 rounded-md h-full">
+                  <div>
+                    <span className="font-medium text-foreground block mb-1">Description:</span>
+                    <p className="bg-muted p-2 rounded text-xs">{selectedEvent?.description || 'No description'}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-foreground block mb-1">Remarks:</span>
+                    <p className="bg-muted p-2 rounded text-xs">{selectedEvent?.remarks || 'No remarks'}</p>
+                  </div>
+                  {selectedEvent?.ticket && (
+                    <div className="mt-4 pt-4 border-t">
+                      <p className="font-medium text-foreground mb-1">Linked Ticket:</p>
+                      <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                        Ticket #{selectedEvent.ticket.id} - {selectedEvent.ticket.status}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setViewOpen(false)}>Close</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
   )
 }
-
-export default AMCRepairsPage

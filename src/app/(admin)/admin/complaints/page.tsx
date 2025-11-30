@@ -18,12 +18,27 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs'
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -32,30 +47,37 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   Eye,
   Pencil,
+  Trash2,
   ChevronLeft,
   ChevronRight,
   Search,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Plus,
+  Ticket,
   User,
   Mail,
   Phone,
   MapPin,
   Calendar,
+  Clock,
   AlertCircle,
   CheckCircle,
+  XCircle,
   PlayCircle,
-  MessageSquare,
   FileText,
 } from 'lucide-react'
 import {
   getAllTickets,
   updateTicket,
+  deleteTicket,
 } from '@/actions/common/tickets'
 import { getActiveAgents } from '@/actions/common/agents'
 import { TicketStatus, TicketPriority } from '@/generated/prisma'
 import { toast } from 'sonner'
+import { PaginationControls } from '@/components/ui/pagination-controls'
+import { SkeletonTable } from '@/components/common/SkeletonTable'
 
 interface TicketType {
   id: number
@@ -83,25 +105,31 @@ interface TicketType {
   internalNotes?: string | null
   resolutionNotes?: string | null
   source?: string | null
+  serviceEvent?: {
+    actionDate?: Date | string | null
+  } | null
   createdAt: Date
   updatedAt: Date
 }
 
-const ComplaintsPage = () => {
+const ComplaintsManagementPage = () => {
   const [tickets, setTickets] = useState<TicketType[]>([])
   const [agents, setAgents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [priorityFilter, setPriorityFilter] = useState('ALL')
+  const [dateFilter, setDateFilter] = useState('ALL')
   const [sortField, setSortField] = useState<keyof TicketType | null>(null)
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage] = useState(10)
+  const [itemsPerPage] = useState(8)
+  const [totalPages, setTotalPages] = useState(1)
 
   // Modal states
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedTicket, setSelectedTicket] = useState<TicketType | null>(null)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -120,10 +148,11 @@ const ComplaintsPage = () => {
     assignToUserId: 'unassigned',
   })
 
+  // Load tickets
   useEffect(() => {
     loadTickets()
     loadAgents()
-  }, [])
+  }, [currentPage, statusFilter, priorityFilter])
 
   const loadAgents = async () => {
     const result = await getActiveAgents()
@@ -135,28 +164,30 @@ const ComplaintsPage = () => {
   const loadTickets = async () => {
     setLoading(true)
     try {
-      const result = await getAllTickets()
+      const filters: any = {
+        page: currentPage,
+        limit: itemsPerPage,
+        serviceType: 'COMPLAINT' // Filter for complaints
+      }
+
+      if (statusFilter !== 'ALL') filters.status = statusFilter
+      if (priorityFilter !== 'ALL') filters.priority = priorityFilter
+
+      const result = await getAllTickets(filters)
       if (result.success && result.data) {
-        // Filter only complaint-type tickets (you can adjust this filter based on serviceType)
-        const complaints = result.data.filter(
-          (ticket) =>
-            ticket.serviceType === 'COMPLAINT' ||
-            ticket.serviceType === 'Issue' ||
-            ticket.serviceType === 'Product Issue' ||
-            ticket.description?.toLowerCase().includes('complaint') ||
-            ticket.description?.toLowerCase().includes('issue') ||
-            ticket.description?.toLowerCase().includes('problem')
-        )
-        setTickets(complaints)
+        setTickets(result.data)
+        if (result.meta) {
+          setTotalPages(result.meta.totalPages)
+        }
       }
     } catch (error) {
-      console.error('Error loading complaints:', error)
+      console.error('Error loading tickets:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  // Filtering and sorting logic
+  // Filtering and sorting logic (Client side for search and date for now)
   const filteredAndSortedTickets = useMemo(() => {
     const filtered = tickets.filter((ticket) => {
       const matchesSearch =
@@ -164,13 +195,39 @@ const ComplaintsPage = () => {
         ticket.customerEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
         ticket.customerPhone.toLowerCase().includes(searchTerm.toLowerCase()) ||
         ticket.serviceType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ticket.productType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ticket.description?.toLowerCase().includes(searchTerm.toLowerCase())
+        ticket.productType?.toLowerCase().includes(searchTerm.toLowerCase())
 
-      const matchesStatus = statusFilter === 'ALL' || ticket.status === statusFilter
-      const matchesPriority = priorityFilter === 'ALL' || ticket.priority === priorityFilter
+      let matchesDate = true
+      if (dateFilter !== 'ALL') {
+        const ticketDate = ticket.serviceEvent?.actionDate
+          ? new Date(ticket.serviceEvent.actionDate)
+          : null
 
-      return matchesSearch && matchesStatus && matchesPriority
+        if (!ticketDate) {
+          matchesDate = false
+        } else {
+          const today = new Date()
+          today.setHours(0, 0, 0, 0)
+          const tomorrow = new Date(today)
+          tomorrow.setDate(tomorrow.getDate() + 1)
+          const yesterday = new Date(today)
+          yesterday.setDate(yesterday.getDate() - 1)
+
+          if (dateFilter === 'TODAY') {
+            matchesDate = ticketDate >= today && ticketDate < tomorrow
+          } else if (dateFilter === 'YESTERDAY') {
+            matchesDate = ticketDate >= yesterday && ticketDate < today
+          } else if (dateFilter === 'UPCOMING') {
+            matchesDate = ticketDate >= tomorrow
+          } else if (dateFilter === 'BACKLOG') {
+            matchesDate = ticketDate < yesterday &&
+              ticket.status !== TicketStatus.RESOLVED &&
+              ticket.status !== TicketStatus.CLOSED
+          }
+        }
+      }
+
+      return matchesSearch && matchesDate
     })
 
     if (sortField) {
@@ -185,30 +242,10 @@ const ComplaintsPage = () => {
         if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1
         return 0
       })
-    } else {
-      // Default sort by createdAt desc
-      filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     }
 
     return filtered
-  }, [tickets, searchTerm, statusFilter, priorityFilter, sortField, sortOrder])
-
-  // Pagination logic
-  const totalPages = Math.ceil(filteredAndSortedTickets.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const currentTickets = filteredAndSortedTickets.slice(startIndex, endIndex)
-
-  // Stats calculation
-  const stats = useMemo(() => {
-    return {
-      total: tickets.length,
-      open: tickets.filter((t) => t.status === TicketStatus.OPEN).length,
-      inProgress: tickets.filter((t) => t.status === TicketStatus.IN_PROGRESS).length,
-      resolved: tickets.filter((t) => t.status === TicketStatus.RESOLVED).length,
-      urgent: tickets.filter((t) => t.priority === TicketPriority.URGENT).length,
-    }
-  }, [tickets])
+  }, [tickets, searchTerm, dateFilter, sortField, sortOrder])
 
   // Sort handler
   const handleSort = (field: keyof TicketType) => {
@@ -220,6 +257,7 @@ const ComplaintsPage = () => {
     }
   }
 
+  // CRUD handlers
   const handleView = (ticket: TicketType) => {
     setSelectedTicket(ticket)
     setViewDialogOpen(true)
@@ -235,6 +273,22 @@ const ComplaintsPage = () => {
       assignToUserId: ticket.assignedToAgent?.userId ? ticket.assignedToAgent.userId.toString() : 'unassigned',
     })
     setEditDialogOpen(true)
+  }
+
+  const handleDelete = (ticket: TicketType) => {
+    setSelectedTicket(ticket)
+    setDeleteDialogOpen(true)
+  }
+
+  const confirmDelete = async () => {
+    if (selectedTicket) {
+      const result = await deleteTicket(selectedTicket.id)
+      if (result.success) {
+        setTickets(tickets.filter((t) => t.id !== selectedTicket.id))
+        setDeleteDialogOpen(false)
+        setSelectedTicket(null)
+      }
+    }
   }
 
   const saveEdit = async () => {
@@ -297,7 +351,7 @@ const ComplaintsPage = () => {
       },
       [TicketStatus.CANCELLED]: {
         className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
-        icon: <AlertCircle className="h-3 w-3 mr-1" />,
+        icon: <XCircle className="h-3 w-3 mr-1" />,
       },
     }
 
@@ -330,17 +384,6 @@ const ComplaintsPage = () => {
     })
   }
 
-  if (loading) {
-    return (
-      <div className="h-[90vh] flex items-center justify-center">
-        <div className="text-center">
-          <MessageSquare className="h-10 w-10 text-muted-foreground mx-auto mb-4 animate-pulse" />
-          <p className="text-muted-foreground">Loading complaints...</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="h-[90vh] max-h-[92vh] overflow-y-auto">
       <div className="container mx-auto py-10 px-4 pb-20">
@@ -350,68 +393,31 @@ const ComplaintsPage = () => {
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Complaints Management</h1>
               <p className="text-muted-foreground mt-2">
-                Track and resolve customer complaints and issues
+                Manage customer complaints and issues
               </p>
             </div>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <div className="border rounded-lg p-4">
-              <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                <MessageSquare className="h-4 w-4" />
-                <span className="text-sm font-medium">Total</span>
-              </div>
-              <p className="text-2xl font-bold">{stats.total}</p>
-            </div>
-            <div className="border rounded-lg p-4 border-blue-200 bg-blue-50 dark:bg-blue-950/20">
-              <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400 mb-2">
-                <AlertCircle className="h-4 w-4" />
-                <span className="text-sm font-medium">Open</span>
-              </div>
-              <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">
-                {stats.open}
-              </p>
-            </div>
-            <div className="border rounded-lg p-4 border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20">
-              <div className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400 mb-2">
-                <PlayCircle className="h-4 w-4" />
-                <span className="text-sm font-medium">In Progress</span>
-              </div>
-              <p className="text-2xl font-bold text-yellow-700 dark:text-yellow-400">
-                {stats.inProgress}
-              </p>
-            </div>
-            <div className="border rounded-lg p-4 border-green-200 bg-green-50 dark:bg-green-950/20">
-              <div className="flex items-center gap-2 text-green-700 dark:text-green-400 mb-2">
-                <CheckCircle className="h-4 w-4" />
-                <span className="text-sm font-medium">Resolved</span>
-              </div>
-              <p className="text-2xl font-bold text-green-700 dark:text-green-400">
-                {stats.resolved}
-              </p>
-            </div>
-            <div className="border rounded-lg p-4 border-red-200 bg-red-50 dark:bg-red-950/20">
-              <div className="flex items-center gap-2 text-red-700 dark:text-red-400 mb-2">
-                <AlertCircle className="h-4 w-4" />
-                <span className="text-sm font-medium">Urgent</span>
-              </div>
-              <p className="text-2xl font-bold text-red-700 dark:text-red-400">
-                {stats.urgent}
-              </p>
-            </div>
-          </div>
+          {/* Date Filters */}
+          <Tabs defaultValue="ALL" value={dateFilter} onValueChange={setDateFilter} className="w-full">
+            <TabsList className="grid w-full grid-cols-5 lg:w-[600px]">
+              <TabsTrigger value="ALL">All</TabsTrigger>
+              <TabsTrigger value="TODAY">Today</TabsTrigger>
+              <TabsTrigger value="YESTERDAY">Yesterday</TabsTrigger>
+              <TabsTrigger value="UPCOMING">Upcoming</TabsTrigger>
+              <TabsTrigger value="BACKLOG">Backlog</TabsTrigger>
+            </TabsList>
+          </Tabs>
 
           {/* Filters and Search */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="relative lg:col-span-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search complaints..."
+                placeholder="Search by customer, service, or product..."
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value)
-                  setCurrentPage(1)
                 }}
                 className="pl-10"
               />
@@ -479,7 +485,7 @@ const ComplaintsPage = () => {
                       {getSortIcon('customerName')}
                     </div>
                   </TableHead>
-                  <TableHead>Complaint</TableHead>
+                  <TableHead>Issue Type</TableHead>
                   <TableHead
                     className="cursor-pointer select-none text-center"
                     onClick={() => handleSort('status')}
@@ -503,26 +509,35 @@ const ComplaintsPage = () => {
                     onClick={() => handleSort('createdAt')}
                   >
                     <div className="flex items-center">
-                      Date
+                      Created Date
                       {getSortIcon('createdAt')}
                     </div>
                   </TableHead>
-                  <TableHead>Assigned To</TableHead>
+                  <TableHead>Action Date</TableHead>
+                  <TableHead>Assigned Agent</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {currentTickets.length === 0 ? (
+                {loading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell colSpan={8} className="p-0">
+                        <SkeletonTable columns={8} rows={1} className="border-0" />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : filteredAndSortedTickets.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-10">
                       <div className="flex flex-col items-center gap-2">
-                        <MessageSquare className="h-10 w-10 text-muted-foreground" />
+                        <AlertCircle className="h-10 w-10 text-muted-foreground" />
                         <p className="text-muted-foreground">No complaints found</p>
                       </div>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  currentTickets.map((ticket) => (
+                  filteredAndSortedTickets.map((ticket) => (
                     <TableRow key={ticket.id}>
                       <TableCell className="font-medium">#{ticket.id}</TableCell>
                       <TableCell>
@@ -531,7 +546,7 @@ const ComplaintsPage = () => {
                           <div>
                             <div className="font-medium text-sm">{ticket.customerName}</div>
                             <div className="text-xs text-muted-foreground">
-                              {ticket.customerPhone}
+                              {ticket.customerEmail}
                             </div>
                           </div>
                         </div>
@@ -539,9 +554,9 @@ const ComplaintsPage = () => {
                       <TableCell>
                         <div>
                           <div className="font-medium text-sm">{ticket.serviceType}</div>
-                          {ticket.description && (
-                            <div className="text-xs text-muted-foreground truncate max-w-[200px]">
-                              {ticket.description}
+                          {ticket.productType && (
+                            <div className="text-xs text-muted-foreground">
+                              {ticket.productType}
                             </div>
                           )}
                         </div>
@@ -554,8 +569,17 @@ const ComplaintsPage = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
                           <span className="text-sm">{formatDate(ticket.createdAt)}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">
+                            {ticket.serviceEvent?.actionDate
+                              ? formatDate(ticket.serviceEvent.actionDate)
+                              : <span className="text-muted-foreground italic">Not set</span>}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -582,9 +606,18 @@ const ComplaintsPage = () => {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleEdit(ticket)}
-                            title="Update complaint"
+                            title="Edit complaint"
                           >
                             <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(ticket)}
+                            title="Delete complaint"
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </TableCell>
@@ -596,59 +629,13 @@ const ComplaintsPage = () => {
           </div>
 
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
-                Showing {startIndex + 1} to {Math.min(endIndex, filteredAndSortedTickets.length)} of{' '}
-                {filteredAndSortedTickets.length} complaints
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4 mr-1" />
-                  Previous
-                </Button>
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                    let pageNum
-                    if (totalPages <= 5) {
-                      pageNum = i + 1
-                    } else if (currentPage <= 3) {
-                      pageNum = i + 1
-                    } else if (currentPage >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i
-                    } else {
-                      pageNum = currentPage - 2 + i
-                    }
-                    return (
-                      <Button
-                        key={pageNum}
-                        variant={currentPage === pageNum ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setCurrentPage(pageNum)}
-                        className="w-9"
-                      >
-                        {pageNum}
-                      </Button>
-                    )
-                  })}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-              </div>
-            </div>
-          )}
+          <div className="mt-4">
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </div>
         </div>
 
         {/* View Dialog */}
@@ -663,7 +650,7 @@ const ComplaintsPage = () => {
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <MessageSquare className="h-4 w-4" />
+                      <Ticket className="h-4 w-4" />
                       <span className="font-medium">Complaint ID</span>
                     </div>
                     <p className="text-lg font-semibold">#{selectedTicket.id}</p>
@@ -708,7 +695,7 @@ const ComplaintsPage = () => {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <FileText className="h-4 w-4" />
-                      <span className="font-medium">Complaint Type</span>
+                      <span className="font-medium">Issue Type</span>
                     </div>
                     <p className="text-sm font-medium">{selectedTicket.serviceType}</p>
                   </div>
@@ -800,102 +787,96 @@ const ComplaintsPage = () => {
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
-              <DialogTitle>Update Complaint</DialogTitle>
-              <DialogDescription>Update complaint status and resolution</DialogDescription>
+              <DialogTitle>Edit Complaint</DialogTitle>
+              <DialogDescription>Update complaint details and status</DialogDescription>
             </DialogHeader>
-            {selectedTicket && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-status">Status</Label>
-                    <Select
-                      value={editForm.status}
-                      onValueChange={(value) =>
-                        setEditForm({ ...editForm, status: value as TicketStatus })
-                      }
-                    >
-                      <SelectTrigger id="edit-status">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.values(TicketStatus).map((status) => (
-                          <SelectItem key={status} value={status}>
-                            {status}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-priority">Priority</Label>
-                    <Select
-                      value={editForm.priority}
-                      onValueChange={(value) =>
-                        setEditForm({ ...editForm, priority: value as TicketPriority })
-                      }
-                    >
-                      <SelectTrigger id="edit-priority">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.values(TicketPriority).map((priority) => (
-                          <SelectItem key={priority} value={priority}>
-                            {priority}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="col-span-2 space-y-2">
-                    <Label htmlFor="edit-agent">Assign Agent</Label>
-                    <Select
-                      value={editForm.assignToUserId}
-                      onValueChange={(value) =>
-                        setEditForm({ ...editForm, assignToUserId: value })
-                      }
-                    >
-                      <SelectTrigger id="edit-agent">
-                        <SelectValue placeholder="Select an agent" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="unassigned">Unassigned</SelectItem>
-                        {agents.map((agent) => (
-                          <SelectItem key={agent.userId} value={agent.userId.toString()}>
-                            {agent.name} ({agent.role === 'ADMIN' ? 'Shop Owner' : 'Agent'}{agent.shopName ? ` - ${agent.shopName}` : ''})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select
+                    value={editForm.status}
+                    onValueChange={(value: TicketStatus) =>
+                      setEditForm({ ...editForm, status: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.values(TicketStatus).map((status) => (
+                        <SelectItem key={status} value={status}>
+                          {status}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-internal-notes">Internal Notes</Label>
-                  <Textarea
-                    id="edit-internal-notes"
-                    value={editForm.internalNotes}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, internalNotes: e.target.value })
+                  <Label>Priority</Label>
+                  <Select
+                    value={editForm.priority}
+                    onValueChange={(value: TicketPriority) =>
+                      setEditForm({ ...editForm, priority: value })
                     }
-                    placeholder="Add internal notes for team members..."
-                    rows={3}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-resolution-notes">Resolution Notes</Label>
-                  <Textarea
-                    id="edit-resolution-notes"
-                    value={editForm.resolutionNotes}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, resolutionNotes: e.target.value })
-                    }
-                    placeholder="Add resolution notes when resolving complaint..."
-                    rows={3}
-                  />
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.values(TicketPriority).map((priority) => (
+                        <SelectItem key={priority} value={priority}>
+                          {priority}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-            )}
+              <div className="space-y-2">
+                <Label>Assign Agent</Label>
+                <Select
+                  value={editForm.assignToUserId}
+                  onValueChange={(value) =>
+                    setEditForm({ ...editForm, assignToUserId: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select agent" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    {agents.map((agent) => (
+                      <SelectItem key={agent.id} value={agent.userId.toString()}>
+                        {agent.user.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Internal Notes</Label>
+                <Textarea
+                  placeholder="Add internal notes..."
+                  value={editForm.internalNotes}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, internalNotes: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Resolution Notes</Label>
+                <Textarea
+                  placeholder="Add resolution notes..."
+                  value={editForm.resolutionNotes}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, resolutionNotes: e.target.value })
+                  }
+                />
+              </div>
+            </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setEditDialogOpen(false)} disabled={isSaving}>
+              <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
                 Cancel
               </Button>
               <Button onClick={saveEdit} disabled={isSaving}>
@@ -904,9 +885,30 @@ const ComplaintsPage = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Delete Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the complaint.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmDelete}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   )
 }
 
-export default ComplaintsPage
+export default ComplaintsManagementPage

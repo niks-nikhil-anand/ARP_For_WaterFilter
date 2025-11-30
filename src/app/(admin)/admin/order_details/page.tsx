@@ -15,6 +15,7 @@ import { Eye, Phone, Mail, MapPin, Package, CreditCard, Calendar, ChevronLeft, C
 import Link from 'next/link'
 import { OrderToolbar } from '@/components/admin/orders/OrderToolbar'
 import { OrderActions } from '@/components/admin/orders/OrderActions'
+import { PlaceOrderModal } from '@/components/admin/orders/PlaceOrderModal'
 
 export default async function OrderDetailsPage({
   searchParams,
@@ -71,6 +72,7 @@ export default async function OrderDetailsPage({
           <Badge variant="outline" className="text-lg px-4 py-2">
             Total Orders: {pagination?.total || 0}
           </Badge>
+          <PlaceOrderModal />
         </div>
       </div>
 
@@ -243,11 +245,9 @@ export default async function OrderDetailsPage({
               </p>
               <div className="flex items-center gap-2">
                 <Link
-                  href={`?page=${Math.max(1, pagination.current - 1)}${
-                    search ? `&search=${search}` : ''
-                  }${paymentStatus ? `&status=${paymentStatus}` : ''}${
-                    paymentMethod ? `&payment=${paymentMethod}` : ''
-                  }`}
+                  href={`?page=${Math.max(1, pagination.current - 1)}${search ? `&search=${search}` : ''
+                    }${paymentStatus ? `&status=${paymentStatus}` : ''}${paymentMethod ? `&payment=${paymentMethod}` : ''
+                    }`}
                 >
                   <Button
                     variant="outline"
@@ -259,11 +259,9 @@ export default async function OrderDetailsPage({
                   </Button>
                 </Link>
                 <Link
-                  href={`?page=${Math.min(pagination.pages, pagination.current + 1)}${
-                    search ? `&search=${search}` : ''
-                  }${paymentStatus ? `&status=${paymentStatus}` : ''}${
-                    paymentMethod ? `&payment=${paymentMethod}` : ''
-                  }`}
+                  href={`?page=${Math.min(pagination.pages, pagination.current + 1)}${search ? `&search=${search}` : ''
+                    }${paymentStatus ? `&status=${paymentStatus}` : ''}${paymentMethod ? `&payment=${paymentMethod}` : ''
+                    }`}
                 >
                   <Button
                     variant="outline"

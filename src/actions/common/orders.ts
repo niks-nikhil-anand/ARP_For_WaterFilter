@@ -21,6 +21,7 @@ export type CreateOrderInput = {
   additionalWarranty?: string
   amc?: string
   paymentOption: 'pay_later' | 'pay_now'
+  userId?: number
 }
 
 export async function createOrder(data: CreateOrderInput) {
@@ -46,6 +47,7 @@ export async function createOrder(data: CreateOrderInput) {
     const order = await prisma.order.create({
       data: {
         productId: data.productId,
+        createdById: data.userId,
 
         customerName: data.customerName,
         customerEmail: data.customerEmail,
@@ -72,7 +74,8 @@ export async function createOrder(data: CreateOrderInput) {
             productName: true,
             company: true,
             type: true,
-            price: true
+            price: true,
+            discount: true
           }
         }
       }
@@ -83,7 +86,15 @@ export async function createOrder(data: CreateOrderInput) {
     
     return {
       success: true,
-      data: order,
+      data: {
+        ...order,
+        amountPaid: order.amountPaid ? Number(order.amountPaid) : 0,
+        product: {
+          ...order.product,
+          price: order.product.price ? Number(order.product.price) : 0,
+          discount: order.product.discount ? Number(order.product.discount) : null
+        }
+      },
       message: 'Order created successfully! Our executive will contact you shortly.'
     }
   } catch (error) {
@@ -122,7 +133,15 @@ export async function getOrderById(orderId: number) {
 
     return {
       success: true,
-      data: order
+      data: {
+        ...order,
+        amountPaid: order.amountPaid ? Number(order.amountPaid) : 0,
+        product: {
+          ...order.product,
+          price: order.product.price ? Number(order.product.price) : 0,
+          discount: order.product.discount ? Number(order.product.discount) : null
+        }
+      }
     }
   } catch (error) {
     console.error('Error fetching order:', error)
@@ -172,6 +191,7 @@ export async function getAllOrders(
               company: true,
               type: true,
               price: true,
+              discount: true,
               createdBy: {
                 include: {
                   shops: {
@@ -194,9 +214,19 @@ export async function getAllOrders(
       prisma.order.count({ where })
     ])
 
+    const serializedOrders = orders.map(order => ({
+      ...order,
+      amountPaid: order.amountPaid ? Number(order.amountPaid) : 0,
+      product: {
+        ...order.product,
+        price: order.product.price ? Number(order.product.price) : 0,
+        discount: order.product.discount ? Number(order.product.discount) : null
+      }
+    }))
+
     return {
       success: true,
-      data: orders,
+      data: serializedOrders,
       pagination: {
         total,
         pages: Math.ceil(total / limit),
@@ -349,16 +379,16 @@ export async function activateOrder(orderId: number) {
       const endDate = new Date(startDate)
       endDate.setMonth(endDate.getMonth() + amcMonths)
 
+      if (!order.createdById) {
+        throw new Error('Cannot create AMC: Order has no linked user')
+      }
+
       await prisma.aMC.create({
         data: {
+          amcUniqueId: `AMC-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          userId: order.createdById,
           productId: order.productId,
-          orderId: order.id,
-          startDate: startDate,
-          endDate: endDate,
-          durationMonths: amcMonths,
-          isActive: true,
           status: 'ACTIVE',
-          amountPaid: 0, // Should be calculated
         }
       })
     }

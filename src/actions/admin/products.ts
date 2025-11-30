@@ -1,5 +1,7 @@
 'use server';
 
+import { prisma } from '@/lib/prisma';
+
 /**
  * Admin Panel - Product Actions
  * Full CRUD operations for products
@@ -8,6 +10,60 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 // GET all products (admin sees all products from all shops)
+// Using Prisma directly to avoid API call issues in server actions
+export async function getAdminProducts(filters?: { shopId?: number }) {
+  try {
+    const where: any = {};
+    
+    if (filters?.shopId) {
+      where.createdBy = {
+        shops: {
+          some: {
+            id: filters.shopId
+          }
+        }
+      };
+    }
+
+    const products = await prisma.product.findMany({
+      where,
+      include: {
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            role: true,
+            shops: {
+              select: {
+                id: true,
+                name: true,
+                shopName: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    const serializedProducts = products.map(product => ({
+      ...product,
+      price: product.price ? Number(product.price) : 0,
+      discount: product.discount ? Number(product.discount) : null,
+    }));
+
+    return { success: true, data: serializedProducts };
+  } catch (error: any) {
+    console.error('Error fetching admin products:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Keep existing actions for compatibility if needed, or replace them
+// For now, I'm adding getAdminProducts as a reliable alternative
+
 export async function getAllProducts(filters?: { shopId?: number }) {
   try {
     let url = `${API_BASE_URL}/api/products`;

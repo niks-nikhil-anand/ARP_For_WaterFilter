@@ -124,8 +124,9 @@ export async function PATCH(
 
     // Convert dates if provided
     const updateData: any = { ...body };
-    if (body.startDate) updateData.startDate = new Date(body.startDate);
-    if (body.endDate) updateData.endDate = new Date(body.endDate);
+    if (body.actionDate) updateData.actionDate = new Date(body.actionDate);
+    delete updateData.startDate;
+    delete updateData.endDate;
 
     const updatedEvent = await prisma.serviceEvent.update({
       where: { id: eventId },
@@ -151,7 +152,7 @@ export async function PATCH(
         amcContract: {
           select: {
             id: true,
-            name: true,
+            invoiceNumber: true,
           },
         },
         assignedTo: {
@@ -217,8 +218,9 @@ export async function PUT(
 
     // Convert dates if provided
     const updateData: any = { ...body };
-    if (body.startDate) updateData.startDate = new Date(body.startDate);
-    if (body.endDate) updateData.endDate = new Date(body.endDate);
+    if (body.actionDate) updateData.actionDate = new Date(body.actionDate);
+    delete updateData.startDate;
+    delete updateData.endDate;
 
     const updatedEvent = await prisma.serviceEvent.update({
       where: { id: eventId },
@@ -244,7 +246,7 @@ export async function PUT(
         amcContract: {
           select: {
             id: true,
-            name: true,
+            invoiceNumber: true,
           },
         },
         assignedTo: {

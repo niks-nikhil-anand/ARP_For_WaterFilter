@@ -12,7 +12,7 @@ export async function GET() {
       where: {
         type: 'AMC',
         status: 'PENDING',
-        startDate: {
+        actionDate: {
           lte: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // Next 7 days
         },
         ticket: {
@@ -49,7 +49,7 @@ export async function GET() {
           serviceType: 'AMC Service',
           productType: event.product.type,
           description: event.description || 'Scheduled AMC Service',
-          preferredDate: event.startDate,
+          preferredDate: event.actionDate,
           status: 'OPEN',
           priority: 'MEDIUM',
           // Assign to the agent from the AMC contract if available

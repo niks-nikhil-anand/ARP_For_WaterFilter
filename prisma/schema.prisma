@@ -252,7 +252,7 @@ model Order {
   amcPurchased               Boolean        @default(false) // If AMC was purchased with order
   serviceEvents              ServiceEvent[]
   warranties                 Warranty[]
-  amcs                       AMC[]
+  amcContracts               AMCContract[]
   selectedAdditionalWarranty String? // e.g., "1year", "2year"
   selectedAMC                String? // e.g., "1year", "2year"
   deletedAt                  DateTime? // Soft delete support
@@ -300,8 +300,6 @@ model AMC {
   // Relations
   product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
   productId Int
-  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  orderId   Int
 
   // Customer who purchased the AMC
   user   User @relation(fields: [userId], references: [id], onDelete: Restrict)
@@ -311,9 +309,8 @@ model AMC {
   shop   Shop? @relation("ShopAMCs", fields: [shopId], references: [id], onDelete: SetNull)
   shopId Int?
 
-  // AMC Contract Details
-  amcContract   AMCContract @relation(fields: [amcContractId], references: [id], onDelete: Restrict)
-  amcContractId Int
+  // AMC Contracts (History)
+  contracts AMCContract[]
 
   status       AMCStatus @default(ACTIVE)
   deletedAt    DateTime? // Soft delete support
@@ -325,13 +322,20 @@ model AMC {
   @@index([status])
   @@index([userId])
   @@index([shopId])
-  @@index([amcContractId])
 }
 
 // Defines a type of AMC contract/plan
 model AMCContract {
   id            Int    @id @default(autoincrement())
   invoiceNumber String @unique
+
+  // Parent AMC
+  amc   AMC @relation(fields: [amcId], references: [id], onDelete: Cascade)
+  amcId Int
+
+  // Order that paid for this contract
+  order   Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId Int
 
   // AMC Duration & Pricing
   startDate DateTime
@@ -367,10 +371,11 @@ model AMCContract {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  amcs      AMC[]
 
   @@index([status])
   @@index([shopId])
+  @@index([amcId])
+  @@index([orderId])
 }
 
 model Notification {

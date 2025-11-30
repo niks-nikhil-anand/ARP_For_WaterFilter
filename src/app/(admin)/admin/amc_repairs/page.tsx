@@ -84,35 +84,42 @@ const AMCRepairsPage = () => {
     }
 
     if (amcsRes.success && amcsRes.data) {
-      const mappedAMCs = amcsRes.data.map((amc: any) => ({
-        id: amc.id,
-        type: 'AMC_CONTRACT' as const,
-        product: {
-          id: amc.product.id,
-          productName: amc.product.productName
-        },
-        customer: {
-          id: amc.order.id, // Using order ID as proxy since we don't have direct customer ID here easily without more queries
-          name: amc.order.customerName,
-          email: amc.order.customerEmail
-        },
-        assignedTo: amc.amcContract?.agent ? {
-          id: amc.amcContract.agent.id,
-          user: {
-            name: amc.amcContract.agent.user.name
-          }
-        } : null,
-        amcContract: amc.amcContract,
-        description: `AMC Contract (${amc.amcContract?.duration || 'N/A'})`,
-        remarks: null,
-        parts: null,
-        feedback: null,
-        pricePaid: amc.amcContract?.paymentPaid || amc.order?.amountPaid,
-        startDate: amc.startDate,
-        endDate: amc.endDate,
-        createdAt: amc.createdAt,
-        updatedAt: amc.updatedAt
-      }))
+      const mappedAMCs = amcsRes.data.map((amc: any) => {
+        const latestContract = amc.contracts && amc.contracts.length > 0 ? amc.contracts[0] : null
+        return {
+          id: amc.id,
+          type: 'AMC_CONTRACT' as const,
+          product: {
+            id: amc.product.id,
+            productName: amc.product.productName
+          },
+          customer: latestContract ? {
+            id: latestContract.order.id, // Using order ID as proxy
+            name: latestContract.order.customerName,
+            email: latestContract.order.customerEmail
+          } : {
+            id: amc.user.id,
+            name: amc.user.name,
+            email: amc.user.email
+          },
+          assignedTo: latestContract?.agent ? {
+            id: latestContract.agent.id,
+            user: {
+              name: latestContract.agent.user.name
+            }
+          } : null,
+          amcContract: latestContract,
+          description: `AMC Contract (${latestContract?.duration || 'N/A'})`,
+          remarks: null,
+          parts: null,
+          feedback: null,
+          pricePaid: latestContract?.paymentPaid || null,
+          startDate: latestContract?.startDate,
+          endDate: latestContract?.endDate,
+          createdAt: amc.createdAt,
+          updatedAt: amc.updatedAt
+        }
+      })
       allEvents = [...allEvents, ...mappedAMCs]
     }
 

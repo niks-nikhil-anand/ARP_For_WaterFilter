@@ -283,16 +283,14 @@ export async function getAllAMCs() {
             type: true,
           }
         },
-        order: {
+        user: {
           select: {
             id: true,
-            customerName: true,
-            customerEmail: true,
-            customerPhone: true,
-            amountPaid: true,
+            name: true,
+            email: true,
           }
         },
-        amcContract: {
+        contracts: {
           include: {
             agent: {
               include: {
@@ -302,7 +300,19 @@ export async function getAllAMCs() {
                   }
                 }
               }
+            },
+            order: {
+              select: {
+                id: true,
+                customerName: true,
+                customerEmail: true,
+                customerPhone: true,
+                amountPaid: true,
+              }
             }
+          },
+          orderBy: {
+            createdAt: 'desc'
           }
         }
       },
@@ -313,18 +323,18 @@ export async function getAllAMCs() {
 
     const serializedAMCs = amcs.map(amc => ({
       ...amc,
-      order: {
-        ...amc.order,
-        amountPaid: amc.order.amountPaid ? Number(amc.order.amountPaid) : null
-      },
-      amcContract: {
-        ...amc.amcContract,
-        price: Number(amc.amcContract.price),
-        discount: amc.amcContract.discount ? Number(amc.amcContract.discount) : null,
-        finalPrice: Number(amc.amcContract.finalPrice),
-        paymentPaid: Number(amc.amcContract.paymentPaid),
-        paymentDue: Number(amc.amcContract.paymentDue),
-      }
+      contracts: amc.contracts.map(contract => ({
+        ...contract,
+        price: Number(contract.price),
+        discount: contract.discount ? Number(contract.discount) : null,
+        finalPrice: Number(contract.finalPrice),
+        paymentPaid: Number(contract.paymentPaid),
+        paymentDue: Number(contract.paymentDue),
+        order: {
+          ...contract.order,
+          amountPaid: contract.order.amountPaid ? Number(contract.order.amountPaid) : null
+        }
+      }))
     }))
 
     return { success: true, data: serializedAMCs }
@@ -420,7 +430,7 @@ export async function createAMCContract(data: {
 
     const invoiceNumber = `AMC-${Date.now()}-${(lastContract?.id || 0) + 1}`
 
-    // Create Order for the AMC
+    // Create Order for the AMC Contract
     const order = await prisma.order.create({
       data: {
         productId: data.productId,
@@ -436,10 +446,36 @@ export async function createAMCContract(data: {
       }
     })
 
+    // Find or Create AMC
+    // We try to find an existing AMC for this product and customer
+    let amc = await prisma.aMC.findFirst({
+      where: {
+        productId: data.productId,
+        userId: data.customerId
+      }
+    })
+
+    if (!amc) {
+      // Generate unique AMC ID
+      const amcUniqueId = `AMC-${product.id}-${customer.id}-${Date.now()}`
+      
+      amc = await prisma.aMC.create({
+        data: {
+          amcUniqueId,
+          productId: data.productId,
+          userId: data.customerId,
+          shopId: shop.id,
+          status: 'ACTIVE'
+        }
+      })
+    }
+
     // Create AMC Contract
     const contract = await prisma.aMCContract.create({
       data: {
         invoiceNumber,
+        amcId: amc.id,
+        orderId: order.id,
         startDate,
         endDate,
         duration: data.duration,
@@ -463,14 +499,15 @@ export async function createAMCContract(data: {
           include: {
             user: true
           }
-        }
+        },
+        order: true
       }
     })
 
     // Generate Service Events for the AMC
     const serviceEvents = []
     
-    // Use provided service dates or fallback to auto-calculation (though frontend should provide them)
+    // Use provided service dates or fallback to auto-calculation
     const datesToUse = data.serviceDates && data.serviceDates.length === data.noOfServices 
       ? data.serviceDates 
       : []
@@ -494,7 +531,6 @@ export async function createAMCContract(data: {
           productId: data.productId,
           customerId: data.customerId,
           orderId: order.id,
-          // Removed deleted fields: startDate, pricePaid, parts
           amcContractId: contract.id,
           status: 'PENDING',
           description: `AMC Service ${i + 1} of ${data.noOfServices}`,
@@ -509,28 +545,6 @@ export async function createAMCContract(data: {
       serviceEvents.push(event)
     }
 
-    // Generate unique AMC ID
-    const amcUniqueId = `AMC-${product.id}-${customer.id}-${Date.now()}`
-
-    // Create AMC record linking everything together
-    const amc = await prisma.aMC.create({
-      data: {
-        amcUniqueId,
-        productId: data.productId,
-        orderId: order.id,
-        userId: data.customerId,
-        shopId: shop.id,
-        amcContractId: contract.id,
-        status: 'ACTIVE'
-      },
-      include: {
-        product: true,
-        user: true,
-        order: true,
-        amcContract: true
-      }
-    })
-
     // Serialize return data
     const serializedContract = {
       ...contract,
@@ -539,6 +553,10 @@ export async function createAMCContract(data: {
       finalPrice: Number(contract.finalPrice),
       paymentPaid: Number(contract.paymentPaid),
       paymentDue: Number(contract.paymentDue),
+      order: {
+        ...contract.order,
+        amountPaid: contract.order.amountPaid ? Number(contract.order.amountPaid) : null
+      }
     }
 
     const serializedOrder = {
@@ -546,17 +564,11 @@ export async function createAMCContract(data: {
       amountPaid: order.amountPaid ? Number(order.amountPaid) : null
     }
     
-    // amc has product(price), order(amountPaid), amcContract(price, etc.)
-    // We need to serialize deep relations if they are returned
+    // We return the AMC with its contracts (or just the new one for now in the return structure)
+    // But to match previous return shape somewhat, we return the amc and the new contract
     const serializedAmc = {
       ...amc,
-      product: {
-        ...amc.product,
-        price: Number(amc.product.price),
-        discount: amc.product.discount ? Number(amc.product.discount) : null
-      },
-      order: serializedOrder,
-      amcContract: serializedContract
+      contracts: [serializedContract] // Return with the new contract
     }
 
     return { success: true, data: { contract: serializedContract, amc: serializedAmc, order: serializedOrder, serviceEvents } }

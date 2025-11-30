@@ -3,7 +3,11 @@
 import { prisma } from '@/lib/prisma'
 import { ServiceEventType } from '@/generated/prisma'
 
-export async function getServiceEvents(filter?: 'today' | 'yesterday' | 'upcoming' | 'all') {
+export async function getServiceEvents(
+  filter?: 'today' | 'yesterday' | 'upcoming' | 'all',
+  month?: string,
+  status?: string
+) {
   try {
     let dateFilter: any = {}
     const today = new Date()
@@ -15,6 +19,7 @@ export async function getServiceEvents(filter?: 'today' | 'yesterday' | 'upcomin
     const yesterday = new Date(today)
     yesterday.setDate(yesterday.getDate() - 1)
 
+    // 1. Handle Date Range Filter (Tabs)
     if (filter === 'today') {
       dateFilter = {
         actionDate: {
@@ -37,8 +42,33 @@ export async function getServiceEvents(filter?: 'today' | 'yesterday' | 'upcomin
       }
     }
 
+    // 2. Handle Month Filter (Overrides Tab Filter if present and not 'all')
+    if (month && month !== 'all') {
+      const year = new Date().getFullYear()
+      const monthIndex = parseInt(month)
+      const startDate = new Date(year, monthIndex, 1)
+      const endDate = new Date(year, monthIndex + 1, 0)
+      endDate.setHours(23, 59, 59, 999)
+
+      dateFilter = {
+        actionDate: {
+          gte: startDate,
+          lte: endDate
+        }
+      }
+    }
+
+    // 3. Handle Status Filter
+    let statusFilter: any = {}
+    if (status && status !== 'ALL') {
+      statusFilter = { status: status }
+    }
+
     const events = await prisma.serviceEvent.findMany({
-      where: dateFilter,
+      where: {
+        ...dateFilter,
+        ...statusFilter
+      },
       include: {
         product: {
           select: {

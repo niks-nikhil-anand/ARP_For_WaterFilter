@@ -60,7 +60,6 @@ const SidebarAdmin: React.FC<SidebarAdminProps> = ({ className }) => {
     {
       title: "Services",
       items: [
-        
         {
           icon: MessageSquare,
           label: "Complaints",

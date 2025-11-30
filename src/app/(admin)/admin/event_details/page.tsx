@@ -33,6 +33,8 @@ export default function EventDetailsPage() {
   const [events, setEvents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'today' | 'yesterday' | 'upcoming' | 'all'>('today')
+  const [selectedMonth, setSelectedMonth] = useState<string>('all')
+  const [selectedStatus, setSelectedStatus] = useState<string>('ALL')
   const [search, setSearch] = useState('')
   
   // Resolve Dialog State
@@ -43,7 +45,7 @@ export default function EventDetailsPage() {
 
   const fetchEvents = async () => {
     setLoading(true)
-    const result = await getServiceEvents(filter)
+    const result = await getServiceEvents(filter, selectedMonth, selectedStatus)
     if (result.success) {
       setEvents(result.data || [])
     } else {
@@ -54,7 +56,7 @@ export default function EventDetailsPage() {
 
   useEffect(() => {
     fetchEvents()
-  }, [filter])
+  }, [filter, selectedMonth, selectedStatus])
 
   const handleCreateTicket = async (eventId: number) => {
     const toastId = toast.loading('Creating ticket...')
@@ -123,14 +125,44 @@ export default function EventDetailsPage() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-col md:flex-row justify-between gap-4">
-            <Tabs value={filter} onValueChange={(v: any) => setFilter(v)} className="w-full md:w-auto">
-              <TabsList>
-                <TabsTrigger value="today">Today</TabsTrigger>
-                <TabsTrigger value="yesterday">Yesterday</TabsTrigger>
-                <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
-                <TabsTrigger value="all">All Events</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <div className="flex flex-wrap gap-2 items-center w-full md:w-auto">
+              <Tabs value={filter} onValueChange={(v: any) => setFilter(v)} className="w-full md:w-auto">
+                <TabsList>
+                  <TabsTrigger value="today">Today</TabsTrigger>
+                  <TabsTrigger value="yesterday">Yesterday</TabsTrigger>
+                  <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
+                  <TabsTrigger value="all">All</TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Select Month" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Months</SelectItem>
+                  {Array.from({ length: 12 }).map((_, i) => (
+                    <SelectItem key={i} value={i.toString()}>
+                      {new Date(0, i).toLocaleString('default', { month: 'long' })}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Status</SelectItem>
+                  <SelectItem value="PENDING">Pending</SelectItem>
+                  <SelectItem value="SCHEDULED">Scheduled</SelectItem>
+                  <SelectItem value="COMPLETED">Completed</SelectItem>
+                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="relative w-full md:w-64">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input

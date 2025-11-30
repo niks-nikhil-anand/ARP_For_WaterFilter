@@ -1,4 +1,5 @@
 import { PrismaClient } from '@/generated/prisma';
+// Force reload
 
 // PrismaClient is attached to the `global` object in development to prevent
 // exhausting your database connection limit.

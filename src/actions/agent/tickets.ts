@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { verifyToken } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { TicketStatus, TicketPriority } from '@/generated/prisma'
+import { createNotification } from '../admin/notifications'
 
 export async function getAgentTickets() {
   try {
@@ -154,23 +155,9 @@ export async function resolveTicket(data: {
       }
     })
 
-    // Create Notification for Shop Admin (assuming shopId exists on ticket or agent)
-    if (ticket.shopId) {
-      await prisma.notification.create({
-        data: {
-          title: `Ticket Resolved: #${ticket.id}`,
-          message: `Agent ${decoded.name} resolved ticket #${ticket.id} for ${ticket.customerName}.`,
-          category: 'SERVICE',
-          priority: 'MEDIUM',
-          recipientId: ticket.shopId, // This might need adjustment if recipientId refers to User, not Shop. 
-          // Notification model links to User via recipientId. We need to find the Shop Owner User ID.
-          // Let's fetch the shop to get the userId.
-        }
-      }).catch(err => console.error('Notification creation failed (recipientId issue likely):', err)) 
-      // Actually, let's fix the notification logic properly.
-    }
+
     
-    // Correct Notification Logic: Find Shop Owner
+    // Create Notification for Shop Admin
     if (ticket.shopId) {
       const shop = await prisma.shop.findUnique({
         where: { id: ticket.shopId },
@@ -178,16 +165,16 @@ export async function resolveTicket(data: {
       })
       
       if (shop) {
-         await prisma.notification.create({
-          data: {
-            title: `Ticket Resolved: #${ticket.id}`,
-            message: `${decoded.role === 'AGENT' ? 'Agent' : 'Admin'} ${decoded.name} resolved ticket #${ticket.id} for ${ticket.customerName}.`,
-            category: 'SERVICE',
-            priority: 'MEDIUM',
-            recipientId: shop.userId,
-            link: `/admin/tickets?id=${ticket.id}`
-          }
-        })
+        await createNotification({
+          title: `Ticket Resolved: #${ticket.id}`,
+          message: `${decoded.role === 'AGENT' ? 'Agent' : 'Admin'} ${decoded.name} resolved ticket #${ticket.id} for ${ticket.customerName}.`,
+          category: 'SERVICE',
+          priority: 'MEDIUM',
+          recipientId: shop.userId,
+          shopId: ticket.shopId,
+          link: `/admin/tickets?id=${ticket.id}`,
+          metadata: { ticketId: ticket.id, agentId: decoded.id }
+        });
       }
     }
 

@@ -41,7 +41,6 @@ const SidebarAdmin: React.FC<SidebarAdminProps> = ({ className }) => {
     {
       title: "Events",
       items: [
-        { icon: Bell, label: "Notifications", href: "/admin/notification" },
         { icon: Calendar, label: "Events", href: "/admin/event_details" },
         { icon: Ticket, label: "Tickets", href: "/admin/tickets" },
 
@@ -81,10 +80,6 @@ const SidebarAdmin: React.FC<SidebarAdminProps> = ({ className }) => {
           href: "/admin/repairs",
         },
       ],
-    },
-    {
-      title: "System",
-      items: [{ icon: Settings, label: "Settings", href: "/admin/settings" }],
     },
   ];
 

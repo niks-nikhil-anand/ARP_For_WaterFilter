@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { UserRole, UserStatus } from '@/generated/prisma'
 import { hashPassword } from '@/lib/password'
+import { createNotification } from '../admin/notifications'
 
 export async function createComplaint(data: {
   name: string
@@ -51,6 +52,24 @@ export async function createComplaint(data: {
     })
 
     revalidatePath('/admin/complaints') // Assuming there will be an admin page for complaints
+    
+    // Notify Admins
+    const admin = await prisma.user.findFirst({
+      where: { role: 'ADMIN' }
+    });
+    
+    if (admin) {
+      await createNotification({
+        title: `New Complaint Received`,
+        message: `New complaint from ${data.name} regarding ${data.serviceType}.`,
+        category: 'SERVICE',
+        priority: 'HIGH',
+        recipientId: admin.id,
+        link: `/admin/complaints`,
+        metadata: { complaintId: complaint.id }
+      });
+    }
+
     return { success: true, data: complaint, message: 'Complaint submitted successfully' }
 
   } catch (error) {

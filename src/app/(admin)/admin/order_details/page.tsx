@@ -219,7 +219,18 @@ export default async function OrderDetailsPage({
                         </Badge>
                       </TableCell>
                       <TableCell className="font-semibold">
-                        ₹{order.amountPaid?.toLocaleString('en-IN') || '0'}
+                        {Number(order.discount) > 0 ? (
+                          <div className="flex flex-col">
+                            <span className="text-xs text-gray-500 line-through">
+                              ₹{(Number(order.amountPaid) + Number(order.discount)).toLocaleString('en-IN')}
+                            </span>
+                            <span className="text-green-600">
+                              ₹{order.amountPaid?.toLocaleString('en-IN') || '0'}
+                            </span>
+                          </div>
+                        ) : (
+                          `₹${order.amountPaid?.toLocaleString('en-IN') || '0'}`
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1 text-sm text-gray-600">
@@ -277,6 +288,6 @@ export default async function OrderDetailsPage({
           )}
         </CardContent>
       </Card>
-    </div>
+    </div >
   )
 }

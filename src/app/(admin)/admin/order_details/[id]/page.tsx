@@ -148,16 +148,16 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Additional Warranty</p>
                   <p className="font-medium">
-                    {order.selectedAdditionalWarranty 
-                      ? `${order.selectedAdditionalWarranty} (Purchased)` 
+                    {order.selectedAdditionalWarranty
+                      ? `${order.selectedAdditionalWarranty} (Purchased)`
                       : order.additionalWarranty ? 'Yes' : 'None'}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">AMC</p>
                   <p className="font-medium">
-                    {order.selectedAMC 
-                      ? `${order.selectedAMC} (Purchased)` 
+                    {order.selectedAMC
+                      ? `${order.selectedAMC} (Purchased)`
                       : order.amcPurchased ? 'Yes' : 'None'}
                   </p>
                 </div>

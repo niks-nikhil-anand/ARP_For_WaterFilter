@@ -271,7 +271,15 @@ export async function updateOrderPaymentStatus(
   }
 }
 
-export async function activateOrder(orderId: number) {
+export async function activateOrder(
+  orderId: number,
+  data?: {
+    amountPaid: number
+    discount: number
+    freeWarranty: boolean
+    freeInstallation: boolean
+  }
+) {
   try {
     console.log(`Activating order ${orderId}...`)
     const order = await prisma.order.findUnique({
@@ -317,14 +325,24 @@ export async function activateOrder(orderId: number) {
         paymentStatus: 'COMPLETED',
         installationCompleted: true, // Assuming activation means installation is done
         installationDate: new Date(),
+        // Update with provided data if available
+        ...(data && {
+          amountPaid: data.amountPaid,
+          discount: data.discount,
+          freeWarranty: data.freeWarranty,
+          freeInstallation: data.freeInstallation,
+        })
       }
     })
 
     // 2. Create Free Warranty (if applicable)
+    // Use the provided freeWarranty flag if available, otherwise fallback to order property (which might have been updated above, but we use the input for clarity)
+    const shouldCreateFreeWarranty = data ? data.freeWarranty : order.freeWarranty
+    
     const baseWarrantyMonths = parseDuration(order.product.warrantyPeriod)
     console.log(`Base warranty months: ${baseWarrantyMonths}`)
 
-    if (baseWarrantyMonths > 0) {
+    if (shouldCreateFreeWarranty && baseWarrantyMonths > 0) {
       const startDate = new Date()
       const endDate = new Date(startDate)
       endDate.setMonth(endDate.getMonth() + baseWarrantyMonths)

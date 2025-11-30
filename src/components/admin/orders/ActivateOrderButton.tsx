@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Loader2, Zap, CheckCircle2, AlertCircle } from 'lucide-react'
 import { activateOrder } from '@/actions/common/orders'
@@ -16,11 +16,29 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 
 export function ActivateOrderButton({ order }: { order: any }) {
   const [isActivating, setIsActivating] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
   const router = useRouter()
+
+  // Form states
+  const [amountPaid, setAmountPaid] = useState(0)
+  const [discount, setDiscount] = useState(0)
+  const [freeWarranty, setFreeWarranty] = useState(false)
+  const [freeInstallation, setFreeInstallation] = useState(false)
+
+  useEffect(() => {
+    if (order) {
+      setAmountPaid(Number(order.amountPaid) || 0)
+      setDiscount(Number(order.discount) || 0)
+      setFreeWarranty(order.freeWarranty || false)
+      setFreeInstallation(order.freeInstallation || false)
+    }
+  }, [order, isOpen])
 
   if (!order) {
     console.error('ActivateOrderButton: order prop is missing')
@@ -30,7 +48,13 @@ export function ActivateOrderButton({ order }: { order: any }) {
   const handleActivate = async () => {
     setIsActivating(true)
     try {
-      const result = await activateOrder(order.id)
+      const result = await activateOrder(order.id, {
+        amountPaid,
+        discount,
+        freeWarranty,
+        freeInstallation
+      })
+
       if (result.success) {
         toast.success(result.message)
         setIsOpen(false)
@@ -49,9 +73,9 @@ export function ActivateOrderButton({ order }: { order: any }) {
   // Calculate warranty details for display
   const getWarrantyDetails = () => {
     const details = []
-    
+
     // Free Warranty
-    if (order.product?.warrantyPeriod) {
+    if (freeWarranty && order.product?.warrantyPeriod) {
       details.push({
         label: 'Free Warranty',
         value: order.product.warrantyPeriod,
@@ -90,18 +114,73 @@ export function ActivateOrderButton({ order }: { order: any }) {
           Activate Order
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Zap className="h-5 w-5 text-green-600" />
             Activate Order
           </DialogTitle>
           <DialogDescription>
-            This action will mark the order as active and generate the necessary warranty and service records.
+            Review and update order details before activation.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="py-4 space-y-4">
+        <div className="py-4 space-y-6">
+          {/* Pricing Details */}
+          <div className="space-y-4 border-b pb-4">
+            <h4 className="font-medium text-sm text-gray-900 dark:text-gray-100">Pricing Details</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="price">Price (₹)</Label>
+                <Input
+                  id="price"
+                  type="number"
+                  value={amountPaid}
+                  onChange={(e) => setAmountPaid(Number(e.target.value))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="discount">Discount (₹)</Label>
+                <Input
+                  id="discount"
+                  type="number"
+                  value={discount}
+                  onChange={(e) => setDiscount(Number(e.target.value))}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Configuration */}
+          <div className="space-y-4 border-b pb-4">
+            <h4 className="font-medium text-sm text-gray-900 dark:text-gray-100">Configuration</h4>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-base">Free Installation</Label>
+                  <p className="text-sm text-gray-500">Include free installation with this order</p>
+                </div>
+                <Switch
+                  checked={freeInstallation}
+                  onCheckedChange={setFreeInstallation}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-base">Free Warranty</Label>
+                  <p className="text-sm text-gray-500">
+                    Include free warranty ({order.product?.warrantyPeriod || 'N/A'})
+                  </p>
+                </div>
+                <Switch
+                  checked={freeWarranty}
+                  onCheckedChange={setFreeWarranty}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Actions Summary */}
           <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-lg border border-blue-100 dark:border-blue-900">
             <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-3 flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4" />
@@ -130,7 +209,7 @@ export function ActivateOrderButton({ order }: { order: any }) {
               </h4>
               <div className="grid gap-3">
                 {warrantyDetails.map((item, index) => (
-                  <div 
+                  <div
                     key={index}
                     className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-md border"
                   >
@@ -156,8 +235,8 @@ export function ActivateOrderButton({ order }: { order: any }) {
           <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isActivating}>
             Cancel
           </Button>
-          <Button 
-            onClick={handleActivate} 
+          <Button
+            onClick={handleActivate}
             disabled={isActivating}
             className="bg-green-600 hover:bg-green-700 text-white"
           >

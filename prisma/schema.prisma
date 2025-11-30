@@ -245,6 +245,7 @@ model Order {
   paymentStatus              PaymentStatus  @default(PENDING)
   transactionId              String? // For online payments
   amountPaid                 Decimal?
+  discount                   Decimal?       @default(0)
   freeInstallation           Boolean        @default(false) // If free installation is included
   installationCompleted      Boolean        @default(false) // Track if installation is done
   installationDate           DateTime? // When installation was completed

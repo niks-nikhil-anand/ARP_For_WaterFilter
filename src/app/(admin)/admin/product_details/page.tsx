@@ -51,6 +51,7 @@ import {
   ChevronLeft,
   Upload,
   X,
+  Loader2,
 } from 'lucide-react'
 import { getProducts, createProduct, updateProduct, deleteProduct } from '@/app/actions/product'
 import { uploadImageToCloudinary } from '@/app/actions/cloudinary'
@@ -123,6 +124,7 @@ const ProductManagementPage = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
   const [uploading, setUploading] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     loadProducts()
@@ -183,26 +185,34 @@ const ProductManagementPage = () => {
   const handleSaveEdit = async () => {
     if (!selectedProduct) return
 
-    const result = await updateProduct(selectedProduct.id, {
-      productName: editForm.productName,
-      description: editForm.description,
-      company: editForm.company,
-      type: editForm.type,
-      color: editForm.color,
-      price: editForm.price ? parseFloat(editForm.price) : undefined,
-      discount: editForm.discount ? parseFloat(editForm.discount) : undefined,
-      discountType: editForm.discountType as 'PERCENTAGE' | 'FLAT_RATE',
-      isVisibleWebsite: editForm.isVisibleWebsite,
-      status: editForm.status as 'ACTIVE' | 'BLOCKED' | 'PENDING',
-    })
+    setSaving(true)
+    try {
+      const result = await updateProduct(selectedProduct.id, {
+        productName: editForm.productName,
+        description: editForm.description,
+        company: editForm.company,
+        type: editForm.type,
+        color: editForm.color,
+        price: editForm.price ? parseFloat(editForm.price) : undefined,
+        discount: editForm.discount ? parseFloat(editForm.discount) : undefined,
+        discountType: editForm.discountType as 'PERCENTAGE' | 'FLAT_RATE',
+        isVisibleWebsite: editForm.isVisibleWebsite,
+        status: editForm.status as 'ACTIVE' | 'BLOCKED' | 'PENDING',
+      })
 
-    if (result.success) {
-      loadProducts()
-      setEditDialogOpen(false)
-      setSelectedProduct(null)
-      toast.success('Product updated successfully')
-    } else {
-      toast.error(result.error || 'Failed to update product')
+      if (result.success) {
+        loadProducts()
+        setEditDialogOpen(false)
+        setSelectedProduct(null)
+        toast.success('Product updated successfully')
+      } else {
+        toast.error(result.error || 'Failed to update product')
+      }
+    } catch (error) {
+      console.error('Error updating product:', error)
+      toast.error('An error occurred while updating the product')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -258,7 +268,7 @@ const ProductManagementPage = () => {
     const files = Array.from(e.target.files || [])
     if (files.length > 0) {
       setAddForm({ ...addForm, images: [...addForm.images, ...files] })
-      
+
       files.forEach(file => {
         const reader = new FileReader()
         reader.onloadend = () => {
@@ -279,7 +289,7 @@ const ProductManagementPage = () => {
   const calculateFinalPrice = () => {
     const price = parseFloat(addForm.price) || 0
     const discount = parseFloat(addForm.discount) || 0
-    
+
     if (addForm.discountType === 'PERCENTAGE') {
       return price - (price * discount / 100)
     }
@@ -513,15 +523,7 @@ const ProductManagementPage = () => {
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(product)}
-                            title="Delete product"
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+
                         </div>
                       </TableCell>
                     </TableRow>
@@ -535,7 +537,7 @@ const ProductManagementPage = () => {
 
       {/* View Dialog */}
       <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="max-w-[80vw] h-[70vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Product Details</DialogTitle>
             <DialogDescription>Complete product information</DialogDescription>
@@ -807,8 +809,15 @@ const ProductManagementPage = () => {
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveEdit}>
-              Save Changes
+            <Button onClick={handleSaveEdit} disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Changes'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

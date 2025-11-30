@@ -73,7 +73,7 @@ const SidebarAdmin: React.FC<SidebarAdminProps> = ({ className }) => {
         {
           icon: FileText,
           label: "AMC",
-          href: "/admin/amc_repairs",
+          href: "/admin/amc_details",
         },
         {
           icon: Wrench,

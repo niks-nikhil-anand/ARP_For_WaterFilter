@@ -849,8 +849,8 @@ const TicketManagementPage = () => {
                   <SelectContent>
                     <SelectItem value="unassigned">Unassigned</SelectItem>
                     {agents.map((agent) => (
-                      <SelectItem key={agent.id} value={agent.userId.toString()}>
-                        {agent.user.name}
+                      <SelectItem key={agent.userId} value={agent.userId.toString()}>
+                        {agent.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

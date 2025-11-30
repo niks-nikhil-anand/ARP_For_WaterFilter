@@ -70,6 +70,7 @@ export function PlaceOrderModal() {
         paymentOption: 'pay_later', // Default to Pay Later (Pending)
         additionalWarranty: 'none',
         amc: 'none',
+        additionalDiscount: '',
     })
 
     // Fetch initial data
@@ -97,6 +98,7 @@ export function PlaceOrderModal() {
                     paymentOption: 'pay_later',
                     additionalWarranty: 'none',
                     amc: 'none',
+                    additionalDiscount: '',
                 })
             }, 300)
         }
@@ -184,6 +186,7 @@ export function PlaceOrderModal() {
                 paymentOption: formData.paymentOption as 'pay_later' | 'pay_now',
                 additionalWarranty: formData.additionalWarranty,
                 amc: formData.amc,
+                additionalDiscount: formData.additionalDiscount ? Number(formData.additionalDiscount) : 0,
             })
 
             if (result.success) {
@@ -364,6 +367,42 @@ export function PlaceOrderModal() {
                                             <p className="text-muted-foreground">{selectedCustomer.mobile}</p>
                                         </div>
                                     )}
+
+                                    {/* Price Breakdown */}
+                                    <div className="border-t pt-2 mt-2 space-y-1 text-sm">
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Product Price</span>
+                                            <span>₹{selectedProduct?.price}</span>
+                                        </div>
+                                        {Number(selectedProduct?.discount) > 0 && (
+                                            <div className="flex justify-between text-green-600">
+                                                <span>Product Discount ({selectedProduct?.discountType === 'PERCENTAGE' ? `${selectedProduct?.discount}%` : `₹${selectedProduct?.discount}`})</span>
+                                                <span>- ₹{
+                                                    selectedProduct?.discountType === 'PERCENTAGE'
+                                                        ? ((Number(selectedProduct?.price) * Number(selectedProduct?.discount)) / 100).toFixed(2)
+                                                        : Number(selectedProduct?.discount).toFixed(2)
+                                                }</span>
+                                            </div>
+                                        )}
+                                        {Number(formData.additionalDiscount) > 0 && (
+                                            <div className="flex justify-between text-green-600">
+                                                <span>Additional Discount</span>
+                                                <span>- ₹{Number(formData.additionalDiscount).toFixed(2)}</span>
+                                            </div>
+                                        )}
+                                        <div className="flex justify-between font-bold border-t pt-1 mt-1">
+                                            <span>Final Price</span>
+                                            <span>₹{(() => {
+                                                const price = Number(selectedProduct?.price) || 0
+                                                const productDiscount = selectedProduct?.discountType === 'PERCENTAGE'
+                                                    ? (price * (Number(selectedProduct?.discount) || 0)) / 100
+                                                    : (Number(selectedProduct?.discount) || 0)
+                                                const additionalDiscount = Number(formData.additionalDiscount) || 0
+                                                const finalPrice = Math.max(0, price - productDiscount - additionalDiscount)
+                                                return finalPrice.toFixed(2)
+                                            })()}</span>
+                                        </div>
+                                    </div>
                                 </CardContent>
                             </Card>
 
@@ -396,6 +435,19 @@ export function PlaceOrderModal() {
                                     <Input placeholder="State" name="state" value={formData.state} onChange={handleInputChange} />
                                     <Input placeholder="Country" name="country" value={formData.country} onChange={handleInputChange} />
                                 </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="additionalDiscount">Add More Discount (₹)</Label>
+                                <Input
+                                    id="additionalDiscount"
+                                    name="additionalDiscount"
+                                    type="number"
+                                    min="0"
+                                    placeholder="Enter amount"
+                                    value={formData.additionalDiscount}
+                                    onChange={handleInputChange}
+                                />
                             </div>
 
                             <div className="space-y-2">

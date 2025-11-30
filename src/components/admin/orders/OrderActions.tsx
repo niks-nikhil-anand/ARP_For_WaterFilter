@@ -2,10 +2,11 @@
 
 import React from 'react'
 import { Button } from '@/components/ui/button'
-import { Eye, FileText, Receipt } from 'lucide-react'
+import { Eye, FileText, Receipt, Check } from 'lucide-react'
 import Link from 'next/link'
 import jsPDF from 'jspdf'
 import { toast } from 'sonner'
+import { ConfirmOrderModal } from './ConfirmOrderModal'
 
 interface OrderActionsProps {
   order: any
@@ -26,7 +27,7 @@ export function OrderActions({ order }: OrderActionsProps) {
       doc.setFontSize(60)
       doc.setFont('helvetica', 'bold')
       doc.text('SAMARTH', 105, 150, { align: 'center', angle: 45 })
-      
+
       // --- Header Section ---
       // Top Bar
       doc.setFillColor(themeColor[0], themeColor[1], themeColor[2])
@@ -45,7 +46,7 @@ export function OrderActions({ order }: OrderActionsProps) {
       doc.setFontSize(20)
       doc.setFont('helvetica', 'bold')
       doc.text('Samarth Enterprise', 40, 22)
-      
+
       doc.setFontSize(10)
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2])
@@ -57,7 +58,7 @@ export function OrderActions({ order }: OrderActionsProps) {
       doc.setFontSize(24)
       doc.setFont('helvetica', 'bold')
       doc.text('INVOICE', 195, 25, { align: 'right' })
-      
+
       doc.setFontSize(10)
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(0, 0, 0)
@@ -65,7 +66,7 @@ export function OrderActions({ order }: OrderActionsProps) {
 
       // --- Info Grid ---
       const gridY = 45
-      
+
       // Left Column: Company Address
       doc.setFontSize(9)
       doc.setTextColor(0, 0, 0)
@@ -93,10 +94,10 @@ export function OrderActions({ order }: OrderActionsProps) {
       const payY = 80
       doc.setFillColor(245, 245, 245)
       doc.roundedRect(15, payY, 180, 15, 2, 2, 'F')
-      
+
       doc.setFontSize(9)
       doc.setTextColor(0, 0, 0)
-      
+
       // Status
       doc.setFont('helvetica', 'bold')
       doc.text('Status:', 25, payY + 9)
@@ -122,7 +123,7 @@ export function OrderActions({ order }: OrderActionsProps) {
 
       // --- Item Table ---
       let yPos = 110
-      
+
       // Headers
       doc.setFillColor(themeColor[0], themeColor[1], themeColor[2])
       doc.rect(15, yPos, 180, 10, 'F')
@@ -139,15 +140,15 @@ export function OrderActions({ order }: OrderActionsProps) {
       yPos += 10
       doc.setFillColor(250, 250, 250) // Zebra stripe
       doc.rect(15, yPos, 180, 15, 'F') // Taller row for description
-      
+
       doc.setTextColor(0, 0, 0)
       doc.setFont('helvetica', 'normal')
       doc.text('1', 20, yPos + 6)
-      
+
       // Product Name & Desc
       const productName = order.product?.productName || order.product?.name || 'Product'
       const productDesc = `${order.product?.company || ''} ${order.product?.type || ''} - ${order.product?.color || ''}`
-      
+
       doc.setFont('helvetica', 'bold')
       doc.text(productName, 35, yPos + 6)
       doc.setFont('helvetica', 'normal')
@@ -172,14 +173,14 @@ export function OrderActions({ order }: OrderActionsProps) {
       yPos += 5
       const totalX = 140
       const valX = 190
-      
+
       doc.setFontSize(9)
       doc.text('Subtotal:', totalX, yPos + 5)
       doc.text(formatCurrency(amount), valX, yPos + 5, { align: 'right' })
-      
+
       doc.text('Tax (0%):', totalX, yPos + 10)
       doc.text(formatCurrency(0), valX, yPos + 10, { align: 'right' })
-      
+
       yPos += 15
       doc.setFillColor(themeColor[0], themeColor[1], themeColor[2])
       doc.rect(totalX - 5, yPos, 60, 10, 'F')
@@ -191,7 +192,7 @@ export function OrderActions({ order }: OrderActionsProps) {
 
       // --- Footer Section ---
       const pageHeight = doc.internal.pageSize.height
-      
+
       // Terms
       doc.setTextColor(0, 0, 0)
       doc.setFontSize(8)
@@ -229,6 +230,22 @@ export function OrderActions({ order }: OrderActionsProps) {
 
   return (
     <div className="flex items-center justify-end gap-2">
+      {order.paymentStatus === 'PENDING' && (
+        <ConfirmOrderModal
+          order={order}
+          trigger={
+            <Button
+              variant="outline"
+              size="sm"
+              title="Confirm Order"
+              className="text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200"
+            >
+              <Check className="h-4 w-4 mr-2" />
+              Confirm
+            </Button>
+          }
+        />
+      )}
       <Button
         variant="ghost"
         size="icon"

@@ -22,6 +22,7 @@ export type CreateOrderInput = {
   amc?: string
   paymentOption: 'pay_later' | 'pay_now'
   userId?: number
+  additionalDiscount?: number
 }
 
 export async function createOrder(data: CreateOrderInput) {
@@ -33,7 +34,11 @@ export async function createOrder(data: CreateOrderInput) {
     // Get product details to calculate amount
     const product = await prisma.product.findUnique({
       where: { id: data.productId },
-      select: { price: true }
+      select: { 
+        price: true,
+        discount: true,
+        discountType: true
+      }
     })
 
     if (!product) {
@@ -62,7 +67,22 @@ export async function createOrder(data: CreateOrderInput) {
         country: data.country,
         paymentMethod: paymentMethod,
         paymentStatus: paymentStatus,
-        amountPaid: product.price || 0,
+        amountPaid: (() => {
+          const price = Number(product.price) || 0
+          const productDiscount = product.discountType === 'PERCENTAGE'
+              ? (price * (Number(product.discount) || 0)) / 100
+              : (Number(product.discount) || 0)
+          const additionalDiscount = data.additionalDiscount || 0
+          return Math.max(0, price - productDiscount - additionalDiscount)
+        })(),
+        discount: (() => {
+          const price = Number(product.price) || 0
+          const productDiscount = product.discountType === 'PERCENTAGE'
+              ? (price * (Number(product.discount) || 0)) / 100
+              : (Number(product.discount) || 0)
+          const additionalDiscount = data.additionalDiscount || 0
+          return productDiscount + additionalDiscount
+        })(),
         selectedAdditionalWarranty: data.additionalWarranty,
         selectedAMC: data.amc,
         additionalWarranty: data.additionalWarranty && data.additionalWarranty !== 'none' ? true : false,
@@ -89,6 +109,7 @@ export async function createOrder(data: CreateOrderInput) {
       data: {
         ...order,
         amountPaid: order.amountPaid ? Number(order.amountPaid) : 0,
+        discount: order.discount ? Number(order.discount) : 0,
         product: {
           ...order.product,
           price: order.product.price ? Number(order.product.price) : 0,
@@ -136,11 +157,21 @@ export async function getOrderById(orderId: number) {
       data: {
         ...order,
         amountPaid: order.amountPaid ? Number(order.amountPaid) : 0,
+        discount: order.discount ? Number(order.discount) : 0,
         product: {
           ...order.product,
           price: order.product.price ? Number(order.product.price) : 0,
           discount: order.product.discount ? Number(order.product.discount) : null
-        }
+        },
+        serviceEvents: order.serviceEvents?.map((event: any) => ({
+          ...event,
+          // Add serialization for any Decimal fields in ServiceEvent if they exist in future
+        })) || [],
+        // If warranties are ever included
+        warranties: (order as any).warranties?.map((w: any) => ({
+          ...w,
+          warrantyAmount: w.warrantyAmount ? Number(w.warrantyAmount) : 0
+        })) || []
       }
     }
   } catch (error) {
@@ -215,13 +246,19 @@ export async function getAllOrders(
     ])
 
     const serializedOrders = orders.map(order => ({
-      ...order,
-      amountPaid: order.amountPaid ? Number(order.amountPaid) : 0,
-      product: {
-        ...order.product,
-        price: order.product.price ? Number(order.product.price) : 0,
-        discount: order.product.discount ? Number(order.product.discount) : null
-      }
+        ...order,
+        amountPaid: order.amountPaid ? Number(order.amountPaid) : 0,
+        discount: order.discount ? Number(order.discount) : 0,
+        product: {
+          ...order.product,
+          price: order.product.price ? Number(order.product.price) : 0,
+          discount: order.product.discount ? Number(order.product.discount) : null
+        },
+        // If warranties are ever included
+        warranties: (order as any).warranties?.map((w: any) => ({
+          ...w,
+          warrantyAmount: w.warrantyAmount ? Number(w.warrantyAmount) : 0
+        })) || []
     }))
 
     return {
@@ -278,6 +315,9 @@ export async function activateOrder(
     discount: number
     freeWarranty: boolean
     freeInstallation: boolean
+    paymentMethod?: string
+    paymentStatus?: string
+    warrantyDuration?: number
   }
 ) {
   try {
@@ -331,6 +371,8 @@ export async function activateOrder(
           discount: data.discount,
           freeWarranty: data.freeWarranty,
           freeInstallation: data.freeInstallation,
+          paymentMethod: (data.paymentMethod || order.paymentMethod) as any,
+          paymentStatus: (data.paymentStatus || 'COMPLETED') as 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED',
         })
       }
     })
@@ -339,7 +381,11 @@ export async function activateOrder(
     // Use the provided freeWarranty flag if available, otherwise fallback to order property (which might have been updated above, but we use the input for clarity)
     const shouldCreateFreeWarranty = data ? data.freeWarranty : order.freeWarranty
     
-    const baseWarrantyMonths = parseDuration(order.product.warrantyPeriod)
+    // Use provided duration or fallback to product default
+    const baseWarrantyMonths = (data && data.warrantyDuration !== undefined) 
+        ? data.warrantyDuration 
+        : parseDuration(order.product.warrantyPeriod)
+        
     console.log(`Base warranty months: ${baseWarrantyMonths}`)
 
     if (shouldCreateFreeWarranty && baseWarrantyMonths > 0) {
@@ -357,6 +403,8 @@ export async function activateOrder(
           durationMonths: baseWarrantyMonths,
           isActive: true,
           additionalWarranty: false,
+          warrantyAmount: 0,
+          termsAndConditions: `Standard Free Warranty - ${baseWarrantyMonths} Months`,
         }
       })
     }

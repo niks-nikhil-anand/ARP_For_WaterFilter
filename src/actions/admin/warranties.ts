@@ -27,7 +27,12 @@ export async function getAllWarranties() {
       }
     })
 
-    return { success: true, data: warranties }
+    const serializedWarranties = warranties.map(w => ({
+      ...w,
+      warrantyAmount: w.warrantyAmount ? Number(w.warrantyAmount) : 0
+    }))
+
+    return { success: true, data: serializedWarranties }
   } catch (error: any) {
     console.error('Get all warranties error:', error)
     return { success: false, error: error.message }

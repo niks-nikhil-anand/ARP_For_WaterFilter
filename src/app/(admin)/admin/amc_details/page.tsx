@@ -27,7 +27,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import { Calendar, Search, Filter, CheckCircle, Ticket, User, Wrench, Plus, FileText, Phone, Mail, MapPin, Eye } from 'lucide-react'
 import { getServiceEvents, createTicketForEvent, updateServiceEvent, getAgents, getAllAMCs, createAMCContract } from '@/actions/admin/serviceEvents'
-import { getAllProducts } from '@/actions/admin/products'
+import { getAdminProducts } from '@/actions/admin/products'
 import { getUsersByRole } from '@/actions/admin/users'
 import { AddAMCContractDialog } from '@/components/admin/amc/AddAMCContractDialog'
 import { PaginationControls } from '@/components/ui/pagination-controls'
@@ -71,7 +71,7 @@ export default function AMCRepairsPage() {
       getServiceEvents('all'), // Fetch all for client-side filtering/pagination
       getAllAMCs(),
       getAgents(),
-      getAllProducts(),
+      getAdminProducts(),
       getUsersByRole('USER')
     ])
 

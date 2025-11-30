@@ -469,6 +469,7 @@ export async function getAllAMCs() {
                 customerEmail: true,
                 customerPhone: true,
                 amountPaid: true,
+                discount: true,
               }
             }
           },
@@ -493,7 +494,8 @@ export async function getAllAMCs() {
         paymentDue: Number(contract.paymentDue),
         order: {
           ...contract.order,
-          amountPaid: contract.order.amountPaid ? Number(contract.order.amountPaid) : null
+          amountPaid: contract.order.amountPaid ? Number(contract.order.amountPaid) : null,
+          discount: contract.order.discount ? Number(contract.order.discount) : 0
         }
       }))
     }))

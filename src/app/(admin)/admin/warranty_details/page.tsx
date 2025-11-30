@@ -206,7 +206,7 @@ const WarrantyManagementPage = () => {
 
   const getStatusBadge = (status: string, endDate: Date) => {
     const daysRemaining = calculateDaysRemaining(endDate);
-    
+
     const variants: Record<
       string,
       { className: string; icon: React.ReactNode }
@@ -263,220 +263,231 @@ const WarrantyManagementPage = () => {
     <div className="h-[90vh] max-h-[92vh] overflow-y-auto">
       <div className="container mx-auto py-10 px-4 pb-20">
         <div className="space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">
-              Warranty Management
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              Track and manage product warranties and expiration dates
-            </p>
+          {/* Header */}
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">
+                Warranty Management
+              </h1>
+              <p className="text-muted-foreground mt-2">
+                Track and manage product warranties and expiration dates
+              </p>
+            </div>
           </div>
-        </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="border rounded-lg p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-2">
-              <ShieldCheck className="h-4 w-4" />
-              <span className="text-sm font-medium">Total Warranties</span>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="border rounded-lg p-4">
+              <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                <ShieldCheck className="h-4 w-4" />
+                <span className="text-sm font-medium">Total Warranties</span>
+              </div>
+              <p className="text-2xl font-bold">{stats.total}</p>
             </div>
-            <p className="text-2xl font-bold">{stats.total}</p>
-          </div>
-          <div className="border rounded-lg p-4 border-green-200 bg-green-50 dark:bg-green-950/20">
-            <div className="flex items-center gap-2 text-green-700 dark:text-green-400 mb-2">
-              <CheckCircle className="h-4 w-4" />
-              <span className="text-sm font-medium">Active</span>
+            <div className="border rounded-lg p-4 border-green-200 bg-green-50 dark:bg-green-950/20">
+              <div className="flex items-center gap-2 text-green-700 dark:text-green-400 mb-2">
+                <CheckCircle className="h-4 w-4" />
+                <span className="text-sm font-medium">Active</span>
+              </div>
+              <p className="text-2xl font-bold text-green-700 dark:text-green-400">
+                {stats.active}
+              </p>
             </div>
-            <p className="text-2xl font-bold text-green-700 dark:text-green-400">
-              {stats.active}
-            </p>
-          </div>
-          <div className="border rounded-lg p-4 border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20">
-            <div className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400 mb-2">
-              <AlertCircle className="h-4 w-4" />
-              <span className="text-sm font-medium">Expiring Soon</span>
+            <div className="border rounded-lg p-4 border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20">
+              <div className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400 mb-2">
+                <AlertCircle className="h-4 w-4" />
+                <span className="text-sm font-medium">Expiring Soon</span>
+              </div>
+              <p className="text-2xl font-bold text-yellow-700 dark:text-yellow-400">
+                {stats.expiringSoon}
+              </p>
             </div>
-            <p className="text-2xl font-bold text-yellow-700 dark:text-yellow-400">
-              {stats.expiringSoon}
-            </p>
-          </div>
-          <div className="border rounded-lg p-4 border-red-200 bg-red-50 dark:bg-red-950/20">
-            <div className="flex items-center gap-2 text-red-700 dark:text-red-400 mb-2">
-              <XCircle className="h-4 w-4" />
-              <span className="text-sm font-medium">Expired</span>
+            <div className="border rounded-lg p-4 border-red-200 bg-red-50 dark:bg-red-950/20">
+              <div className="flex items-center gap-2 text-red-700 dark:text-red-400 mb-2">
+                <XCircle className="h-4 w-4" />
+                <span className="text-sm font-medium">Expired</span>
+              </div>
+              <p className="text-2xl font-bold text-red-700 dark:text-red-400">
+                {stats.expired}
+              </p>
             </div>
-            <p className="text-2xl font-bold text-red-700 dark:text-red-400">
-              {stats.expired}
-            </p>
           </div>
-        </div>
 
-        {/* Filters and Search */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by product or customer name..."
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
+          {/* Filters and Search */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by product or customer name..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-10"
+              />
+            </div>
+            <Select
+              value={statusFilter}
+              onValueChange={(value) => {
+                setStatusFilter(value);
                 setCurrentPage(1);
               }}
-              className="pl-10"
-            />
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Statuses</SelectItem>
+                {warrantyStatuses.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {status}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <Select
-            value={statusFilter}
-            onValueChange={(value) => {
-              setStatusFilter(value);
-              setCurrentPage(1);
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Statuses</SelectItem>
-              {warrantyStatuses.map((status) => (
-                <SelectItem key={status} value={status}>
-                  {status}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
 
-        {/* Table */}
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort("id")}
-                >
-                  <div className="flex items-center">
-                    ID
-                    {getSortIcon("id")}
-                  </div>
-                </TableHead>
-                <TableHead>Product</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort("startDate")}
-                >
-                  <div className="flex items-center">
-                    Start Date
-                    {getSortIcon("startDate")}
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort("endDate")}
-                >
-                  <div className="flex items-center">
-                    End Date
-                    {getSortIcon("endDate")}
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer select-none text-center"
-                  onClick={() => handleSort("status")}
-                >
-                  <div className="flex items-center justify-center">
-                    Status
-                    {getSortIcon("status")}
-                  </div>
-                </TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
+          {/* Table */}
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-10">
-                    <div className="flex justify-center items-center gap-2">
-                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                      <span className="text-muted-foreground">Loading warranties...</span>
+                  <TableHead
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort("id")}
+                  >
+                    <div className="flex items-center">
+                      ID
+                      {getSortIcon("id")}
                     </div>
-                  </TableCell>
-                </TableRow>
-              ) : currentWarranties.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-10">
-                    <div className="flex flex-col items-center gap-2">
-                      <ShieldCheck className="h-10 w-10 text-muted-foreground" />
-                      <p className="text-muted-foreground">
-                        No warranties found
-                      </p>
+                  </TableHead>
+                  <TableHead>Product</TableHead>
+                  <TableHead>Customer</TableHead>
+                  <TableHead
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort("startDate")}
+                  >
+                    <div className="flex items-center">
+                      Start Date
+                      {getSortIcon("startDate")}
                     </div>
-                  </TableCell>
+                  </TableHead>
+                  <TableHead
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort("endDate")}
+                  >
+                    <div className="flex items-center">
+                      End Date
+                      {getSortIcon("endDate")}
+                    </div>
+                  </TableHead>
+                  <TableHead
+                    className="cursor-pointer select-none text-center"
+                    onClick={() => handleSort("status")}
+                  >
+                    <div className="flex items-center justify-center">
+                      Status
+                      {getSortIcon("status")}
+                    </div>
+                  </TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ) : (
-                currentWarranties.map((warranty) => (
-                  <TableRow key={warranty.id}>
-                    <TableCell className="font-medium">
-                      #{warranty.id}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-start gap-2 max-w-xs">
-                        <Package className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                        <div>
-                          <div className="font-medium text-sm" title={warranty.product.productName || ''}>
-                            {truncateText(warranty.product.productName || 'Unknown Product', 6)}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {warranty.product.company}
-                          </div>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-medium text-sm">{warranty.order.customerName}</span>
-                        <span className="text-xs text-muted-foreground">{warranty.order.customerPhone}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">
-                          {formatDate(warranty.startDate)}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">
-                          {formatDate(warranty.endDate)}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {getStatusBadge(warranty.status, warranty.endDate)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleView(warranty)}
-                          title="View details"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-10">
+                      <div className="flex justify-center items-center gap-2">
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        <span className="text-muted-foreground">Loading warranties...</span>
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                ) : currentWarranties.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-10">
+                      <div className="flex flex-col items-center gap-2">
+                        <ShieldCheck className="h-10 w-10 text-muted-foreground" />
+                        <p className="text-muted-foreground">
+                          No warranties found
+                        </p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  currentWarranties.map((warranty) => (
+                    <TableRow key={warranty.id}>
+                      <TableCell className="font-medium">
+                        #{warranty.id}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-start gap-2 max-w-xs">
+                          <Package className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                          <div>
+                            <div className="font-medium text-sm" title={warranty.product.productName || ''}>
+                              {truncateText(warranty.product.productName || 'Unknown Product', 6)}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {warranty.product.company}
+                            </div>
+                            <div className="mt-1">
+                              {new Date(warranty.endDate) > new Date() ? (
+                                <Badge variant="outline" className="w-fit bg-green-50 text-green-700 border-green-200 text-[10px] px-1 py-0 h-5">
+                                  Warranty Available
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="w-fit bg-red-50 text-red-700 border-red-200 text-[10px] px-1 py-0 h-5">
+                                  Warranty Expired
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-medium text-sm">{warranty.order.customerName}</span>
+                          <span className="text-xs text-muted-foreground">{warranty.order.customerPhone}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">
+                            {formatDate(warranty.startDate)}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">
+                            {formatDate(warranty.endDate)}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {getStatusBadge(warranty.status, warranty.endDate)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleView(warranty)}
+                            title="View details"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </div>
 

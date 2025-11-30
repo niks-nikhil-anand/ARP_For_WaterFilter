@@ -119,6 +119,7 @@ model User {
   updatedAt             DateTime       @updatedAt
   amcs                  AMC[]
   complaints            Complaint[]
+  warranties            Warranty[]
 }
 
 model Address {
@@ -275,6 +276,8 @@ model Warranty {
   productId          Int
   order              Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
   orderId            Int
+  user               User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId             Int?
   warrantyType       String // "FREE" or "EXTENDED" or "BASIC"
   startDate          DateTime
   endDate            DateTime

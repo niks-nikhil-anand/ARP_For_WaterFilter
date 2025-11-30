@@ -138,6 +138,17 @@ export async function getServiceEvents(
               id: true,
               status: true
             }
+          },
+          order: {
+            select: {
+              id: true,
+              warranties: {
+                select: {
+                  endDate: true,
+                  warrantyType: true
+                }
+              }
+            }
           }
         },
         orderBy: {

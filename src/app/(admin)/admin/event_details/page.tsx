@@ -247,6 +247,7 @@ export default function EventDetailsPage() {
                 <TableRow>
                   <TableHead>ID</TableHead>
                   <TableHead>Type</TableHead>
+                  <TableHead>Product Details</TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead>Action Date</TableHead>
                   <TableHead>Created At</TableHead>
@@ -281,9 +282,27 @@ export default function EventDetailsPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
+                        <div className="flex flex-col gap-1">
+                          <span className="font-medium">{event.product?.productName}</span>
+                          {event.order?.warranties?.some((w: any) => new Date(w.endDate) > new Date()) ? (
+                            <Badge variant="outline" className="w-fit bg-green-50 text-green-700 border-green-200 text-[10px] px-1 py-0 h-5">
+                              Warranty Available
+                            </Badge>
+                          ) : event.order?.warranties?.length > 0 ? (
+                            <Badge variant="outline" className="w-fit bg-red-50 text-red-700 border-red-200 text-[10px] px-1 py-0 h-5">
+                              Warranty Expired
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="w-fit bg-gray-50 text-gray-500 border-gray-200 text-[10px] px-1 py-0 h-5">
+                              No Warranty
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
                         <div className="flex flex-col">
                           <span className="font-medium">{event.customer?.name || 'Unknown'}</span>
-                          <span className="text-xs text-muted-foreground">{event.product?.productName}</span>
+                          <span className="text-xs text-muted-foreground">{event.customer?.mobile || 'No Mobile'}</span>
                         </div>
                       </TableCell>
                       <TableCell>

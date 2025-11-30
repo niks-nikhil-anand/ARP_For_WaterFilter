@@ -405,6 +405,7 @@ export async function activateOrder(
           additionalWarranty: false,
           warrantyAmount: 0,
           termsAndConditions: `Standard Free Warranty - ${baseWarrantyMonths} Months`,
+          userId: order.createdById, // Link to user
         }
       })
     }
@@ -432,6 +433,7 @@ export async function activateOrder(
           isActive: true,
           additionalWarranty: true,
           warrantyAmount: 0, // Should be calculated based on plan price
+          userId: order.createdById, // Link to user
         }
       })
     }

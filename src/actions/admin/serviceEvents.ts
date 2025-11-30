@@ -348,7 +348,13 @@ export async function createTicketForEvent(eventId: number, agentId?: number) {
       }
     })
 
-    return { success: true, data: ticket }
+    const serializedTicket = {
+      ...ticket,
+      timeSpent: ticket.timeSpent ? Number(ticket.timeSpent) : null,
+      amountCollected: ticket.amountCollected ? Number(ticket.amountCollected) : null,
+    }
+
+    return { success: true, data: serializedTicket }
   } catch (error: any) {
     console.error('Create ticket for event error:', error)
     return { success: false, error: error.message }

@@ -15,6 +15,15 @@ export type TicketWithDetails = Prisma.TicketGetPayload<{
   }
 }>
 
+// Helper to serialize Decimal fields
+function serializeTicket(ticket: any) {
+  return {
+    ...ticket,
+    timeSpent: ticket.timeSpent ? Number(ticket.timeSpent) : null,
+    amountCollected: ticket.amountCollected ? Number(ticket.amountCollected) : null,
+  }
+}
+
 export async function getAllTickets(filters?: {
   status?: TicketStatus
   priority?: TicketPriority
@@ -76,9 +85,11 @@ export async function getAllTickets(filters?: {
       })
     ])
     
+    const serializedTickets = tickets.map(serializeTicket)
+
     return { 
       success: true, 
-      data: tickets,
+      data: serializedTickets,
       meta: {
         total,
         page,
@@ -110,7 +121,7 @@ export async function getTicketById(id: number) {
       return { success: false, error: 'Ticket not found' }
     }
     
-    return { success: true, data: ticket }
+    return { success: true, data: serializeTicket(ticket) }
   } catch (error) {
     console.error('Failed to fetch ticket:', error)
     return { success: false, error: 'Failed to fetch ticket' }
@@ -161,7 +172,7 @@ export async function createTicket(data: {
     })
     
     revalidatePath('/admin/tickets')
-    return { success: true, data: ticket, message: 'Ticket created successfully' }
+    return { success: true, data: serializeTicket(ticket), message: 'Ticket created successfully' }
   } catch (error) {
     console.error('Failed to create ticket:', error)
     return { success: false, error: 'Failed to create ticket' }
@@ -245,7 +256,7 @@ export async function updateTicket(
     })
     
     revalidatePath('/admin/tickets')
-    return { success: true, data: ticket, message: 'Ticket updated successfully' }
+    return { success: true, data: serializeTicket(ticket), message: 'Ticket updated successfully' }
   } catch (error) {
     console.error('Failed to update ticket:', error)
     const errorMessage = error instanceof Error ? error.message : 'Failed to update ticket'

@@ -74,11 +74,11 @@ const SidebarAdmin: React.FC<SidebarAdminProps> = ({ className }) => {
           label: "AMC",
           href: "/admin/amc_details",
         },
-        {
-          icon: Wrench,
-          label: "Repairs",
-          href: "/admin/repairs",
-        },
+        // {
+        //   icon: Wrench,
+        //   label: "Repairs",
+        //   href: "/admin/repairs",
+        // },
       ],
     },
   ];

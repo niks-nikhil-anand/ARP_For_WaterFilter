@@ -111,17 +111,20 @@ export async function resolveTicket(data: {
     }
 
     const decoded = await verifyToken(token)
-    if (!decoded || decoded.role !== 'AGENT') {
-      return { success: false, error: 'Not authorized as agent' }
+    if (!decoded || !['AGENT', 'ADMIN', 'SUPERADMIN'].includes(decoded.role)) {
+      return { success: false, error: 'Not authorized' }
     }
 
-    // Get agent record
-    const agent = await prisma.agent.findUnique({
-      where: { userId: decoded.id }
-    })
+    // Get agent record if role is AGENT
+    let agent = null
+    if (decoded.role === 'AGENT') {
+      agent = await prisma.agent.findUnique({
+        where: { userId: decoded.id }
+      })
 
-    if (!agent) {
-      return { success: false, error: 'Agent record not found' }
+      if (!agent) {
+        return { success: false, error: 'Agent record not found' }
+      }
     }
 
     // Verify ticket ownership
@@ -133,7 +136,8 @@ export async function resolveTicket(data: {
       return { success: false, error: 'Ticket not found' }
     }
 
-    if (ticket.agentId !== agent.id) {
+    // If agent, check ownership
+    if (decoded.role === 'AGENT' && agent && ticket.agentId !== agent.id) {
       return { success: false, error: 'Not authorized to resolve this ticket' }
     }
 
@@ -177,7 +181,7 @@ export async function resolveTicket(data: {
          await prisma.notification.create({
           data: {
             title: `Ticket Resolved: #${ticket.id}`,
-            message: `Agent ${decoded.name} resolved ticket #${ticket.id} for ${ticket.customerName}.`,
+            message: `${decoded.role === 'AGENT' ? 'Agent' : 'Admin'} ${decoded.name} resolved ticket #${ticket.id} for ${ticket.customerName}.`,
             category: 'SERVICE',
             priority: 'MEDIUM',
             recipientId: shop.userId,
@@ -187,7 +191,14 @@ export async function resolveTicket(data: {
       }
     }
 
-    return { success: true, data: updatedTicket }
+    return { 
+      success: true, 
+      data: {
+        id: updatedTicket.id,
+        status: updatedTicket.status,
+        updatedAt: updatedTicket.updatedAt
+      }
+    }
   } catch (error: any) {
     console.error('Resolve ticket error:', error)
     return { success: false, error: error.message }

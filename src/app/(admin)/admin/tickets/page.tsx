@@ -67,12 +67,15 @@ import {
   XCircle,
   PlayCircle,
   FileText,
+  CheckCircle2,
+  Wrench,
 } from 'lucide-react'
 import {
   getAllTickets,
   updateTicket,
   deleteTicket,
 } from '@/actions/common/tickets'
+import { ResolveTicketDialog } from '@/components/tickets/ResolveTicketDialog'
 import { getActiveAgents } from '@/actions/common/agents'
 import { TicketStatus, TicketPriority } from '@/generated/prisma'
 import { toast } from 'sonner'
@@ -104,6 +107,10 @@ interface TicketType {
   shopId?: number | null
   internalNotes?: string | null
   resolutionNotes?: string | null
+  timeSpent?: number | any | null
+  amountCollected?: number | any | null
+  partsReplaced?: string | null
+  workDescription?: string | null
   source?: string | null
   serviceEvent?: {
     actionDate?: Date | string | null
@@ -129,6 +136,7 @@ const TicketManagementPage = () => {
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [resolveDialogOpen, setResolveDialogOpen] = useState(false)
   const [selectedTicket, setSelectedTicket] = useState<TicketType | null>(null)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -320,6 +328,19 @@ const TicketManagementPage = () => {
         setIsSaving(false)
       }
     }
+  }
+
+  const handleResolve = (ticket: TicketType) => {
+    setSelectedTicket(ticket)
+    setResolveDialogOpen(true)
+  }
+
+  const handleResolveComplete = (ticketId: any, resolveData: any) => {
+    setTickets(tickets.map(ticket =>
+      ticket.id === ticketId
+        ? { ...ticket, status: TicketStatus.RESOLVED, resolutionNotes: resolveData.resolutionNotes }
+        : ticket
+    ))
   }
 
   const getSortIcon = (field: keyof TicketType) => {
@@ -604,6 +625,17 @@ const TicketManagementPage = () => {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
+                          {ticket.status !== TicketStatus.RESOLVED && ticket.status !== TicketStatus.CLOSED && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleResolve(ticket)}
+                              title="Resolve ticket"
+                              className="text-green-600 hover:text-green-700"
+                            >
+                              <CheckCircle2 className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
@@ -760,6 +792,56 @@ const TicketManagementPage = () => {
                       <p className="text-sm">{selectedTicket.resolutionNotes}</p>
                     </div>
                   )}
+
+                  {/* Resolution Details Section */}
+                  {(selectedTicket.status === TicketStatus.RESOLVED || selectedTicket.status === TicketStatus.CLOSED) && (
+                    <>
+                      <div className="col-span-2 mt-4 mb-2">
+                        <h4 className="font-semibold text-lg border-b pb-2">Resolution Details</h4>
+                      </div>
+
+                      {selectedTicket.timeSpent !== null && selectedTicket.timeSpent !== undefined && (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Clock className="h-4 w-4" />
+                            <span className="font-medium">Time Spent</span>
+                          </div>
+                          <p className="text-sm">{selectedTicket.timeSpent.toString()} hours</p>
+                        </div>
+                      )}
+
+                      {selectedTicket.amountCollected !== null && selectedTicket.amountCollected !== undefined && (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <span className="font-bold">₹</span>
+                            <span className="font-medium">Amount Collected</span>
+                          </div>
+                          <p className="text-sm">₹{selectedTicket.amountCollected.toString()}</p>
+                        </div>
+                      )}
+
+                      {selectedTicket.partsReplaced && (
+                        <div className="col-span-2 space-y-2">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Wrench className="h-4 w-4" />
+                            <span className="font-medium">Parts Replaced</span>
+                          </div>
+                          <p className="text-sm">{selectedTicket.partsReplaced}</p>
+                        </div>
+                      )}
+
+                      {selectedTicket.workDescription && (
+                        <div className="col-span-2 space-y-2">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <FileText className="h-4 w-4" />
+                            <span className="font-medium">Work Description</span>
+                          </div>
+                          <p className="text-sm">{selectedTicket.workDescription}</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Calendar className="h-4 w-4" />
@@ -908,8 +990,16 @@ const TicketManagementPage = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Resolve Dialog */}
+        <ResolveTicketDialog
+          open={resolveDialogOpen}
+          onOpenChange={setResolveDialogOpen}
+          ticket={selectedTicket}
+          onResolve={handleResolveComplete}
+        />
       </div>
-    </div>
+    </div >
   )
 }
 

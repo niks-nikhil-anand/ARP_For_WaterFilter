@@ -36,6 +36,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getCurrentAgentData } from '@/actions/agent/profile'
 import { getAgentTickets, resolveTicket } from '@/actions/agent/tickets'
 import { toast } from 'sonner'
+import { ResolveTicketDialog } from '@/components/tickets/ResolveTicketDialog'
 
 const AgentPage = () => {
   // Agent data state
@@ -85,64 +86,19 @@ const AgentPage = () => {
   // State for resolve dialog
   const [isResolveDialogOpen, setIsResolveDialogOpen] = useState(false)
   const [selectedTicket, setSelectedTicket] = useState(null)
-  const [resolveData, setResolveData] = useState({
-    timeSpent: '',
-    amountCollected: '',
-    partsReplaced: '',
-    workDescription: '',
-    resolutionNotes: ''
-  })
 
   const handleResolveClick = (ticket) => {
     setSelectedTicket(ticket)
     setIsResolveDialogOpen(true)
-    // Reset form
-    setResolveData({
-      timeSpent: '',
-      amountCollected: '',
-      partsReplaced: '',
-      workDescription: '',
-      resolutionNotes: ''
-    })
   }
 
-  const handleResolveSubmit = async (e) => {
-    e.preventDefault()
-
-    try {
-      const result = await resolveTicket({
-        ticketId: selectedTicket.id.replace('TKT-', ''), // Assuming ID format TKT-123
-        ...resolveData,
-        ticketId: parseInt(selectedTicket.id.replace('TKT-', ''))
-      })
-
-      if (result.success) {
-        // Update ticket status locally
-        setTickets(tickets.map(ticket =>
-          ticket.id === selectedTicket.id
-            ? { ...ticket, status: 'Resolved', resolveData }
-            : ticket
-        ))
-
-        // Close dialog
-        setIsResolveDialogOpen(false)
-
-        // Show success message
-        toast.success(`Ticket ${selectedTicket.id} has been successfully resolved!`)
-      } else {
-        toast.error(result.error || 'Failed to resolve ticket')
-      }
-    } catch (error) {
-      console.error('Resolution error:', error)
-      toast.error('An unexpected error occurred')
-    }
-  }
-
-  const handleInputChange = (e) => {
-    setResolveData({
-      ...resolveData,
-      [e.target.name]: e.target.value
-    })
+  const handleResolveComplete = (ticketId, resolveData) => {
+    // Update ticket status locally
+    setTickets(tickets.map(ticket =>
+      ticket.id === ticketId
+        ? { ...ticket, status: 'Resolved', resolveData }
+        : ticket
+    ))
   }
 
   // Filter, Sort, and Pagination Logic
@@ -631,150 +587,12 @@ const AgentPage = () => {
       )}
 
       {/* Resolve Dialog */}
-      <Dialog open={isResolveDialogOpen} onOpenChange={setIsResolveDialogOpen}>
-        <DialogContent className="dark:bg-gray-900 max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-2xl dark:text-white flex items-center gap-2">
-              <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
-              Resolve Ticket
-            </DialogTitle>
-            <DialogDescription className="dark:text-gray-400">
-              {selectedTicket && `Ticket #${selectedTicket.id} - ${selectedTicket.customerName}`}
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleResolveSubmit} className="space-y-6">
-            <div className="grid md:grid-cols-2 gap-4">
-              {/* Time Spent */}
-              <div>
-                <Label htmlFor="timeSpent" className="dark:text-white flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
-                  Time Spent (hours) *
-                </Label>
-                <Input
-                  id="timeSpent"
-                  name="timeSpent"
-                  type="number"
-                  step="0.5"
-                  required
-                  value={resolveData.timeSpent}
-                  onChange={handleInputChange}
-                  className="mt-2 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-                  placeholder="e.g., 2.5"
-                />
-              </div>
-
-              {/* Amount Collected */}
-              <div>
-                <Label htmlFor="amountCollected" className="dark:text-white flex items-center gap-2">
-                  <IndianRupee className="h-4 w-4" />
-                  Amount Collected (₹) *
-                </Label>
-                <Input
-                  id="amountCollected"
-                  name="amountCollected"
-                  type="number"
-                  required
-                  value={resolveData.amountCollected}
-                  onChange={handleInputChange}
-                  className="mt-2 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-                  placeholder="e.g., 1500"
-                />
-              </div>
-            </div>
-
-            {/* Parts Replaced */}
-            <div>
-              <Label htmlFor="partsReplaced" className="dark:text-white flex items-center gap-2">
-                <Wrench className="h-4 w-4" />
-                Parts Replaced/Used *
-              </Label>
-              <Input
-                id="partsReplaced"
-                name="partsReplaced"
-                type="text"
-                required
-                value={resolveData.partsReplaced}
-                onChange={handleInputChange}
-                className="mt-2 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-                placeholder="e.g., RO Membrane, Carbon Filter"
-              />
-            </div>
-
-            {/* Work Description */}
-            <div>
-              <Label htmlFor="workDescription" className="dark:text-white flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Work Description *
-              </Label>
-              <Textarea
-                id="workDescription"
-                name="workDescription"
-                required
-                value={resolveData.workDescription}
-                onChange={handleInputChange}
-                className="mt-2 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-                placeholder="Describe the work performed..."
-                rows={3}
-              />
-            </div>
-
-            {/* Resolution Notes */}
-            <div>
-              <Label htmlFor="resolutionNotes" className="dark:text-white flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Additional Notes (Optional)
-              </Label>
-              <Textarea
-                id="resolutionNotes"
-                name="resolutionNotes"
-                value={resolveData.resolutionNotes}
-                onChange={handleInputChange}
-                className="mt-2 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-                placeholder="Any additional information or recommendations..."
-                rows={2}
-              />
-            </div>
-
-            <Separator />
-
-            {/* Summary Box */}
-            {selectedTicket && (
-              <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-                <h4 className="font-semibold text-blue-900 dark:text-blue-200 mb-2">Resolution Summary</h4>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <p className="text-blue-700 dark:text-blue-300">Customer:</p>
-                  <p className="font-medium text-blue-900 dark:text-blue-100">{selectedTicket.customerName}</p>
-                  <p className="text-blue-700 dark:text-blue-300">Ticket ID:</p>
-                  <p className="font-medium text-blue-900 dark:text-blue-100">{selectedTicket.id}</p>
-                  <p className="text-blue-700 dark:text-blue-300">Date:</p>
-                  <p className="font-medium text-blue-900 dark:text-blue-100">
-                    {new Date().toLocaleDateString('en-IN')}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            <DialogFooter className="gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsResolveDialogOpen(false)}
-                className="dark:border-gray-700 dark:text-white"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                className="bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600"
-              >
-                <CheckCircle2 className="mr-2 h-4 w-4" />
-                Confirm Resolution
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <ResolveTicketDialog
+        open={isResolveDialogOpen}
+        onOpenChange={setIsResolveDialogOpen}
+        ticket={selectedTicket}
+        onResolve={handleResolveComplete}
+      />
     </div>
   )
 }

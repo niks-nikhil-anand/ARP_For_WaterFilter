@@ -29,6 +29,7 @@ import { Calendar, Search, Filter, CheckCircle, Ticket, User, Wrench } from 'luc
 import { getServiceEvents, createTicketForEvent, getAgents, resolveServiceEvent } from '@/actions/admin/serviceEvents'
 import { PaginationControls } from '@/components/ui/pagination-controls'
 import { SkeletonTable } from '@/components/common/SkeletonTable'
+import { EditEventDialog } from '@/components/admin/EditEventDialog'
 
 export default function EventDetailsPage() {
   const [events, setEvents] = useState<any[]>([])
@@ -61,6 +62,9 @@ export default function EventDetailsPage() {
   const [resolveStatus, setResolveStatus] = useState<string>('COMPLETED')
   const [scheduledDate, setScheduledDate] = useState<string>('')
   const [scheduledRemarks, setScheduledRemarks] = useState('')
+
+  // Edit Dialog State
+  const [editOpen, setEditOpen] = useState(false)
 
   const fetchEvents = async () => {
     setLoading(true)
@@ -128,6 +132,11 @@ export default function EventDetailsPage() {
     setScheduledRemarks(event.scheduledRemarks || '')
     setScheduledDate(event.actionDate ? new Date(event.actionDate).toISOString().split('T')[0] : '')
     setResolveOpen(true)
+  }
+
+  const handleEditClick = (event: any) => {
+    setSelectedEvent(event)
+    setEditOpen(true)
   }
 
   const handleConfirmResolve = async () => {
@@ -362,6 +371,28 @@ export default function EventDetailsPage() {
                             >
                               <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
                               <circle cx="12" cy="12" r="3" />
+                            </svg>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0"
+                            onClick={() => handleEditClick(event)}
+                            title="Edit Event"
+                          >
+                            <span className="sr-only">Edit</span>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="h-4 w-4"
+                            >
+                              <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                              <path d="m15 5 4 4" />
                             </svg>
                           </Button>
                           {!event.ticket && event.status !== 'CANCELLED' && (
@@ -651,6 +682,14 @@ export default function EventDetailsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <EditEventDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        event={selectedEvent}
+        agents={agents}
+        onSuccess={fetchEvents}
+      />
     </div>
   )
 }

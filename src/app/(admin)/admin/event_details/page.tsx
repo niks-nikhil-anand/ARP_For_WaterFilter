@@ -27,30 +27,52 @@ import { Textarea } from '@/components/ui/textarea'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
 import { Calendar, Search, Filter, CheckCircle, Ticket, User, Wrench } from 'lucide-react'
-import { getServiceEvents, createTicketForEvent, updateServiceEvent } from '@/actions/admin/serviceEvents'
+import { getServiceEvents, createTicketForEvent, updateServiceEvent, getAgents } from '@/actions/admin/serviceEvents'
 
 export default function EventDetailsPage() {
   const [events, setEvents] = useState<any[]>([])
+  const [agents, setAgents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<'today' | 'yesterday' | 'upcoming' | 'all'>('today')
+  const [filter, setFilter] = useState<'today' | 'yesterday' | 'upcoming' | 'backlog' | 'all'>('today')
   const [selectedMonth, setSelectedMonth] = useState<string>('all')
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL')
   const [search, setSearch] = useState('')
-  
+
+  // Ticket Dialog State
+  const [ticketOpen, setTicketOpen] = useState(false)
+  const [creatingTicket, setCreatingTicket] = useState(false)
+  const [selectedAgentId, setSelectedAgentId] = useState<string>('')
+
+  // View Dialog State
+  const [viewOpen, setViewOpen] = useState(false)
+
   // Resolve Dialog State
   const [resolveOpen, setResolveOpen] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<any>(null)
   const [resolveRemarks, setResolveRemarks] = useState('')
   const [resolving, setResolving] = useState(false)
 
+  const [resolveStatus, setResolveStatus] = useState<string>('COMPLETED')
+  const [scheduledDate, setScheduledDate] = useState<string>('')
+  const [scheduledRemarks, setScheduledRemarks] = useState('')
+
   const fetchEvents = async () => {
     setLoading(true)
-    const result = await getServiceEvents(filter, selectedMonth, selectedStatus)
-    if (result.success) {
-      setEvents(result.data || [])
+    const [eventsResult, agentsResult] = await Promise.all([
+      getServiceEvents(filter, selectedMonth, selectedStatus),
+      getAgents()
+    ])
+
+    if (eventsResult.success) {
+      setEvents(eventsResult.data || [])
     } else {
       toast.error('Failed to fetch events')
     }
+
+    if (agentsResult.success) {
+      setAgents(agentsResult.data || [])
+    }
+
     setLoading(false)
   }
 
@@ -58,20 +80,39 @@ export default function EventDetailsPage() {
     fetchEvents()
   }, [filter, selectedMonth, selectedStatus])
 
-  const handleCreateTicket = async (eventId: number) => {
-    const toastId = toast.loading('Creating ticket...')
-    const result = await createTicketForEvent(eventId)
+  const handleTicketClick = (event: any) => {
+    setSelectedEvent(event)
+    setSelectedAgentId(event.assignedTo?.id?.toString() || '')
+    setTicketOpen(true)
+  }
+
+  const handleConfirmCreateTicket = async () => {
+    if (!selectedEvent) return
+
+    setCreatingTicket(true)
+    const result = await createTicketForEvent(selectedEvent.id, selectedAgentId ? parseInt(selectedAgentId) : undefined)
+    setCreatingTicket(false)
+
     if (result.success) {
-      toast.success('Ticket created successfully', { id: toastId })
-      fetchEvents() // Refresh to show ticket status
+      toast.success('Ticket created successfully')
+      setTicketOpen(false)
+      fetchEvents()
     } else {
-      toast.error(result.error || 'Failed to create ticket', { id: toastId })
+      toast.error(result.error || 'Failed to create ticket')
     }
+  }
+
+  const handleViewClick = (event: any) => {
+    setSelectedEvent(event)
+    setViewOpen(true)
   }
 
   const handleResolveClick = (event: any) => {
     setSelectedEvent(event)
+    setResolveStatus(event.status === 'COMPLETED' ? 'COMPLETED' : event.status)
     setResolveRemarks(event.remarks || '')
+    setScheduledRemarks(event.scheduledRemarks || '')
+    setScheduledDate(event.actionDate ? new Date(event.actionDate).toISOString().split('T')[0] : '')
     setResolveOpen(true)
   }
 
@@ -79,22 +120,129 @@ export default function EventDetailsPage() {
     if (!selectedEvent) return
 
     setResolving(true)
-    const result = await updateServiceEvent(selectedEvent.id, {
-      status: 'COMPLETED',
-      remarks: resolveRemarks
-    })
+    const updateData: any = {
+      status: resolveStatus,
+    }
+
+    if (resolveStatus === 'COMPLETED') {
+      updateData.remarks = resolveRemarks
+    } else if (resolveStatus === 'SCHEDULED') {
+      updateData.actionDate = scheduledDate ? new Date(scheduledDate) : undefined
+      updateData.scheduledRemarks = scheduledRemarks
+    } else {
+      updateData.remarks = resolveRemarks
+    }
+
+    const result = await updateServiceEvent(selectedEvent.id, updateData)
     setResolving(false)
 
     if (result.success) {
-      toast.success('Event resolved successfully')
+      toast.success('Event updated successfully')
       setResolveOpen(false)
       fetchEvents()
     } else {
-      toast.error(result.error || 'Failed to resolve event')
+      toast.error(result.error || 'Failed to update event')
     }
   }
 
-  const filteredEvents = events.filter(event => 
+  // ... (rest of the component)
+
+  {/* Resolve Dialog */ }
+  <Dialog open={resolveOpen} onOpenChange={setResolveOpen}>
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>Update Service Event</DialogTitle>
+        <DialogDescription>
+          Update the status and details of this service event.
+        </DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4 py-4">
+        <div className="space-y-2">
+          <Label>Event Details</Label>
+          <div className="text-sm text-muted-foreground p-3 bg-muted rounded-md">
+            <p><strong>Customer:</strong> {selectedEvent?.customer?.name}</p>
+            <p><strong>Product:</strong> {selectedEvent?.product?.productName}</p>
+            <p><strong>Current Status:</strong> {selectedEvent?.status}</p>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Status</Label>
+          <Select value={resolveStatus} onValueChange={setResolveStatus}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="PENDING">Pending</SelectItem>
+              <SelectItem value="SCHEDULED">Scheduled</SelectItem>
+              <SelectItem value="COMPLETED">Completed</SelectItem>
+              <SelectItem value="CANCELLED">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {resolveStatus === 'COMPLETED' && (
+          <div className="space-y-2">
+            <Label htmlFor="remarks">Completion Remarks</Label>
+            <Textarea
+              id="remarks"
+              placeholder="Enter details about the service completion..."
+              value={resolveRemarks}
+              onChange={(e) => setResolveRemarks(e.target.value)}
+              rows={3}
+            />
+          </div>
+        )}
+
+        {resolveStatus === 'SCHEDULED' && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="scheduledDate">Scheduled Date</Label>
+              <Input
+                id="scheduledDate"
+                type="date"
+                value={scheduledDate}
+                onChange={(e) => setScheduledDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="scheduledRemarks">Scheduling Remarks</Label>
+              <Textarea
+                id="scheduledRemarks"
+                placeholder="Enter scheduling details..."
+                value={scheduledRemarks}
+                onChange={(e) => setScheduledRemarks(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </>
+        )}
+
+        {(resolveStatus === 'PENDING' || resolveStatus === 'CANCELLED') && (
+          <div className="space-y-2">
+            <Label htmlFor="generalRemarks">Remarks</Label>
+            <Textarea
+              id="generalRemarks"
+              placeholder="Enter remarks..."
+              value={resolveRemarks}
+              onChange={(e) => setResolveRemarks(e.target.value)}
+              rows={3}
+            />
+          </div>
+        )}
+      </div>
+      <DialogFooter>
+        <Button variant="outline" onClick={() => setResolveOpen(false)} disabled={resolving}>
+          Cancel
+        </Button>
+        <Button onClick={handleConfirmResolve} disabled={resolving} className="bg-green-600 hover:bg-green-700">
+          {resolving ? 'Updating...' : 'Confirm Update'}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+
+  const filteredEvents = events.filter(event =>
     event.customer?.name.toLowerCase().includes(search.toLowerCase()) ||
     event.product?.productName?.toLowerCase().includes(search.toLowerCase()) ||
     event.id.toString().includes(search)
@@ -118,7 +266,7 @@ export default function EventDetailsPage() {
           <p className="text-muted-foreground">Manage service schedules, tickets, and resolutions.</p>
         </div>
         <div className="flex items-center gap-2">
-           {/* Add global actions here if needed */}
+          {/* Add global actions here if needed */}
         </div>
       </div>
 
@@ -131,6 +279,7 @@ export default function EventDetailsPage() {
                   <TabsTrigger value="today">Today</TabsTrigger>
                   <TabsTrigger value="yesterday">Yesterday</TabsTrigger>
                   <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
+                  <TabsTrigger value="backlog">Backlog</TabsTrigger>
                   <TabsTrigger value="all">All</TabsTrigger>
                 </TabsList>
               </Tabs>
@@ -268,12 +417,34 @@ export default function EventDetailsPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0"
+                            onClick={() => handleViewClick(event)}
+                            title="View Details"
+                          >
+                            <span className="sr-only">View</span>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="h-4 w-4"
+                            >
+                              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                              <circle cx="12" cy="12" r="3" />
+                            </svg>
+                          </Button>
                           {!event.ticket && event.status !== 'CANCELLED' && (
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
+                            <Button
+                              size="sm"
+                              variant="outline"
                               className="h-8"
-                              onClick={() => handleCreateTicket(event.id)}
+                              onClick={() => handleTicketClick(event)}
                               title="Create Ticket"
                             >
                               <Ticket className="h-4 w-4 mr-1" />
@@ -281,8 +452,8 @@ export default function EventDetailsPage() {
                             </Button>
                           )}
                           {event.status !== 'COMPLETED' && event.status !== 'CANCELLED' && (
-                            <Button 
-                              size="sm" 
+                            <Button
+                              size="sm"
                               className="h-8 bg-green-600 hover:bg-green-700 text-white"
                               onClick={() => handleResolveClick(event)}
                               title="Resolve Event"
@@ -302,13 +473,92 @@ export default function EventDetailsPage() {
         </CardContent>
       </Card>
 
+      {/* Create Ticket Dialog */}
+      <Dialog open={ticketOpen} onOpenChange={setTicketOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create Support Ticket</DialogTitle>
+            <DialogDescription>
+              Review details before creating a ticket for this event.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <Label className="text-muted-foreground">Customer</Label>
+                <p className="font-medium">{selectedEvent?.customer?.name}</p>
+              </div>
+              <div>
+                <Label className="text-muted-foreground">Mobile</Label>
+                <p className="font-medium">{selectedEvent?.customer?.mobile || 'N/A'}</p>
+              </div>
+              <div className="col-span-2">
+                <Label className="text-muted-foreground">Email</Label>
+                <p className="font-medium">{selectedEvent?.customer?.email || 'N/A'}</p>
+              </div>
+              <div className="col-span-2">
+                <Label className="text-muted-foreground">Address</Label>
+                <p className="font-medium">
+                  {[
+                    selectedEvent?.customer?.addresses?.[0]?.locality,
+                    selectedEvent?.customer?.addresses?.[0]?.city,
+                    selectedEvent?.customer?.addresses?.[0]?.state,
+                    selectedEvent?.customer?.addresses?.[0]?.pincode
+                  ].filter(Boolean).join(', ') || 'No address found'}
+                </p>
+              </div>
+              <div>
+                <Label className="text-muted-foreground">Service Type</Label>
+                <p className="font-medium">{selectedEvent?.type}</p>
+              </div>
+              <div>
+                <Label className="text-muted-foreground">Product Type</Label>
+                <p className="font-medium">{selectedEvent?.product?.type || 'N/A'}</p>
+              </div>
+
+              <div className="col-span-2">
+                <Label className="text-muted-foreground mb-1 block">Assigned Agent</Label>
+                <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Agent" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    {agents.map((agent) => (
+                      <SelectItem key={agent.id} value={agent.id.toString()}>
+                        {agent.user.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="col-span-2">
+                <Label className="text-muted-foreground">Description</Label>
+                <p className="font-medium text-muted-foreground text-xs bg-muted p-2 rounded mt-1">
+                  {selectedEvent?.description || 'No description provided'}
+                </p>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTicketOpen(false)} disabled={creatingTicket}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmCreateTicket} disabled={creatingTicket}>
+              {creatingTicket ? 'Creating...' : 'Confirm Create Ticket'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Resolve Dialog */}
       <Dialog open={resolveOpen} onOpenChange={setResolveOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Resolve Service Event</DialogTitle>
+            <DialogTitle>Update Service Event</DialogTitle>
             <DialogDescription>
-              Mark this event as completed. You can add final remarks below.
+              Update the status and details of this service event.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -317,27 +567,153 @@ export default function EventDetailsPage() {
               <div className="text-sm text-muted-foreground p-3 bg-muted rounded-md">
                 <p><strong>Customer:</strong> {selectedEvent?.customer?.name}</p>
                 <p><strong>Product:</strong> {selectedEvent?.product?.productName}</p>
-                <p><strong>Date:</strong> {selectedEvent?.actionDate && new Date(selectedEvent.actionDate).toLocaleDateString()}</p>
+                <p><strong>Current Status:</strong> {selectedEvent?.status}</p>
               </div>
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="remarks">Completion Remarks</Label>
-              <Textarea
-                id="remarks"
-                placeholder="Enter details about the service completion..."
-                value={resolveRemarks}
-                onChange={(e) => setResolveRemarks(e.target.value)}
-                rows={3}
-              />
+              <Label>Status</Label>
+              <Select value={resolveStatus} onValueChange={setResolveStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PENDING">Pending</SelectItem>
+                  <SelectItem value="SCHEDULED">Scheduled</SelectItem>
+                  <SelectItem value="COMPLETED">Completed</SelectItem>
+                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+
+            {resolveStatus === 'COMPLETED' && (
+              <div className="space-y-2">
+                <Label htmlFor="remarks">Completion Remarks</Label>
+                <Textarea
+                  id="remarks"
+                  placeholder="Enter details about the service completion..."
+                  value={resolveRemarks}
+                  onChange={(e) => setResolveRemarks(e.target.value)}
+                  rows={3}
+                />
+              </div>
+            )}
+
+            {resolveStatus === 'SCHEDULED' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="scheduledDate">Scheduled Date</Label>
+                  <Input
+                    id="scheduledDate"
+                    type="date"
+                    value={scheduledDate}
+                    onChange={(e) => setScheduledDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="scheduledRemarks">Scheduling Remarks</Label>
+                  <Textarea
+                    id="scheduledRemarks"
+                    placeholder="Enter scheduling details..."
+                    value={scheduledRemarks}
+                    onChange={(e) => setScheduledRemarks(e.target.value)}
+                    rows={3}
+                  />
+                </div>
+              </>
+            )}
+
+            {(resolveStatus === 'PENDING' || resolveStatus === 'CANCELLED') && (
+              <div className="space-y-2">
+                <Label htmlFor="generalRemarks">Remarks</Label>
+                <Textarea
+                  id="generalRemarks"
+                  placeholder="Enter remarks..."
+                  value={resolveRemarks}
+                  onChange={(e) => setResolveRemarks(e.target.value)}
+                  rows={3}
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setResolveOpen(false)} disabled={resolving}>
               Cancel
             </Button>
             <Button onClick={handleConfirmResolve} disabled={resolving} className="bg-green-600 hover:bg-green-700">
-              {resolving ? 'Resolving...' : 'Confirm Resolution'}
+              {resolving ? 'Updating...' : 'Confirm Update'}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Details Dialog */}
+      <Dialog open={viewOpen} onOpenChange={setViewOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Event Details #{selectedEvent?.id}</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-semibold mb-2 flex items-center gap-2">
+                  <User className="h-4 w-4" /> Customer Details
+                </h4>
+                <div className="text-sm space-y-1 text-muted-foreground border p-3 rounded-md">
+                  <p><span className="font-medium text-foreground">Name:</span> {selectedEvent?.customer?.name}</p>
+                  <p><span className="font-medium text-foreground">Email:</span> {selectedEvent?.customer?.email}</p>
+                  <p><span className="font-medium text-foreground">Mobile:</span> {selectedEvent?.customer?.mobile || 'N/A'}</p>
+                  <p><span className="font-medium text-foreground">Address:</span> {[
+                    selectedEvent?.customer?.addresses?.[0]?.locality,
+                    selectedEvent?.customer?.addresses?.[0]?.city,
+                    selectedEvent?.customer?.addresses?.[0]?.state,
+                    selectedEvent?.customer?.addresses?.[0]?.pincode
+                  ].filter(Boolean).join(', ') || 'N/A'}</p>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-semibold mb-2 flex items-center gap-2">
+                  <Wrench className="h-4 w-4" /> Service Info
+                </h4>
+                <div className="text-sm space-y-1 text-muted-foreground border p-3 rounded-md">
+                  <p><span className="font-medium text-foreground">Type:</span> {selectedEvent?.type}</p>
+                  <p><span className="font-medium text-foreground">Product:</span> {selectedEvent?.product?.productName}</p>
+                  <p><span className="font-medium text-foreground">Status:</span> <Badge variant="outline">{selectedEvent?.status}</Badge></p>
+                  <p><span className="font-medium text-foreground">Scheduled:</span> {selectedEvent?.actionDate && new Date(selectedEvent.actionDate).toLocaleDateString()}</p>
+                  <p><span className="font-medium text-foreground">Agent:</span> {selectedEvent?.assignedTo?.user?.name || 'Unassigned'}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-semibold mb-2 flex items-center gap-2">
+                  <Ticket className="h-4 w-4" /> Ticket & Remarks
+                </h4>
+                <div className="text-sm space-y-3 text-muted-foreground border p-3 rounded-md h-full">
+                  <div>
+                    <span className="font-medium text-foreground block mb-1">Description:</span>
+                    <p className="bg-muted p-2 rounded text-xs">{selectedEvent?.description || 'No description'}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-foreground block mb-1">Remarks:</span>
+                    <p className="bg-muted p-2 rounded text-xs">{selectedEvent?.remarks || 'No remarks'}</p>
+                  </div>
+                  {selectedEvent?.ticket && (
+                    <div className="mt-4 pt-4 border-t">
+                      <p className="font-medium text-foreground mb-1">Linked Ticket:</p>
+                      <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                        Ticket #{selectedEvent.ticket.id} - {selectedEvent.ticket.status}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setViewOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

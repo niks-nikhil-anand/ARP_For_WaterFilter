@@ -36,24 +36,24 @@ const SidebarAdmin: React.FC<SidebarAdminProps> = ({ className }) => {
       title: "Overview",
       items: [
         { icon: LayoutDashboard, label: "Dashboard", href: "/admin" },
-        { icon: Bell, label: "Notifications", href: "/admin/notification" },
       ],
     },
     {
       title: "Events",
       items: [
-       { icon: Calendar, label: "Events", href: "/admin/event_details" },
-       { icon: Ticket, label: "Tickets", href: "/admin/tickets" },
-       
+        { icon: Bell, label: "Notifications", href: "/admin/notification" },
+        { icon: Calendar, label: "Events", href: "/admin/event_details" },
+        { icon: Ticket, label: "Tickets", href: "/admin/tickets" },
+
       ],
     },
     {
       title: "Management",
       items: [
-       { icon: Users, label: "Customers", href: "/admin/customer_details" },
+        { icon: Users, label: "Customers", href: "/admin/customer_details" },
         { icon: Store, label: "Shops", href: "/admin/shop_details" },
         { icon: Store, label: "Agents", href: "/admin/agent_details" },
-         { icon: Package, label: "Products", href: "/admin/product_details" },
+        { icon: Package, label: "Products", href: "/admin/product_details" },
         { icon: ShoppingCart, label: "Orders", href: "/admin/order_details" },
       ],
     },
@@ -91,18 +91,18 @@ const SidebarAdmin: React.FC<SidebarAdminProps> = ({ className }) => {
   const handleLogout = async () => {
     try {
 
-          await authActions.logout();
-          // Clear local storage
-          localStorage.clear();
-          sessionStorage.clear();
-          // Redirect to home page
-          router.push("/");
-          router.refresh();
-        } catch (error) {
-          console.error("Logout error:", error);
-          // Even if logout fails, redirect to home
-          router.push("/");
-        }
+      await authActions.logout();
+      // Clear local storage
+      localStorage.clear();
+      sessionStorage.clear();
+      // Redirect to home page
+      router.push("/");
+      router.refresh();
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Even if logout fails, redirect to home
+      router.push("/");
+    }
   };
 
   return (

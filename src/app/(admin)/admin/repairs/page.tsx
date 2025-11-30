@@ -67,6 +67,7 @@ const RepairsPage = () => {
     remarks: '',
     parts: '',
     pricePaid: '',
+    serviceDate: '',
   })
 
   useEffect(() => {
@@ -113,6 +114,7 @@ const RepairsPage = () => {
       remarks: addForm.remarks || undefined,
       parts: addForm.parts || undefined,
       pricePaid: addForm.pricePaid ? parseFloat(addForm.pricePaid) : undefined,
+      startDate: addForm.serviceDate ? new Date(addForm.serviceDate) : undefined,
     })
     setIsCreating(false)
 
@@ -128,6 +130,7 @@ const RepairsPage = () => {
         remarks: '',
         parts: '',
         pricePaid: '',
+        serviceDate: '',
       })
       loadData()
     } else {
@@ -370,6 +373,17 @@ const RepairsPage = () => {
                   disabled={isCreating}
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="serviceDate">Service Date</Label>
+              <Input
+                id="serviceDate"
+                type="date"
+                value={addForm.serviceDate}
+                onChange={(e) => setAddForm({ ...addForm, serviceDate: e.target.value })}
+                disabled={isCreating}
+              />
             </div>
           </div>
           <DialogFooter>

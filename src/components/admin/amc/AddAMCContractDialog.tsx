@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { Search, Check, X, User, Package, Wrench, Mail } from 'lucide-react'
+import { Search, Check, X, User, Package, Wrench, Mail, Calendar } from 'lucide-react'
 import { toast } from 'sonner'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -61,6 +61,8 @@ export const AddAMCContractDialog = ({
     paymentMethod: 'CASH' as 'CASH' | 'ONLINE' | 'UPI' | 'CARD' | 'NET_BANKING',
     remarks: '',
     noOfServices: '4',
+    firstServiceDate: '',
+    serviceDates: [] as string[]
   })
 
   // Filtered lists for searchable selects
@@ -106,6 +108,8 @@ export const AddAMCContractDialog = ({
       paymentMethod: 'CASH',
       remarks: '',
       noOfServices: '4',
+      firstServiceDate: '',
+      serviceDates: []
     })
     setFormStep(1)
     resetSearchStates()
@@ -131,7 +135,12 @@ export const AddAMCContractDialog = ({
         }
       }
 
-      setAddForm(prev => ({ ...prev, endDate: endDate.toISOString().split('T')[0] }))
+      setAddForm(prev => ({ 
+        ...prev, 
+        endDate: endDate.toISOString().split('T')[0],
+        // Default first service date to start date if not set
+        firstServiceDate: prev.firstServiceDate || prev.startDate 
+      }))
     }
   }, [addForm.startDate, addForm.duration])
 
@@ -163,6 +172,41 @@ export const AddAMCContractDialog = ({
     setAddForm(prev => ({ ...prev, paymentDue: paymentDue.toFixed(2) }))
   }, [addForm.finalPrice, addForm.paymentPaid])
 
+  // Auto-generate service dates when start date, duration, or noOfServices changes
+  useEffect(() => {
+    if (addForm.startDate && addForm.endDate && addForm.noOfServices) {
+      const startDate = new Date(addForm.startDate)
+      const endDate = new Date(addForm.endDate)
+      const count = parseInt(addForm.noOfServices)
+      const firstService = addForm.firstServiceDate ? new Date(addForm.firstServiceDate) : startDate
+      
+      if (count > 0) {
+        const totalDurationMs = endDate.getTime() - startDate.getTime()
+        const intervalMs = totalDurationMs / count
+        const dates: string[] = []
+
+        for (let i = 0; i < count; i++) {
+          // If i=0 (first service), use firstServiceDate. 
+          // Otherwise calculate based on interval from first service? 
+          // Or interval from start date? 
+          // Usually intervals are spaced out.
+          // Let's assume first service is the first one, and others follow by interval.
+          
+          let serviceDate: Date
+          if (i === 0) {
+            serviceDate = firstService
+          } else {
+            serviceDate = new Date(firstService.getTime() + intervalMs * i)
+          }
+          
+          // Ensure we don't go past end date? Or just let it be.
+          dates.push(serviceDate.toISOString().split('T')[0])
+        }
+        setAddForm(prev => ({ ...prev, serviceDates: dates }))
+      }
+    }
+  }, [addForm.startDate, addForm.endDate, addForm.noOfServices, addForm.firstServiceDate])
+
   const handleAddAMC = async () => {
     if (!addForm.productId || !addForm.customerId) {
       toast.error('Product and Customer are required')
@@ -188,6 +232,7 @@ export const AddAMCContractDialog = ({
       paymentMethod: addForm.paymentMethod,
       remarks: addForm.remarks || undefined,
       noOfServices: parseInt(addForm.noOfServices),
+      serviceDates: addForm.serviceDates.map(d => new Date(d))
     })
     setIsCreating(false)
 
@@ -229,10 +274,15 @@ export const AddAMCContractDialog = ({
             <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 z-10 bg-background ${formStep >= 2 ? 'border-primary text-primary font-bold' : 'border-muted text-muted-foreground'}`}>
               2
             </div>
+            <div className={`flex-1 h-1 mx-2 ${formStep >= 3 ? 'bg-primary' : 'bg-muted'}`} />
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 z-10 bg-background ${formStep >= 3 ? 'border-primary text-primary font-bold' : 'border-muted text-muted-foreground'}`}>
+              3
+            </div>
           </div>
           <div className="absolute w-full max-w-3xl flex justify-between mt-14 text-sm font-medium">
             <span className={formStep >= 1 ? 'text-primary' : 'text-muted-foreground'}>Selection</span>
-            <span className={formStep >= 2 ? 'text-primary' : 'text-muted-foreground'}>Contract Details</span>
+            <span className={formStep >= 2 ? 'text-primary' : 'text-muted-foreground'}>Financials</span>
+            <span className={formStep >= 3 ? 'text-primary' : 'text-muted-foreground'}>Schedule</span>
           </div>
         </div>
 
@@ -543,73 +593,13 @@ export const AddAMCContractDialog = ({
             </div>
           )}
 
-          {/* Step 2: Contract Details */}
+          {/* Step 2: Financials */}
           {formStep === 2 && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Column 1: Terms */}
-              <Card className="md:col-span-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Financials Card */}
+              <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Contract Terms</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="startDate">Start Date *</Label>
-                    <Input
-                      id="startDate"
-                      type="date"
-                      value={addForm.startDate}
-                      onChange={(e) => setAddForm({ ...addForm, startDate: e.target.value })}
-                      disabled={isCreating}
-                      className="h-11"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="duration">Duration *</Label>
-                    <Select
-                      value={addForm.duration}
-                      onValueChange={(value) => setAddForm({ ...addForm, duration: value })}
-                      disabled={isCreating}
-                    >
-                      <SelectTrigger className="w-full h-11">
-                        <SelectValue placeholder="Select duration" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="6 months">6 Months</SelectItem>
-                        <SelectItem value="1 year">1 Year</SelectItem>
-                        <SelectItem value="2 years">2 Years</SelectItem>
-                        <SelectItem value="3 years">3 Years</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="endDate">End Date (Auto)</Label>
-                    <Input
-                      id="endDate"
-                      type="date"
-                      value={addForm.endDate}
-                      disabled
-                      className="h-11 bg-muted"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="noOfServices">No. of Services *</Label>
-                    <Input
-                      id="noOfServices"
-                      type="number"
-                      value={addForm.noOfServices}
-                      onChange={(e) => setAddForm({ ...addForm, noOfServices: e.target.value })}
-                      disabled={isCreating}
-                      className="h-11"
-                      min="1"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Column 2: Financials */}
-              <Card className="md:col-span-1">
-                <CardHeader>
-                  <CardTitle className="text-lg">Financials</CardTitle>
+                  <CardTitle className="text-lg">Financial Details</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
@@ -672,8 +662,8 @@ export const AddAMCContractDialog = ({
                 </CardContent>
               </Card>
 
-              {/* Column 3: Payment & Remarks */}
-              <Card className="md:col-span-1">
+              {/* Payment & Remarks Card */}
+              <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Payment & Notes</CardTitle>
                 </CardHeader>
@@ -739,6 +729,121 @@ export const AddAMCContractDialog = ({
               </Card>
             </div>
           )}
+
+          {/* Step 3: Schedule */}
+          {formStep === 3 && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Contract Terms */}
+              <Card className="md:col-span-1">
+                <CardHeader>
+                  <CardTitle className="text-lg">Contract Duration</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="startDate">Start Date *</Label>
+                    <Input
+                      id="startDate"
+                      type="date"
+                      value={addForm.startDate}
+                      onChange={(e) => setAddForm({ ...addForm, startDate: e.target.value })}
+                      disabled={isCreating}
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="duration">Duration *</Label>
+                    <Select
+                      value={addForm.duration}
+                      onValueChange={(value) => setAddForm({ ...addForm, duration: value })}
+                      disabled={isCreating}
+                    >
+                      <SelectTrigger className="w-full h-11">
+                        <SelectValue placeholder="Select duration" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="6 months">6 Months</SelectItem>
+                        <SelectItem value="1 year">1 Year</SelectItem>
+                        <SelectItem value="2 years">2 Years</SelectItem>
+                        <SelectItem value="3 years">3 Years</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="firstServiceDate">First Service Date</Label>
+                    <Input
+                      id="firstServiceDate"
+                      type="date"
+                      value={addForm.firstServiceDate}
+                      onChange={(e) => setAddForm({ ...addForm, firstServiceDate: e.target.value })}
+                      disabled={isCreating}
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="endDate">End Date (Auto)</Label>
+                    <Input
+                      id="endDate"
+                      type="date"
+                      value={addForm.endDate}
+                      disabled
+                      className="h-11 bg-muted"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="noOfServices">No. of Services *</Label>
+                    <Input
+                      id="noOfServices"
+                      type="number"
+                      value={addForm.noOfServices}
+                      onChange={(e) => setAddForm({ ...addForm, noOfServices: e.target.value })}
+                      disabled={isCreating}
+                      className="h-11"
+                      min="1"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Service Schedule */}
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle className="text-lg">Service Schedule</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      Review and adjust the scheduled dates for each service.
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[400px] overflow-y-auto pr-2">
+                      {addForm.serviceDates.map((date, index) => (
+                        <div key={index} className="flex items-center gap-3 p-3 border rounded-lg bg-muted/20">
+                          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                            {index + 1}
+                          </div>
+                          <div className="flex-1 space-y-1">
+                            <Label htmlFor={`service-${index}`} className="text-xs font-medium text-muted-foreground">
+                              Service #{index + 1} - Scheduled Date
+                            </Label>
+                            <Input
+                              id={`service-${index}`}
+                              type="date"
+                              value={date}
+                              onChange={(e) => {
+                                const newDates = [...addForm.serviceDates]
+                                newDates[index] = e.target.value
+                                setAddForm({ ...addForm, serviceDates: newDates })
+                              }}
+                              className="h-9"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
 
         <DialogFooter className="flex justify-between">
@@ -755,23 +860,30 @@ export const AddAMCContractDialog = ({
             </Button>
           </div>
           <div className="flex gap-2">
-            {formStep === 2 && (
+            {formStep > 1 && (
               <Button
                 variant="outline"
-                onClick={() => setFormStep(1)}
+                onClick={() => setFormStep(formStep - 1)}
                 disabled={isCreating}
               >
                 Back
               </Button>
             )}
-            {formStep === 1 ? (
+            {formStep < 3 ? (
               <Button
                 onClick={() => {
-                  if (!addForm.productId || !addForm.customerId) {
-                    toast.error('Product and Customer are required')
-                    return
+                  if (formStep === 1) {
+                    if (!addForm.productId || !addForm.customerId) {
+                      toast.error('Product and Customer are required')
+                      return
+                    }
+                  } else if (formStep === 2) {
+                    if (!addForm.price || !addForm.paymentPaid) {
+                      toast.error('Price and Payment Paid are required')
+                      return
+                    }
                   }
-                  setFormStep(2)
+                  setFormStep(formStep + 1)
                 }}
                 disabled={isCreating}
               >

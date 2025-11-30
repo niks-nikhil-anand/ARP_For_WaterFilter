@@ -160,6 +160,8 @@ model Shop {
   notifications Notification[]
   tickets       Ticket[]
   amcs          AMC[]          @relation("ShopAMCs")
+  serviceEvents ServiceEvent[]
+  remarks       Remark[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -178,6 +180,7 @@ model Agent {
   tasks        ServiceEvent[]
   tickets      Ticket[]
   amcContracts AMCContract[]
+  remarks      Remark[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -426,6 +429,10 @@ model Ticket {
   source   String? @default("WEBSITE") // WEBSITE, PHONE, EMAIL, etc.
   metadata Json? // Additional flexible data
 
+  // Linked Service Event
+  serviceEvent ServiceEvent?
+  remarksList  Remark[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -434,6 +441,13 @@ model Ticket {
   @@index([agentId])
   @@index([shopId])
   @@index([status, priority])
+}
+
+enum ServiceEventStatus {
+  PENDING
+  SCHEDULED
+  COMPLETED
+  CANCELLED
 }
 
 // 🎯 UNIFIED MODEL FOR WARRANTY, AMC, AND REPAIR
@@ -449,20 +463,38 @@ model ServiceEvent {
   order      Order?  @relation(fields: [orderId], references: [id], onDelete: Cascade)
   orderId    Int?
 
-  // Contract Details
-  startDate     DateTime?
-  endDate       DateTime?
-  pricePaid     Decimal?
+  
   amcContract   AMCContract? @relation(fields: [amcContractId], references: [id], onDelete: SetNull)
   amcContractId Int?
 
   // Repair/Service Details
-  remarks     String?
-  description String?
-  parts       String?
-  feedback    String?
-  assignedTo  Agent?  @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  status           ServiceEventStatus @default(PENDING)
+  actionDate       DateTime?          // Date when the action is performed/scheduled
+  scheduledDates   DateTime[]         // History/List of scheduled dates
+  scheduledRemarks String?            // Remarks about scheduling
+  amcEventType     String?            // Specific type for AMC events
+  repairEventType  String?            // Specific type for Repair events
+  remarks          String?
+  description      String?
+  feedback        String?
+  
+  // Relations
+  assignedTo  Agent?             @relation(fields: [agentId], references: [id], onDelete: SetNull)
   agentId     Int?
+  shop        Shop?              @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  shopId      Int?
+  
+  // Linked Entities
+  ticket      Ticket?            @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+  ticketId    Int?               @unique
+  complaint   Complaint?         @relation(fields: [complaintId], references: [id], onDelete: SetNull)
+  complaintId Int?
+
+  // Self-relation for linked events (e.g., follow-up repairs)
+  relatedEvent   ServiceEvent?  @relation("RelatedEvents", fields: [relatedEventId], references: [id], onDelete: SetNull)
+  relatedEventId Int?
+  relatedEvents  ServiceEvent[] @relation("RelatedEvents")
+  remarksList    Remark[]
 
   // Internal Notes/Data
   details   String?
@@ -472,9 +504,11 @@ model ServiceEvent {
   @@index([type])
   @@index([customerId])
   @@index([agentId])
+  @@index([shopId])
   @@index([productId])
   @@index([orderId])
   @@index([type, customerId])
+  @@index([status])
 }
 
 model Complaint {
@@ -487,11 +521,45 @@ model Complaint {
   preferredDate  DateTime?
   preferredTime  String?
   address        String
-  productType    String?
-  additionalInfo String?
+  description    String?
+  
+  serviceEvents  ServiceEvent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([userId])
+}
+
+enum RemarkType {
+  RESOLVED
+  RESCHEDULED
+  FOLLOW_UP
+  GENERAL
+}
+
+model Remark {
+  id        Int        @id @default(autoincrement())
+  content   String
+  type      RemarkType @default(GENERAL)
+  
+  // Relations (polymorphic-like but explicit)
+  shop      Shop?      @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  shopId    Int?
+  agent     Agent?     @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  agentId   Int?
+  
+  serviceEvent   ServiceEvent? @relation(fields: [serviceEventId], references: [id], onDelete: Cascade)
+  serviceEventId Int?
+  
+  ticket    Ticket?    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId  Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([shopId])
+  @@index([agentId])
+  @@index([serviceEventId])
+  @@index([ticketId])
 }

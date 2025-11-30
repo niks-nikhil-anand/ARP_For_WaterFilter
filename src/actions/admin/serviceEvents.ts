@@ -48,7 +48,6 @@ export async function getServiceEvents() {
     // Serialize Decimal fields
     const serializedEvents = events.map(event => ({
       ...event,
-      pricePaid: event.pricePaid ? Number(event.pricePaid) : null,
       amcContract: event.amcContract ? {
         ...event.amcContract,
         price: Number(event.amcContract.price)
@@ -63,34 +62,32 @@ export async function getServiceEvents() {
 }
 
 export async function createServiceEvent(data: {
-  type: 'REPAIR' | 'AMC' | 'WARRANTY'
+  type: ServiceEventType
   productId: number
   customerId?: number
-  orderId?: number
+  agentId?: number
   description?: string
   remarks?: string
-  parts?: string
-  agentId?: number
-  amcContractId?: number
-  startDate?: Date
-  endDate?: Date
-  pricePaid?: number
+  shopId?: number
+  actionDate?: Date
+  repairEventType?: string
+  startDate?: Date // Kept for scheduledDates logic
 }) {
   try {
     const event = await prisma.serviceEvent.create({
       data: {
-        type: data.type as ServiceEventType,
+        type: data.type,
         productId: data.productId,
         customerId: data.customerId,
-        orderId: data.orderId,
+        agentId: data.agentId,
         description: data.description,
         remarks: data.remarks,
-        parts: data.parts,
-        agentId: data.agentId,
-        amcContractId: data.amcContractId,
-        startDate: data.startDate,
-        endDate: data.endDate,
-        pricePaid: data.pricePaid,
+        // Removed deleted fields: parts, pricePaid, startDate, endDate, orderId, amcContractId
+        status: data.type === 'REPAIR' ? 'PENDING' : 'SCHEDULED', // Repairs start as PENDING until confirmed/assigned
+        shopId: data.shopId,
+        actionDate: data.actionDate || data.startDate,
+        scheduledDates: data.startDate ? [data.startDate] : [],
+        repairEventType: data.repairEventType,
       },
       include: {
         product: {
@@ -106,9 +103,36 @@ export async function createServiceEvent(data: {
       }
     })
 
+    // If it's a repair, we might want to auto-create a ticket or wait.
+    // For now, let's create a Ticket if it's a REPAIR to track it in the ticketing system.
+    if (data.type === 'REPAIR' && data.customerId) {
+      // Fetch customer details to populate ticket
+      const customer = await prisma.user.findUnique({
+        where: { id: data.customerId },
+        select: { name: true, email: true, mobile: true, addresses: { take: 1 } }
+      })
+
+      if (customer) {
+        await prisma.ticket.create({
+          data: {
+            customerName: customer.name,
+            customerEmail: customer.email,
+            customerPhone: customer.mobile || '',
+            customerAddress: customer.addresses[0]?.locality || '',
+            serviceType: 'Repair',
+            description: data.description || 'Repair Request',
+            status: 'OPEN',
+            priority: 'MEDIUM',
+            serviceEvent: {
+              connect: { id: event.id }
+            }
+          }
+        })
+      }
+    }
+
     const serializedEvent = {
       ...event,
-      pricePaid: event.pricePaid ? Number(event.pricePaid) : null
     }
 
     return { success: true, data: serializedEvent }
@@ -121,7 +145,6 @@ export async function createServiceEvent(data: {
 export async function updateServiceEvent(id: number, data: {
   description?: string
   remarks?: string
-  parts?: string
   feedback?: string
   agentId?: number
 }) {
@@ -131,7 +154,6 @@ export async function updateServiceEvent(id: number, data: {
       data: {
         description: data.description,
         remarks: data.remarks,
-        parts: data.parts,
         feedback: data.feedback,
         agentId: data.agentId,
       }
@@ -139,7 +161,6 @@ export async function updateServiceEvent(id: number, data: {
 
     const serializedEvent = {
       ...event,
-      pricePaid: event.pricePaid ? Number(event.pricePaid) : null
     }
 
     return { success: true, data: serializedEvent }
@@ -326,6 +347,7 @@ export async function createAMCContract(data: {
   paymentMethod?: 'CASH' | 'ONLINE' | 'UPI' | 'CARD' | 'NET_BANKING'
   remarks?: string
   noOfServices: number
+  serviceDates?: Date[]
 }) {
   try {
     // Get customer details
@@ -445,6 +467,48 @@ export async function createAMCContract(data: {
       }
     })
 
+    // Generate Service Events for the AMC
+    const serviceEvents = []
+    
+    // Use provided service dates or fallback to auto-calculation (though frontend should provide them)
+    const datesToUse = data.serviceDates && data.serviceDates.length === data.noOfServices 
+      ? data.serviceDates 
+      : []
+
+    if (datesToUse.length === 0) {
+      // Fallback calculation if no dates provided
+      const totalDurationMs = endDate.getTime() - startDate.getTime()
+      const intervalMs = totalDurationMs / data.noOfServices
+      for (let i = 0; i < data.noOfServices; i++) {
+        datesToUse.push(new Date(startDate.getTime() + intervalMs * (i + 1)))
+      }
+    }
+
+    for (let i = 0; i < data.noOfServices; i++) {
+      const serviceDate = new Date(datesToUse[i])
+      
+      // Create Service Event
+      const event = await prisma.serviceEvent.create({
+        data: {
+          type: 'AMC',
+          productId: data.productId,
+          customerId: data.customerId,
+          orderId: order.id,
+          // Removed deleted fields: startDate, pricePaid, parts
+          amcContractId: contract.id,
+          status: 'PENDING',
+          description: `AMC Service ${i + 1} of ${data.noOfServices}`,
+          remarks: 'Scheduled via AMC Contract',
+          agentId: data.agentId, // Initially assign to AMC agent
+          shopId: shop.id,
+          actionDate: serviceDate, // Set action date same as start date for AMC
+          scheduledDates: [serviceDate], // Initialize with the first scheduled date
+          amcEventType: 'REGULAR_SERVICE', // Default type
+        }
+      })
+      serviceEvents.push(event)
+    }
+
     // Generate unique AMC ID
     const amcUniqueId = `AMC-${product.id}-${customer.id}-${Date.now()}`
 
@@ -495,7 +559,7 @@ export async function createAMCContract(data: {
       amcContract: serializedContract
     }
 
-    return { success: true, data: { contract: serializedContract, amc: serializedAmc, order: serializedOrder } }
+    return { success: true, data: { contract: serializedContract, amc: serializedAmc, order: serializedOrder, serviceEvents } }
   } catch (error: any) {
     console.error('Create AMC contract error:', error)
     return { success: false, error: error.message }

@@ -41,9 +41,12 @@ const Navbar = () => {
               </Link>
             ))}
             <ThemeToggle />
+            <Link href="/login">
             <Button className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600">
               Login
             </Button>
+            </Link>
+            
           </div>
 
           {/* Mobile Menu Button & Theme Toggle */}

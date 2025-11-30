@@ -298,8 +298,10 @@ model AMC {
   amcUniqueId String @unique
 
   // Relations
-  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
-  productId Int
+  // Relations
+  products   Product[]
+  // Removed single productId
+
 
   // Customer who purchased the AMC
   user   User @relation(fields: [userId], references: [id], onDelete: Restrict)

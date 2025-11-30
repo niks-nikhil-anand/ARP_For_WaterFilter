@@ -275,7 +275,7 @@ export async function getAllAMCs() {
   try {
     const amcs = await prisma.aMC.findMany({
       include: {
-        product: {
+        products: {
           select: {
             id: true,
             productName: true,
@@ -345,7 +345,7 @@ export async function getAllAMCs() {
 }
 
 export async function createAMCContract(data: {
-  productId: number
+  productIds: number[]
   customerId: number
   agentId?: number
   startDate: Date
@@ -369,13 +369,13 @@ export async function createAMCContract(data: {
       return { success: false, error: 'Customer not found' }
     }
 
-    // Get product details
-    const product = await prisma.product.findUnique({
-      where: { id: data.productId }
+    // Get product details (verify all exist)
+    const products = await prisma.product.findMany({
+      where: { id: { in: data.productIds } }
     })
 
-    if (!product) {
-      return { success: false, error: 'Product not found' }
+    if (products.length !== data.productIds.length) {
+      return { success: false, error: 'One or more products not found' }
     }
 
     // Calculate final price based on discount
@@ -433,7 +433,7 @@ export async function createAMCContract(data: {
     // Create Order for the AMC Contract
     const order = await prisma.order.create({
       data: {
-        productId: data.productId,
+        productId: data.productIds[0], // Link order to the first product as primary
         customerName: customer.name,
         customerEmail: customer.email || '',
         customerPhone: customer.mobile || '',
@@ -447,27 +447,74 @@ export async function createAMCContract(data: {
     })
 
     // Find or Create AMC
-    // We try to find an existing AMC for this product and customer
+    // We try to find an existing AMC for these products and customer
+    // For simplicity, we create a new AMC or find one that matches the user. 
+    // Since an AMC can have multiple products, matching exactly is complex.
+    // We will assume if the user has an active AMC for ANY of these products, we might want to append?
+    // But the prompt implies creating a NEW contract.
+    // Let's check if there is an AMC for this user that contains these products?
+    // For now, let's create/find based on User and assume one main AMC per user? 
+    // Or better: Check if there is an AMC for this user.
+    
+    // Strategy: Find an AMC for this user. If it exists, add contract. If not, create.
+    // But wait, different products might have different AMCs.
+    // If the user selects Product A and B, and they already have an AMC for A, do we merge?
+    // Let's assume we create a new AMC entry if we don't find one that covers these products.
+    // Actually, to support "One AMC has multiple contracts", we should find the AMC that covers these products.
+    
+    // Simplified logic: Find an AMC for this user that includes at least one of the products?
+    // Or just create a new AMC wrapper for this specific contract group?
+    // If we want "One AMC has multiple contracts", usually the AMC entity IS the subscription.
+    // Let's try to find an AMC for this user.
     let amc = await prisma.aMC.findFirst({
       where: {
-        productId: data.productId,
-        userId: data.customerId
+        userId: data.customerId,
+        products: {
+          some: {
+            id: { in: data.productIds }
+          }
+        }
+      },
+      include: {
+        products: true
       }
     })
 
     if (!amc) {
       // Generate unique AMC ID
-      const amcUniqueId = `AMC-${product.id}-${customer.id}-${Date.now()}`
+      const amcUniqueId = `AMC-${data.productIds.join('-')}-${customer.id}-${Date.now()}`
       
       amc = await prisma.aMC.create({
         data: {
           amcUniqueId,
-          productId: data.productId,
+          products: {
+            connect: data.productIds.map(id => ({ id }))
+          },
           userId: data.customerId,
           shopId: shop.id,
           status: 'ACTIVE'
+        },
+        include: {
+          products: true
         }
       })
+    } else {
+      // If AMC exists, ensure all selected products are connected
+      // This handles the case where we add a new product to an existing AMC via a new contract?
+      // Or maybe we just ensure they are linked.
+      const existingProductIds = amc.products.map(p => p.id)
+      const newProductIds = data.productIds.filter(id => !existingProductIds.includes(id))
+      
+      if (newProductIds.length > 0) {
+        await prisma.aMC.update({
+          where: { id: amc.id },
+          data: {
+            products: {
+              connect: newProductIds.map(id => ({ id }))
+            }
+          }
+        })
+      }
     }
 
     // Create AMC Contract
@@ -528,7 +575,11 @@ export async function createAMCContract(data: {
       const event = await prisma.serviceEvent.create({
         data: {
           type: 'AMC',
-          productId: data.productId,
+          productId: data.productIds[0], // Assign to first product for now, or create multiple events?
+          // Ideally we should create service events for EACH product? 
+          // Or one event that covers all? ServiceEvent has single productId.
+          // If AMC covers multiple products, usually the service visit checks all of them.
+          // So we link to the primary product (first one) and maybe mention others in description.
           customerId: data.customerId,
           orderId: order.id,
           amcContractId: contract.id,

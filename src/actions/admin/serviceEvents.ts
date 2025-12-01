@@ -142,6 +142,13 @@ export async function getServiceEvents(
                   state: true,
                   pincode: true
                 }
+              },
+              warranties: { // Added warranties
+                select: {
+                  productId: true,
+                  endDate: true,
+                  warrantyType: true
+                }
               }
             }
           },

@@ -358,19 +358,31 @@ export default function EventDetailsPage() {
                       <TableCell>
                         <div className="flex flex-col gap-1">
                           <span className="font-medium">{event.product?.productName}</span>
-                          {event.order?.warranties?.some((w: any) => new Date(w.endDate) > new Date()) ? (
-                            <Badge variant="outline" className="w-fit bg-green-50 text-green-700 border-green-200 text-[10px] px-1 py-0 h-5">
-                              Warranty Available
-                            </Badge>
-                          ) : event.order?.warranties?.length > 0 ? (
-                            <Badge variant="outline" className="w-fit bg-red-50 text-red-700 border-red-200 text-[10px] px-1 py-0 h-5">
-                              Warranty Expired
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="w-fit bg-gray-50 text-gray-500 border-gray-200 text-[10px] px-1 py-0 h-5">
-                              No Warranty
-                            </Badge>
-                          )}
+                          {(() => {
+                            const productWarranties = event.customer?.warranties?.filter((w: any) => w.productId === event.product?.id) || []
+                            const hasActiveWarranty = productWarranties.some((w: any) => new Date(w.endDate) > new Date())
+                            const hasExpiredWarranty = productWarranties.length > 0 && !hasActiveWarranty
+
+                            if (hasActiveWarranty) {
+                              return (
+                                <Badge variant="outline" className="w-fit bg-green-50 text-green-700 border-green-200 text-[10px] px-1 py-0 h-5">
+                                  Warranty Available
+                                </Badge>
+                              )
+                            } else if (hasExpiredWarranty) {
+                              return (
+                                <Badge variant="outline" className="w-fit bg-red-50 text-red-700 border-red-200 text-[10px] px-1 py-0 h-5">
+                                  Warranty Expired
+                                </Badge>
+                              )
+                            } else {
+                              return (
+                                <Badge variant="outline" className="w-fit bg-gray-50 text-gray-500 border-gray-200 text-[10px] px-1 py-0 h-5">
+                                  No Warranty
+                                </Badge>
+                              )
+                            }
+                          })()}
                         </div>
                       </TableCell>
                       <TableCell>

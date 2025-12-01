@@ -4,11 +4,15 @@ import { prisma } from '@/lib/prisma'
 import { ServiceEventType } from '@/generated/prisma'
 
 export async function getServiceEvents(
-  filter?: 'today' | 'yesterday' | 'upcoming' | 'backlog' | 'all',
+  filter?: 'today' | 'yesterday' | 'upcoming' | 'backlog' | 'all' | 'custom',
   month?: string,
   status?: string,
   page?: number,
-  limit?: number
+  limit?: number,
+  customStartDate?: Date,
+  customEndDate?: Date,
+  sortBy?: string,
+  sortOrder?: 'asc' | 'desc'
 ) {
   try {
     let dateFilter: any = {}
@@ -66,6 +70,17 @@ export async function getServiceEvents(
         },
         status: {
           notIn: ['COMPLETED', 'CANCELLED']
+        }
+      }
+    } else if (filter === 'custom' && customStartDate && customEndDate) {
+      // Ensure we cover the full end date
+      const end = new Date(customEndDate)
+      end.setHours(23, 59, 59, 999)
+      
+      dateFilter = {
+        actionDate: {
+          gte: customStartDate,
+          lte: end
         }
       }
     }
@@ -168,8 +183,10 @@ export async function getServiceEvents(
             }
           }
         },
-        orderBy: {
-          actionDate: 'asc' // Sort by action date for schedule view
+        orderBy: sortBy ? {
+          [sortBy]: sortOrder || 'asc'
+        } : {
+          actionDate: 'asc' // Default sort
         },
         skip: page ? skip : undefined,
         take: page ? take : undefined,

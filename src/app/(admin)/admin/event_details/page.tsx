@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -35,10 +35,14 @@ export default function EventDetailsPage() {
   const [events, setEvents] = useState<any[]>([])
   const [agents, setAgents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<'today' | 'yesterday' | 'upcoming' | 'backlog' | 'all'>('today')
+  const [filter, setFilter] = useState<'today' | 'yesterday' | 'upcoming' | 'backlog' | 'all' | 'custom'>('today')
   const [selectedMonth, setSelectedMonth] = useState<string>('all')
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL')
   const [search, setSearch] = useState('')
+  const [customStartDate, setCustomStartDate] = useState<string>('')
+  const [customEndDate, setCustomEndDate] = useState<string>('')
+  const [sortBy, setSortBy] = useState<string>('actionDate')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1)
@@ -66,10 +70,20 @@ export default function EventDetailsPage() {
   // Edit Dialog State
   const [editOpen, setEditOpen] = useState(false)
 
-  const fetchEvents = async () => {
+  const fetchEvents = useCallback(async () => {
     setLoading(true)
     const [eventsResult, agentsResult] = await Promise.all([
-      getServiceEvents(filter, selectedMonth, selectedStatus, currentPage, itemsPerPage),
+      getServiceEvents(
+        filter,
+        selectedMonth,
+        selectedStatus,
+        currentPage,
+        itemsPerPage,
+        customStartDate ? new Date(customStartDate) : undefined,
+        customEndDate ? new Date(customEndDate) : undefined,
+        sortBy,
+        sortOrder
+      ),
       getAgents()
     ])
 
@@ -87,16 +101,16 @@ export default function EventDetailsPage() {
     }
 
     setLoading(false)
-  }
+  }, [filter, selectedMonth, selectedStatus, currentPage, itemsPerPage, customStartDate, customEndDate, sortBy, sortOrder])
 
   useEffect(() => {
     fetchEvents()
-  }, [filter, selectedMonth, selectedStatus, currentPage])
+  }, [fetchEvents])
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [filter, selectedMonth, selectedStatus])
+  }, [filter, selectedMonth, selectedStatus, customStartDate, customEndDate, sortBy, sortOrder])
 
   const handleTicketClick = (event: any) => {
     setSelectedEvent(event)
@@ -166,6 +180,15 @@ export default function EventDetailsPage() {
     }
   }
 
+  const handleSort = (column: string) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(column)
+      setSortOrder('asc')
+    }
+  }
+
   // Client-side search filtering (since backend search isn't implemented yet for all fields)
   // Note: For large datasets, search should be moved to backend
   const filteredEvents = events.filter(event =>
@@ -198,20 +221,57 @@ export default function EventDetailsPage() {
 
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex flex-col md:flex-row justify-between gap-4">
-            <div className="flex flex-wrap gap-2 items-center w-full md:w-auto">
-              <Tabs value={filter} onValueChange={(v: any) => setFilter(v)} className="w-full md:w-auto">
-                <TabsList>
-                  <TabsTrigger value="today">Today</TabsTrigger>
-                  <TabsTrigger value="yesterday">Yesterday</TabsTrigger>
-                  <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
-                  <TabsTrigger value="backlog">Backlog</TabsTrigger>
-                  <TabsTrigger value="all">All</TabsTrigger>
-                </TabsList>
-              </Tabs>
+          <div className="flex flex-col space-y-4">
+            {/* Top Row: Primary Filters (Date Tabs & Custom Range) */}
+            <div className="flex flex-col md:flex-row justify-between gap-4 items-start md:items-center">
+              <div className="flex flex-wrap gap-2 items-center">
+                <Tabs value={filter} onValueChange={(v: any) => setFilter(v)} className="w-full md:w-auto">
+                  <TabsList>
+                    <TabsTrigger value="today">Today</TabsTrigger>
+                    <TabsTrigger value="yesterday">Yesterday</TabsTrigger>
+                    <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
+                    <TabsTrigger value="backlog">Backlog</TabsTrigger>
+                    <TabsTrigger value="all">All</TabsTrigger>
+                    <TabsTrigger value="custom">Custom</TabsTrigger>
+                  </TabsList>
+                </Tabs>
 
+                {filter === 'custom' && (
+                  <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-5 duration-300">
+                    <Input
+                      type="date"
+                      value={customStartDate}
+                      onChange={(e) => setCustomStartDate(e.target.value)}
+                      className="w-[140px]"
+                    />
+                    <span className="text-muted-foreground">-</span>
+                    <Input
+                      type="date"
+                      value={customEndDate}
+                      onChange={(e) => setCustomEndDate(e.target.value)}
+                      className="w-[140px]"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Search aligned to right on top row for easy access */}
+              <div className="relative w-full md:w-64">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search events..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+            </div>
+
+            {/* Bottom Row: Secondary Filters (Month & Status) */}
+            <div className="flex flex-wrap gap-2 items-center pt-2 border-t">
+              <span className="text-sm text-muted-foreground mr-2">Filters:</span>
               <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                <SelectTrigger className="w-[140px]">
+                <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Select Month" />
                 </SelectTrigger>
                 <SelectContent>
@@ -225,7 +285,7 @@ export default function EventDetailsPage() {
               </Select>
 
               <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger className="w-[140px]">
+                <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -236,16 +296,6 @@ export default function EventDetailsPage() {
                   <SelectItem value="CANCELLED">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-
-            <div className="relative w-full md:w-64">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search events..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-8"
-              />
             </div>
           </div>
         </CardHeader>
@@ -258,10 +308,25 @@ export default function EventDetailsPage() {
                   <TableHead>Type</TableHead>
                   <TableHead>Product Details</TableHead>
                   <TableHead>Customer</TableHead>
-                  <TableHead>Action Date</TableHead>
-                  <TableHead>Created At</TableHead>
+                  <TableHead
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('actionDate')}
+                  >
+                    Action Date {sortBy === 'actionDate' && (sortOrder === 'asc' ? '↑' : '↓')}
+                  </TableHead>
+                  <TableHead
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('createdAt')}
+                  >
+                    Created At {sortBy === 'createdAt' && (sortOrder === 'asc' ? '↑' : '↓')}
+                  </TableHead>
                   <TableHead>Agent</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('status')}
+                  >
+                    Status {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
+                  </TableHead>
                   <TableHead>Ticket</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>

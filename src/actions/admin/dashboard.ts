@@ -20,9 +20,6 @@ export async function getDashboardStats() {
       totalServiceEvents,
       pendingTickets,
       activeWarranties,
-      recentOrders,
-      recentTickets,
-      recentWarranties,
       monthlyOrderStats,
       monthlyAMCStats,
     ] = await Promise.all([
@@ -54,21 +51,7 @@ export async function getDashboardStats() {
         where: { isActive: true },
       }),
 
-      // Recent Activity
-      prisma.order.findMany({
-        take: 5,
-        orderBy: { createdAt: 'desc' },
-        include: { createdBy: { select: { name: true } } },
-      }),
-      prisma.ticket.findMany({
-        take: 5,
-        orderBy: { createdAt: 'desc' },
-      }),
-      prisma.warranty.findMany({
-        take: 5,
-        orderBy: { createdAt: 'desc' },
-        include: { user: { select: { name: true } } },
-      }),
+
 
       // Graph Data - Orders
       prisma.order.groupBy({
@@ -129,35 +112,7 @@ export async function getDashboardStats() {
     const graphData = Array.from(graphDataMap.values()).reverse();
 
 
-    // Combine and format recent activities
-    const activities = [
-      ...recentOrders.map((order) => ({
-        id: `order-${order.id}`,
-        type: 'order',
-        message: `New order placed for ${order.customerName}`,
-        customer: order.customerName,
-        time: order.createdAt,
-        rawTime: order.createdAt,
-      })),
-      ...recentTickets.map((ticket) => ({
-        id: `ticket-${ticket.id}`,
-        type: 'ticket',
-        message: `New ticket: ${ticket.serviceType}`,
-        customer: ticket.customerName,
-        time: ticket.createdAt,
-        rawTime: ticket.createdAt,
-      })),
-      ...recentWarranties.map((warranty) => ({
-        id: `warranty-${warranty.id}`,
-        type: 'warranty',
-        message: `Warranty active for ${warranty.durationMonths} months`,
-        customer: warranty.user?.name || 'Unknown',
-        time: warranty.createdAt,
-        rawTime: warranty.createdAt,
-      })),
-    ]
-      .sort((a, b) => b.rawTime.getTime() - a.rawTime.getTime())
-      .slice(0, 5);
+
 
     return {
       stats: {
@@ -175,7 +130,6 @@ export async function getDashboardStats() {
         activeWarranties,
       },
       graphData,
-      recentActivities: activities,
     };
   } catch (error) {
     console.error('Error fetching dashboard stats:', error);

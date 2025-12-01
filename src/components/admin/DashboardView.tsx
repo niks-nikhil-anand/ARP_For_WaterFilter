@@ -29,19 +29,11 @@ interface DashboardViewProps {
         activeWarranties: number;
     };
     graphData: { name: string; revenue: number; orders: number }[];
-    recentActivities: {
-        id: string;
-        type: string;
-        message: string;
-        customer: string;
-        time: Date;
-        rawTime: Date;
-    }[];
 }
 
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
 
-const DashboardView: React.FC<DashboardViewProps> = ({ stats, graphData, recentActivities }) => {
+const DashboardView: React.FC<DashboardViewProps> = ({ stats, graphData }) => {
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-IN', {
@@ -49,24 +41,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, graphData, recentA
             currency: 'INR',
             maximumFractionDigits: 0,
         }).format(amount);
-    };
-
-    const getActivityIcon = (type: string) => {
-        switch (type) {
-            case 'order': return ShoppingCart;
-            case 'ticket': return Wrench;
-            case 'warranty': return ShieldCheck;
-            default: return CheckCircle;
-        }
-    };
-
-    const getActivityColor = (type: string) => {
-        switch (type) {
-            case 'order': return 'text-green-600';
-            case 'ticket': return 'text-blue-600';
-            case 'warranty': return 'text-yellow-600';
-            default: return 'text-gray-600';
-        }
     };
 
     return (
@@ -214,9 +188,9 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, graphData, recentA
 
 
                     {/* Charts Section */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 gap-6">
                         {/* Revenue & Orders Trend */}
-                        <Card className="col-span-1 lg:col-span-2">
+                        <Card className="col-span-1">
                             <CardHeader>
                                 <CardTitle>Revenue & Orders Trend</CardTitle>
                                 <CardDescription>Monthly revenue and order statistics (Last 6 Months)</CardDescription>
@@ -266,39 +240,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, graphData, recentA
                                         />
                                     </AreaChart>
                                 </ResponsiveContainer>
-                            </CardContent>
-                        </Card>
-
-                        {/* Recent Activities */}
-                        <Card className="col-span-1">
-                            <CardHeader>
-                                <CardTitle>Recent Activities</CardTitle>
-                                <CardDescription>Latest updates</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-4">
-                                    {recentActivities.map((activity) => {
-                                        const Icon = getActivityIcon(activity.type);
-                                        const colorClass = getActivityColor(activity.type);
-                                        return (
-                                            <div
-                                                key={activity.id}
-                                                className="flex items-start gap-4 p-4 rounded-lg border hover:bg-muted/50 transition-colors"
-                                            >
-                                                <div className={`p-2 rounded-full bg-muted ${colorClass}`}>
-                                                    <Icon className="h-4 w-4" />
-                                                </div>
-                                                <div className="flex-1 space-y-1">
-                                                    <p className="text-sm font-medium leading-none">{activity.message}</p>
-                                                    <p className="text-sm text-muted-foreground">{activity.customer}</p>
-                                                </div>
-                                                <div className="text-xs text-muted-foreground">
-                                                    {new Date(activity.time).toLocaleDateString()}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
                             </CardContent>
                         </Card>
                     </div>

@@ -7,7 +7,6 @@ import { Moon, Sun, Menu, User, Settings, LogOut, ChevronDown } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
-import NotificationDropdown from "./NotificationDropdown";
 import { authActions } from "@/actions";
 
 interface NavbarAdminProps {
@@ -155,9 +154,6 @@ const NavbarAdmin: React.FC<NavbarAdminProps> = ({
       </div>
 
       <div className="flex items-center space-x-3">
-        {/* Notification Dropdown */}
-        <NotificationDropdown />
-
         {/* Theme Toggle Button */}
         <Button
           variant="ghost"
@@ -206,7 +202,7 @@ const NavbarAdmin: React.FC<NavbarAdminProps> = ({
                   {userData?.email || ""}
                 </p>
               </div>
-              
+
               <div className="py-1">
                 <button
                   onClick={handleProfile}
@@ -215,7 +211,7 @@ const NavbarAdmin: React.FC<NavbarAdminProps> = ({
                   <User className="h-4 w-4 mr-3" />
                   View Profile
                 </button>
-                
+
                 <button
                   onClick={handleSettings}
                   className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"

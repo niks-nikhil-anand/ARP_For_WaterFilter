@@ -36,21 +36,34 @@ import {
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { CalendarIcon, Check, ChevronsUpDown, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { getAllUsers } from "@/actions/admin/users";
 import { getAdminProducts } from "@/actions/admin/products";
 import { createWarranty } from "@/actions/admin/warranties";
+import { createCustomerUser } from "@/actions/common/customers";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Mail, User, Package, Calendar as CalendarIcon, Check, ChevronsUpDown, Loader2, Plus, X } from "lucide-react";
 
 export function AddWarrantyDialog() {
     const [open, setOpen] = useState(false);
-    const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
     // Data states
     const [users, setUsers] = useState<any[]>([]);
     const [products, setProducts] = useState<any[]>([]);
+    const [localUsers, setLocalUsers] = useState<any[]>([]);
+
+    // Customer Creation State
+    const [showCreateCustomer, setShowCreateCustomer] = useState(false);
+    const [creatingCustomer, setCreatingCustomer] = useState(false);
+    const [newCustomerData, setNewCustomerData] = useState({
+        name: '',
+        email: '',
+        mobile: '',
+        address: '',
+        password: ''
+    });
 
     // Form states
     const [selectedUser, setSelectedUser] = useState<number | null>(null);
@@ -86,7 +99,10 @@ export function AddWarrantyDialog() {
                 getAdminProducts()
             ]);
 
-            if (usersRes.success) setUsers(usersRes.data || []);
+            if (usersRes.success) {
+                setUsers(usersRes.data || []);
+                setLocalUsers(usersRes.data || []);
+            }
             if (productsRes.success) setProducts(productsRes.data || []);
         } catch (error) {
             console.error("Failed to fetch data", error);
@@ -97,7 +113,6 @@ export function AddWarrantyDialog() {
     };
 
     const resetForm = () => {
-        setStep(1);
         setSelectedUser(null);
         setSelectedProduct(null);
         setWarrantyType("FREE");
@@ -107,6 +122,8 @@ export function AddWarrantyDialog() {
         setAmount("");
         setDuration("1");
         setDurationUnit("years");
+        setShowCreateCustomer(false);
+        setNewCustomerData({ name: '', email: '', mobile: '', address: '', password: '' });
     };
 
     const calculateEndDate = () => {
@@ -132,13 +149,39 @@ export function AddWarrantyDialog() {
         setEndDate(newEndDate);
     };
 
-    const handleNext = () => {
-        if (!selectedUser || !selectedProduct) {
-            toast.error("Please select both a customer and a product");
+    const handleCreateCustomer = async () => {
+        if (!newCustomerData.name || !newCustomerData.mobile || !newCustomerData.email) {
+            toast.error('Please fill in all required customer fields');
             return;
         }
-        setStep(2);
+
+        setCreatingCustomer(true);
+        try {
+            const result = await createCustomerUser(newCustomerData);
+            if (result.success && result.data) {
+                toast.success('Customer created successfully');
+                // Update local list
+                const newCustomer = {
+                    id: result.data.id,
+                    name: result.data.name,
+                    email: result.data.email,
+                    mobile: result.data.mobile
+                };
+                setLocalUsers(prev => [newCustomer, ...prev]);
+                // Auto select
+                setSelectedUser(result.data.id);
+                setShowCreateCustomer(false);
+                setNewCustomerData({ name: '', email: '', mobile: '', address: '', password: '' });
+            } else {
+                toast.error(result.error || 'Failed to create customer');
+            }
+        } catch (error) {
+            toast.error('Failed to create customer');
+        } finally {
+            setCreatingCustomer(false);
+        }
     };
+
 
     const handleSubmit = async () => {
         if (!selectedUser || !selectedProduct || !startDate || !endDate) {
@@ -186,11 +229,11 @@ export function AddWarrantyDialog() {
                     Add Warranty
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Add New Warranty</DialogTitle>
                     <DialogDescription>
-                        Step {step} of 2: {step === 1 ? "Select Customer & Product" : "Warranty Details"}
+                        Create a new warranty for a customer.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -199,236 +242,385 @@ export function AddWarrantyDialog() {
                         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                     </div>
                 ) : (
-                    <div className="py-4 space-y-4">
-                        {step === 1 ? (
-                            <>
-                                <div className="space-y-2">
-                                    <Label>Customer</Label>
-                                    <Popover open={openUserSelect} onOpenChange={setOpenUserSelect}>
-                                        <PopoverTrigger asChild>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 py-4">
+                        {/* Left Column: Customer & Product */}
+                        <div className="space-y-6">
+                            {/* Customer Card */}
+                            <Card className={`shadow-sm transition-colors ${selectedUser
+                                ? 'border-green-200 dark:border-green-900 bg-green-50/30 dark:bg-green-900/10'
+                                : 'border-blue-200 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-900/10'
+                                }`}>
+                                <CardHeader className="pb-4">
+                                    <CardTitle className="text-lg flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div className={`p-2 rounded-lg ${selectedUser
+                                                ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+                                                : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                                                }`}>
+                                                <User className="h-5 w-5" />
+                                            </div>
+                                            Customer Details
+                                        </div>
+                                        {!showCreateCustomer && (
                                             <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                aria-expanded={openUserSelect}
-                                                className="w-full justify-between"
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-8 text-xs"
+                                                onClick={() => setShowCreateCustomer(true)}
                                             >
-                                                {selectedUser
-                                                    ? users.find((u) => u.id === selectedUser)?.name
-                                                    : "Select customer..."}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                <Plus className="mr-2 h-3 w-3" />
+                                                New Customer
                                             </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-[400px] p-0">
-                                            <Command>
-                                                <CommandInput placeholder="Search customer..." />
-                                                <CommandList>
-                                                    <CommandEmpty>No customer found.</CommandEmpty>
-                                                    <CommandGroup>
-                                                        {users.map((user) => (
-                                                            <CommandItem
-                                                                key={user.id}
-                                                                value={user.name + " " + user.mobile}
-                                                                onSelect={() => {
-                                                                    setSelectedUser(user.id);
-                                                                    setOpenUserSelect(false);
-                                                                }}
-                                                            >
-                                                                <Check
-                                                                    className={cn(
-                                                                        "mr-2 h-4 w-4",
-                                                                        selectedUser === user.id ? "opacity-100" : "opacity-0"
-                                                                    )}
-                                                                />
-                                                                <div className="flex flex-col">
-                                                                    <span>{user.name}</span>
-                                                                    <span className="text-xs text-muted-foreground">{user.mobile}</span>
-                                                                </div>
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label>Product</Label>
-                                    <Popover open={openProductSelect} onOpenChange={setOpenProductSelect}>
-                                        <PopoverTrigger asChild>
+                                        )}
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    {!showCreateCustomer ? (
+                                        <div className="space-y-2">
+                                            <Label>Customer</Label>
+                                            <Popover open={openUserSelect} onOpenChange={setOpenUserSelect}>
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        role="combobox"
+                                                        aria-expanded={openUserSelect}
+                                                        className="w-full justify-between"
+                                                    >
+                                                        {selectedUser
+                                                            ? localUsers.find((u) => u.id === selectedUser)?.name
+                                                            : "Select customer..."}
+                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-[400px] p-0">
+                                                    <Command>
+                                                        <CommandInput placeholder="Search customer..." />
+                                                        <CommandList>
+                                                            <CommandEmpty>No customer found.</CommandEmpty>
+                                                            <CommandGroup>
+                                                                {localUsers.map((user) => (
+                                                                    <CommandItem
+                                                                        key={user.id}
+                                                                        value={user.name + " " + user.mobile}
+                                                                        onSelect={() => {
+                                                                            setSelectedUser(user.id);
+                                                                            setOpenUserSelect(false);
+                                                                        }}
+                                                                    >
+                                                                        <Check
+                                                                            className={cn(
+                                                                                "mr-2 h-4 w-4",
+                                                                                selectedUser === user.id ? "opacity-100" : "opacity-0"
+                                                                            )}
+                                                                        />
+                                                                        <div className="flex flex-col">
+                                                                            <span>{user.name}</span>
+                                                                            <span className="text-xs text-muted-foreground">{user.mobile}</span>
+                                                                        </div>
+                                                                    </CommandItem>
+                                                                ))}
+                                                            </CommandGroup>
+                                                        </CommandList>
+                                                    </Command>
+                                                </PopoverContent>
+                                            </Popover>
+                                            {selectedUser && (
+                                                <div className="mt-2 text-sm text-muted-foreground">
+                                                    <div className="flex items-center gap-2">
+                                                        <Mail className="h-3 w-3" />
+                                                        {localUsers.find(u => u.id === selectedUser)?.email}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="text-sm font-medium">New Customer Details</span>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-6 w-6"
+                                                    onClick={() => setShowCreateCustomer(false)}
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </Button>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div className="space-y-1">
+                                                    <Label htmlFor="newCustName" className="text-xs">Name *</Label>
+                                                    <Input
+                                                        id="newCustName"
+                                                        value={newCustomerData.name}
+                                                        onChange={(e) => setNewCustomerData(prev => ({ ...prev, name: e.target.value }))}
+                                                        placeholder="Name"
+                                                        className="h-8"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label htmlFor="newCustMobile" className="text-xs">Mobile *</Label>
+                                                    <Input
+                                                        id="newCustMobile"
+                                                        value={newCustomerData.mobile}
+                                                        onChange={(e) => setNewCustomerData(prev => ({ ...prev, mobile: e.target.value }))}
+                                                        placeholder="Mobile"
+                                                        className="h-8"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label htmlFor="newCustEmail" className="text-xs">Email *</Label>
+                                                    <Input
+                                                        id="newCustEmail"
+                                                        value={newCustomerData.email}
+                                                        onChange={(e) => setNewCustomerData(prev => ({ ...prev, email: e.target.value }))}
+                                                        placeholder="Email"
+                                                        className="h-8"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label htmlFor="newCustPass" className="text-xs">Password</Label>
+                                                    <Input
+                                                        id="newCustPass"
+                                                        type="password"
+                                                        value={newCustomerData.password}
+                                                        onChange={(e) => setNewCustomerData(prev => ({ ...prev, password: e.target.value }))}
+                                                        placeholder="Default: 123456"
+                                                        className="h-8"
+                                                    />
+                                                </div>
+                                                <div className="col-span-2 space-y-1">
+                                                    <Label htmlFor="newCustAddr" className="text-xs">Address</Label>
+                                                    <Input
+                                                        id="newCustAddr"
+                                                        value={newCustomerData.address}
+                                                        onChange={(e) => setNewCustomerData(prev => ({ ...prev, address: e.target.value }))}
+                                                        placeholder="Address (Optional)"
+                                                        className="h-8"
+                                                    />
+                                                </div>
+                                            </div>
                                             <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                aria-expanded={openProductSelect}
-                                                className="w-full justify-between"
+                                                type="button"
+                                                onClick={handleCreateCustomer}
+                                                disabled={creatingCustomer}
+                                                className="w-full h-8 mt-2"
+                                                size="sm"
                                             >
-                                                {selectedProduct
-                                                    ? products.find((p) => p.id === selectedProduct)?.productName
-                                                    : "Select product..."}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                {creatingCustomer ? (
+                                                    <div className="flex items-center">
+                                                        <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                                                        Creating...
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <Plus className="mr-2 h-3 w-3" />
+                                                        Create & Auto-fill
+                                                    </>
+                                                )}
                                             </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-[400px] p-0">
-                                            <Command>
-                                                <CommandInput placeholder="Search product..." />
-                                                <CommandList>
-                                                    <CommandEmpty>No product found.</CommandEmpty>
-                                                    <CommandGroup>
-                                                        {products.map((product) => (
-                                                            <CommandItem
-                                                                key={product.id}
-                                                                value={product.productName || product.company}
-                                                                onSelect={() => {
-                                                                    setSelectedProduct(product.id);
-                                                                    setOpenProductSelect(false);
-                                                                }}
-                                                            >
-                                                                <Check
-                                                                    className={cn(
-                                                                        "mr-2 h-4 w-4",
-                                                                        selectedProduct === product.id ? "opacity-100" : "opacity-0"
-                                                                    )}
-                                                                />
-                                                                <div className="flex flex-col">
-                                                                    <span>{product.productName}</span>
-                                                                    <span className="text-xs text-muted-foreground">{product.company} - {product.type}</span>
-                                                                </div>
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
-                                </div>
-                            </>
-                        ) : (
-                            <>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label>Warranty Type</Label>
-                                        <Select value={warrantyType} onValueChange={setWarrantyType}>
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="FREE">Free</SelectItem>
-                                                <SelectItem value="PAID">Paid</SelectItem>
-                                                <SelectItem value="EXTENDED">Extended</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Status</Label>
-                                        <Select value={status} onValueChange={setStatus}>
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="Active">Active</SelectItem>
-                                                <SelectItem value="Inactive">Inactive</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2 flex flex-col">
-                                        <Label>Start Date</Label>
-                                        <Popover>
+                            {/* Product Card */}
+                            <Card className={`shadow-sm transition-colors ${selectedProduct
+                                ? 'border-purple-200 dark:border-purple-900 bg-purple-50/30 dark:bg-purple-900/10'
+                                : 'border-purple-100 dark:border-purple-900'
+                                }`}>
+                                <CardHeader className="pb-4">
+                                    <CardTitle className="text-lg flex items-center gap-2">
+                                        <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                                            <Package className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                                        </div>
+                                        Product Selection
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-2">
+                                        <Label>Product</Label>
+                                        <Popover open={openProductSelect} onOpenChange={setOpenProductSelect}>
                                             <PopoverTrigger asChild>
                                                 <Button
-                                                    variant={"outline"}
-                                                    className={cn(
-                                                        "w-full pl-3 text-left font-normal",
-                                                        !startDate && "text-muted-foreground"
-                                                    )}
+                                                    variant="outline"
+                                                    role="combobox"
+                                                    aria-expanded={openProductSelect}
+                                                    className="w-full justify-between"
                                                 >
-                                                    {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
-                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                    {selectedProduct
+                                                        ? products.find((p) => p.id === selectedProduct)?.productName
+                                                        : "Select product..."}
+                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                 </Button>
                                             </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0" align="start">
-                                                <Calendar
-                                                    mode="single"
-                                                    selected={startDate}
-                                                    onSelect={setStartDate}
-                                                    disabled={(date) =>
-                                                        date > new Date() || date < new Date("1900-01-01")
-                                                    }
-                                                    formatters={{
-                                                        formatWeekdayName: (date) => format(date, "EEEEE"),
-                                                    }}
-                                                    initialFocus
-                                                />
+                                            <PopoverContent className="w-[400px] p-0">
+                                                <Command>
+                                                    <CommandInput placeholder="Search product..." />
+                                                    <CommandList>
+                                                        <CommandEmpty>No product found.</CommandEmpty>
+                                                        <CommandGroup>
+                                                            {products.map((product) => (
+                                                                <CommandItem
+                                                                    key={product.id}
+                                                                    value={product.productName || product.company}
+                                                                    onSelect={() => {
+                                                                        setSelectedProduct(product.id);
+                                                                        setOpenProductSelect(false);
+                                                                    }}
+                                                                >
+                                                                    <Check
+                                                                        className={cn(
+                                                                            "mr-2 h-4 w-4",
+                                                                            selectedProduct === product.id ? "opacity-100" : "opacity-0"
+                                                                        )}
+                                                                    />
+                                                                    <div className="flex flex-col">
+                                                                        <span>{product.productName}</span>
+                                                                        <span className="text-xs text-muted-foreground">{product.company} - {product.type}</span>
+                                                                    </div>
+                                                                </CommandItem>
+                                                            ))}
+                                                        </CommandGroup>
+                                                    </CommandList>
+                                                </Command>
                                             </PopoverContent>
                                         </Popover>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label>Duration</Label>
-                                        <div className="flex gap-2">
-                                            <Input
-                                                type="number"
-                                                min="1"
-                                                value={duration}
-                                                onChange={(e) => setDuration(e.target.value)}
-                                                className="w-20"
-                                            />
-                                            <Select
-                                                value={durationUnit}
-                                                onValueChange={(v: "months" | "years") => setDurationUnit(v)}
-                                            >
-                                                <SelectTrigger className="flex-1">
+                                </CardContent>
+                            </Card>
+                        </div>
+
+                        {/* Right Column: Warranty Details */}
+                        <div className="space-y-6">
+                            <Card className="shadow-sm border-orange-100 dark:border-orange-900">
+                                <CardHeader className="pb-4">
+                                    <CardTitle className="text-lg flex items-center gap-2">
+                                        <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                                            <CalendarIcon className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                                        </div>
+                                        Warranty Details
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label>Warranty Type</Label>
+                                            <Select value={warrantyType} onValueChange={setWarrantyType}>
+                                                <SelectTrigger>
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="months">Months</SelectItem>
-                                                    <SelectItem value="years">Years</SelectItem>
+                                                    <SelectItem value="FREE">Free</SelectItem>
+                                                    <SelectItem value="PAID">Paid</SelectItem>
+                                                    <SelectItem value="EXTENDED">Extended</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Status</Label>
+                                            <Select value={status} onValueChange={setStatus}>
+                                                <SelectTrigger>
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Active">Active</SelectItem>
+                                                    <SelectItem value="Inactive">Inactive</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
                                     </div>
-                                </div>
 
-                                <div className="space-y-2">
-                                    <Label>End Date (Auto-calculated)</Label>
-                                    <Input
-                                        value={endDate ? format(endDate, "PPP") : "Select start date and duration"}
-                                        disabled
-                                        className="bg-muted"
-                                    />
-                                </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2 flex flex-col">
+                                            <Label>Start Date</Label>
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        variant={"outline"}
+                                                        className={cn(
+                                                            "w-full pl-3 text-left font-normal",
+                                                            !startDate && "text-muted-foreground"
+                                                        )}
+                                                    >
+                                                        {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
+                                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-auto p-0" align="start">
+                                                    <Calendar
+                                                        mode="single"
+                                                        selected={startDate}
+                                                        onSelect={setStartDate}
+                                                        disabled={(date) =>
+                                                            date > new Date() || date < new Date("1900-01-01")
+                                                        }
+                                                        formatters={{
+                                                            formatWeekdayName: (date) => format(date, "EEEEE"),
+                                                        }}
+                                                        initialFocus
+                                                    />
+                                                </PopoverContent>
+                                            </Popover>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Duration</Label>
+                                            <div className="flex gap-2">
+                                                <Input
+                                                    type="number"
+                                                    min="1"
+                                                    value={duration}
+                                                    onChange={(e) => setDuration(e.target.value)}
+                                                    className="w-20"
+                                                />
+                                                <Select
+                                                    value={durationUnit}
+                                                    onValueChange={(v: "months" | "years") => setDurationUnit(v)}
+                                                >
+                                                    <SelectTrigger className="flex-1">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="months">Months</SelectItem>
+                                                        <SelectItem value="years">Years</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                {(warrantyType === "PAID" || warrantyType === "EXTENDED") && (
                                     <div className="space-y-2">
-                                        <Label>Amount Paid</Label>
+                                        <Label>End Date (Auto-calculated)</Label>
                                         <Input
-                                            type="number"
-                                            placeholder="Enter amount"
-                                            value={amount}
-                                            onChange={(e) => setAmount(e.target.value)}
+                                            value={endDate ? format(endDate, "PPP") : "Select start date and duration"}
+                                            disabled
+                                            className="bg-muted"
                                         />
                                     </div>
-                                )}
-                            </>
-                        )}
+
+                                    {(warrantyType === "PAID" || warrantyType === "EXTENDED") && (
+                                        <div className="space-y-2">
+                                            <Label>Amount Paid</Label>
+                                            <Input
+                                                type="number"
+                                                placeholder="Enter amount"
+                                                value={amount}
+                                                onChange={(e) => setAmount(e.target.value)}
+                                            />
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </div>
                     </div>
                 )}
 
                 <DialogFooter>
-                    {step === 2 && (
-                        <Button variant="outline" onClick={() => setStep(1)} disabled={submitting}>
-                            Back
-                        </Button>
-                    )}
-                    {step === 1 ? (
-                        <Button onClick={handleNext} disabled={loading}>Next</Button>
-                    ) : (
-                        <Button onClick={handleSubmit} disabled={submitting}>
-                            {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Add Warranty
-                        </Button>
-                    )}
+                    <Button onClick={handleSubmit} disabled={submitting}>
+                        {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Add Warranty
+                    </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

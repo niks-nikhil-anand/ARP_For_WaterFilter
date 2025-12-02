@@ -6,8 +6,70 @@
  */
 
 import { cookies } from 'next/headers';
+import { prisma } from '@/lib/prisma';
+import { Prisma } from '@/generated/prisma';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+
+// GET shop owners (ADMIN/SUPERADMIN) with their shops
+export async function getShopOwners(options?: {
+  sortBy?: string
+  sortOrder?: 'asc' | 'desc'
+  filterBy?: {
+    status?: string
+    search?: string
+  }
+}) {
+  try {
+    const { sortBy = 'createdAt', sortOrder = 'desc', filterBy } = options || {}
+
+    const where: Prisma.UserWhereInput = {
+      role: { in: ['ADMIN', 'SUPERADMIN'] },
+    }
+
+    if (filterBy) {
+      if (filterBy.status && filterBy.status !== 'ALL') {
+        where.status = filterBy.status as 'ACTIVE' | 'BLOCKED' | 'PENDING'
+      }
+      if (filterBy.search) {
+        where.OR = [
+          { name: { contains: filterBy.search, mode: 'insensitive' } },
+          { email: { contains: filterBy.search, mode: 'insensitive' } },
+          {
+            shops: {
+              some: {
+                OR: [
+                  { shopName: { contains: filterBy.search, mode: 'insensitive' } },
+                  { gstNumber: { contains: filterBy.search, mode: 'insensitive' } },
+                  { panNumber: { contains: filterBy.search, mode: 'insensitive' } },
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+
+    const users = await prisma.user.findMany({
+      where,
+      include: {
+        shops: {
+          include: {
+            addresses: true
+          }
+        }
+      },
+      orderBy: {
+        [sortBy]: sortOrder,
+      },
+    })
+
+    return { success: true, data: users }
+  } catch (error: any) {
+    console.error('Error fetching shop owners:', error)
+    return { success: false, error: error.message }
+  }
+}
 
 // GET all users
 export async function getAllUsers() {

@@ -188,6 +188,10 @@ export async function getAllOrders(
     search?: string
     paymentStatus?: string
     paymentMethod?: string
+    startDate?: Date
+    endDate?: Date
+    sortBy?: string
+    sortOrder?: 'asc' | 'desc'
   },
   page: number = 1,
   limit: number = 10
@@ -210,6 +214,26 @@ export async function getAllOrders(
 
     if (filters?.paymentMethod && filters.paymentMethod !== 'ALL') {
       where.paymentMethod = filters.paymentMethod
+    }
+
+    if (filters?.startDate || filters?.endDate) {
+      where.createdAt = {}
+      if (filters.startDate) {
+        where.createdAt.gte = filters.startDate
+      }
+      if (filters.endDate) {
+        // Set end date to end of day if it's the same as start date or just to be inclusive
+        const endOfDay = new Date(filters.endDate)
+        endOfDay.setHours(23, 59, 59, 999)
+        where.createdAt.lte = endOfDay
+      }
+    }
+
+    const orderBy: any = {}
+    if (filters?.sortBy) {
+      orderBy[filters.sortBy] = filters.sortOrder || 'desc'
+    } else {
+      orderBy.createdAt = 'desc'
     }
 
     const [orders, total] = await Promise.all([
@@ -236,9 +260,7 @@ export async function getAllOrders(
             }
           },
         },
-        orderBy: {
-          createdAt: 'desc'
-        },
+        orderBy,
         skip: (page - 1) * limit,
         take: limit,
       }),

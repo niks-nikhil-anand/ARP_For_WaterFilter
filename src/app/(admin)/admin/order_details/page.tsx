@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { Suspense } from 'react'
 import { getAllOrders } from '@/actions/common/orders'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -16,8 +16,21 @@ import Link from 'next/link'
 import { OrderToolbar } from '@/components/admin/orders/OrderToolbar'
 import { OrderActions } from '@/components/admin/orders/OrderActions'
 import { PlaceOrderModal } from '@/components/admin/orders/PlaceOrderModal'
+import { OrderTableSkeleton } from '@/components/admin/orders/OrderTableSkeleton'
 
 export default async function OrderDetailsPage({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | string[] | undefined }
+}) {
+  return (
+    <Suspense fallback={<OrderTableSkeleton />}>
+      <OrderContent searchParams={searchParams} />
+    </Suspense>
+  )
+}
+
+async function OrderContent({
   searchParams,
 }: {
   searchParams: { [key: string]: string | string[] | undefined }
@@ -27,9 +40,13 @@ export default async function OrderDetailsPage({
   const search = typeof searchParams.search === 'string' ? searchParams.search : undefined
   const paymentStatus = typeof searchParams.status === 'string' ? searchParams.status : undefined
   const paymentMethod = typeof searchParams.payment === 'string' ? searchParams.payment : undefined
+  const startDate = typeof searchParams.startDate === 'string' ? new Date(searchParams.startDate) : undefined
+  const endDate = typeof searchParams.endDate === 'string' ? new Date(searchParams.endDate) : undefined
+  const sortBy = typeof searchParams.sortBy === 'string' ? searchParams.sortBy : undefined
+  const sortOrder = typeof searchParams.sortOrder === 'string' ? (searchParams.sortOrder as 'asc' | 'desc') : undefined
 
   const result = await getAllOrders(
-    { search, paymentStatus, paymentMethod },
+    { search, paymentStatus, paymentMethod, startDate, endDate, sortBy, sortOrder },
     page,
     limit
   )
@@ -56,6 +73,20 @@ export default async function OrderDetailsPage({
       REFUNDED: 'bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300',
     }
     return variants[status] || 'bg-gray-100 text-gray-700'
+  }
+
+  // Construct query string for pagination
+  const getQueryString = (newPage: number) => {
+    const params = new URLSearchParams()
+    params.set('page', newPage.toString())
+    if (search) params.set('search', search)
+    if (paymentStatus) params.set('status', paymentStatus)
+    if (paymentMethod) params.set('payment', paymentMethod)
+    if (startDate) params.set('startDate', startDate.toISOString())
+    if (endDate) params.set('endDate', endDate.toISOString())
+    if (sortBy) params.set('sortBy', sortBy)
+    if (sortOrder) params.set('sortOrder', sortOrder)
+    return params.toString()
   }
 
   return (
@@ -256,9 +287,7 @@ export default async function OrderDetailsPage({
               </p>
               <div className="flex items-center gap-2">
                 <Link
-                  href={`?page=${Math.max(1, pagination.current - 1)}${search ? `&search=${search}` : ''
-                    }${paymentStatus ? `&status=${paymentStatus}` : ''}${paymentMethod ? `&payment=${paymentMethod}` : ''
-                    }`}
+                  href={`?${getQueryString(Math.max(1, pagination.current - 1))}`}
                 >
                   <Button
                     variant="outline"
@@ -270,9 +299,7 @@ export default async function OrderDetailsPage({
                   </Button>
                 </Link>
                 <Link
-                  href={`?page=${Math.min(pagination.pages, pagination.current + 1)}${search ? `&search=${search}` : ''
-                    }${paymentStatus ? `&status=${paymentStatus}` : ''}${paymentMethod ? `&payment=${paymentMethod}` : ''
-                    }`}
+                  href={`?${getQueryString(Math.min(pagination.pages, pagination.current + 1))}`}
                 >
                   <Button
                     variant="outline"

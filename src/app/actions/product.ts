@@ -11,9 +11,43 @@ export type Product = Prisma.ProductGetPayload<{
   }
 }>
 
-export async function getProducts() {
+export async function getProducts(options?: {
+  sortBy?: string
+  sortOrder?: 'asc' | 'desc'
+  filterBy?: {
+    status?: string
+    type?: string
+    company?: string
+    search?: string
+  }
+}) {
   try {
+    const { sortBy = 'createdAt', sortOrder = 'desc', filterBy } = options || {}
+
+    const where: Prisma.ProductWhereInput = {}
+
+    if (filterBy) {
+      if (filterBy.status && filterBy.status !== 'ALL') {
+        where.status = filterBy.status as 'ACTIVE' | 'BLOCKED' | 'PENDING'
+      }
+      if (filterBy.type && filterBy.type !== 'ALL') {
+        where.type = filterBy.type
+      }
+      if (filterBy.company && filterBy.company !== 'ALL') {
+        where.company = filterBy.company
+      }
+      if (filterBy.search) {
+        where.OR = [
+          { productName: { contains: filterBy.search, mode: 'insensitive' } },
+          { uniqueId: { contains: filterBy.search, mode: 'insensitive' } },
+          { company: { contains: filterBy.search, mode: 'insensitive' } },
+          { type: { contains: filterBy.search, mode: 'insensitive' } },
+        ]
+      }
+    }
+
     const products = await prisma.product.findMany({
+      where,
       include: {
         createdBy: {
           select: {
@@ -25,7 +59,7 @@ export async function getProducts() {
         },
       },
       orderBy: {
-        createdAt: 'desc',
+        [sortBy]: sortOrder,
       },
     })
 
@@ -116,7 +150,7 @@ export async function createProduct(data: {
         company: data.company,
         type: data.type,
         color: data.color,
-        price: data.price,
+        price: data.price ?? 0,
         images: data.images || [],
         featuredImageUrl: data.featuredImageUrl,
         offer: data.offer,

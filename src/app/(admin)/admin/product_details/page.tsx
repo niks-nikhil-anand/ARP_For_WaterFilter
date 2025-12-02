@@ -52,7 +52,10 @@ import {
   Upload,
   X,
   Loader2,
+  ArrowUpDown,
+  Filter,
 } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
 import { getProducts, createProduct, updateProduct, deleteProduct } from '@/app/actions/product'
 import { uploadImageToCloudinary } from '@/app/actions/cloudinary'
 import { generateProductId } from '@/utils/generateId'
@@ -126,19 +129,44 @@ const ProductManagementPage = () => {
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
 
+  // Sorting and Filtering State
+  const [sortBy, setSortBy] = useState('createdAt')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [filterStatus, setFilterStatus] = useState('ALL')
+  const [filterType, setFilterType] = useState('ALL')
+  const [filterCompany, setFilterCompany] = useState('ALL')
+
   useEffect(() => {
     loadProducts()
-  }, [])
+  }, [sortBy, sortOrder, filterStatus, filterType, filterCompany, searchTerm])
 
   const loadProducts = async () => {
     setLoading(true)
-    const result = await getProducts()
+    const result = await getProducts({
+      sortBy,
+      sortOrder,
+      filterBy: {
+        status: filterStatus,
+        type: filterType,
+        company: filterCompany,
+        search: searchTerm,
+      },
+    })
     if (result.success && result.data) {
       setProducts(result.data)
     } else {
       toast.error('Failed to load products')
     }
     setLoading(false)
+  }
+
+  const handleSort = (column: string) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(column)
+      setSortOrder('asc')
+    }
   }
 
   const handleView = (product: Product) => {
@@ -365,12 +393,8 @@ const ProductManagementPage = () => {
     }
   }
 
-  const filteredProducts = products.filter((product) =>
-    product.productName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.uniqueId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.company?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.type?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  // Client-side filtering is no longer needed as we do it server-side
+  const filteredProducts = products
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, string> = {
@@ -439,29 +463,139 @@ const ProductManagementPage = () => {
             />
           </div>
 
+          {/* Filters */}
+          <div className="flex flex-wrap gap-4 items-center">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Filters:</span>
+            </div>
+
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Status</SelectItem>
+                <SelectItem value="ACTIVE">Active</SelectItem>
+                <SelectItem value="PENDING">Pending</SelectItem>
+                <SelectItem value="BLOCKED">Blocked</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={filterType} onValueChange={setFilterType}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Types</SelectItem>
+                {/* You might want to dynamically populate these based on available types */}
+                <SelectItem value="RO">RO</SelectItem>
+                <SelectItem value="UV">UV</SelectItem>
+                <SelectItem value="UF">UF</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={filterCompany} onValueChange={setFilterCompany}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Company" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Companies</SelectItem>
+                {/* You might want to dynamically populate these */}
+                <SelectItem value="AquaGuard">AquaGuard</SelectItem>
+                <SelectItem value="Kent">Kent</SelectItem>
+                <SelectItem value="Pureit">Pureit</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {(filterStatus !== 'ALL' || filterType !== 'ALL' || filterCompany !== 'ALL' || searchTerm) && (
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setFilterStatus('ALL')
+                  setFilterType('ALL')
+                  setFilterCompany('ALL')
+                  setSearchTerm('')
+                }}
+                className="h-8 px-2 lg:px-3"
+              >
+                Reset
+                <X className="ml-2 h-4 w-4" />
+              </Button>
+            )}
+          </div>
+
           {/* Table */}
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Product ID</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
+                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('productName')}>
+                    <div className="flex items-center gap-1">
+                      Name
+                      <ArrowUpDown className="h-3 w-3" />
+                    </div>
+                  </TableHead>
+                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('type')}>
+                    <div className="flex items-center gap-1">
+                      Type
+                      <ArrowUpDown className="h-3 w-3" />
+                    </div>
+                  </TableHead>
                   <TableHead>Color</TableHead>
-                  <TableHead>Price</TableHead>
+                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('price')}>
+                    <div className="flex items-center gap-1">
+                      Price
+                      <ArrowUpDown className="h-3 w-3" />
+                    </div>
+                  </TableHead>
                   <TableHead>Discount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
+                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('status')}>
+                    <div className="flex items-center gap-1">
+                      Status
+                      <ArrowUpDown className="h-3 w-3" />
+                    </div>
+                  </TableHead>
+                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('createdAt')}>
+                    <div className="flex items-center gap-1">
+                      Created
+                      <ArrowUpDown className="h-3 w-3" />
+                    </div>
+                  </TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={9} className="text-center py-10">
-                      <p className="text-muted-foreground">Loading...</p>
-                    </TableCell>
-                  </TableRow>
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <TableRow key={index}>
+                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell>
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-3 w-24" />
+                        </div>
+                      </TableCell>
+                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                      <TableCell>
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-20" />
+                          <Skeleton className="h-3 w-16" />
+                        </div>
+                      </TableCell>
+                      <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Skeleton className="h-8 w-8" />
+                          <Skeleton className="h-8 w-8" />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
                 ) : filteredProducts.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} className="text-center py-10">

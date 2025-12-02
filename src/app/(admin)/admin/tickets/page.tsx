@@ -60,16 +60,25 @@ import {
   Mail,
   Phone,
   MapPin,
-  Calendar,
+  CheckCircle2,
+  Wrench,
+  Calendar as CalendarIcon,
   Clock,
   AlertCircle,
   CheckCircle,
   XCircle,
   PlayCircle,
   FileText,
-  CheckCircle2,
-  Wrench,
 } from 'lucide-react'
+import { format } from "date-fns"
+import { DateRange } from "react-day-picker"
+import { cn } from "@/lib/utils"
+import { Calendar } from "@/components/ui/calendar"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import {
   getAllTickets,
   updateTicket,
@@ -125,7 +134,8 @@ const TicketManagementPage = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [priorityFilter, setPriorityFilter] = useState('ALL')
-  const [dateFilter, setDateFilter] = useState('ALL')
+  const [date, setDate] = useState<DateRange | undefined>()
+  const [filterType, setFilterType] = useState<'ALL' | 'TODAY' | 'YESTERDAY' | 'UPCOMING' | 'BACKLOG' | 'CUSTOM'>('ALL')
   const [sortField, setSortField] = useState<keyof TicketType | null>(null)
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
   const [currentPage, setCurrentPage] = useState(1)
@@ -159,7 +169,7 @@ const TicketManagementPage = () => {
   useEffect(() => {
     loadTickets()
     loadAgents()
-  }, [currentPage, statusFilter, priorityFilter])
+  }, [currentPage, statusFilter, priorityFilter, date, filterType])
 
   const loadAgents = async () => {
     const result = await getActiveAgents()
@@ -178,6 +188,34 @@ const TicketManagementPage = () => {
 
       if (statusFilter !== 'ALL') filters.status = statusFilter
       if (priorityFilter !== 'ALL') filters.priority = priorityFilter
+
+      // Handle Date Filters
+      if (filterType === 'CUSTOM' && date?.from) {
+        filters.startDate = date.from
+        filters.endDate = date.to || date.from
+      } else if (filterType === 'TODAY') {
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        const tomorrow = new Date(today)
+        tomorrow.setDate(tomorrow.getDate() + 1)
+        filters.startDate = today
+        filters.endDate = tomorrow
+      } else if (filterType === 'YESTERDAY') {
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        const yesterday = new Date(today)
+        yesterday.setDate(yesterday.getDate() - 1)
+        filters.startDate = yesterday
+        filters.endDate = today
+      } else if (filterType === 'UPCOMING') {
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        const tomorrow = new Date(today)
+        tomorrow.setDate(tomorrow.getDate() + 1)
+        filters.startDate = tomorrow
+      } else if (filterType === 'BACKLOG') {
+        filters.isBacklog = true
+      }
 
       const result = await getAllTickets(filters)
       if (result.success && result.data) {
@@ -203,37 +241,7 @@ const TicketManagementPage = () => {
         ticket.serviceType.toLowerCase().includes(searchTerm.toLowerCase()) ||
         ticket.productType?.toLowerCase().includes(searchTerm.toLowerCase())
 
-      let matchesDate = true
-      if (dateFilter !== 'ALL') {
-        const ticketDate = ticket.serviceEvent?.actionDate
-          ? new Date(ticket.serviceEvent.actionDate)
-          : null
-
-        if (!ticketDate) {
-          matchesDate = false
-        } else {
-          const today = new Date()
-          today.setHours(0, 0, 0, 0)
-          const tomorrow = new Date(today)
-          tomorrow.setDate(tomorrow.getDate() + 1)
-          const yesterday = new Date(today)
-          yesterday.setDate(yesterday.getDate() - 1)
-
-          if (dateFilter === 'TODAY') {
-            matchesDate = ticketDate >= today && ticketDate < tomorrow
-          } else if (dateFilter === 'YESTERDAY') {
-            matchesDate = ticketDate >= yesterday && ticketDate < today
-          } else if (dateFilter === 'UPCOMING') {
-            matchesDate = ticketDate >= tomorrow
-          } else if (dateFilter === 'BACKLOG') {
-            matchesDate = ticketDate < yesterday &&
-              ticket.status !== TicketStatus.RESOLVED &&
-              ticket.status !== TicketStatus.CLOSED
-          }
-        }
-      }
-
-      return matchesSearch && matchesDate
+      return matchesSearch
     })
 
     if (sortField) {
@@ -251,7 +259,8 @@ const TicketManagementPage = () => {
     }
 
     return filtered
-  }, [tickets, searchTerm, dateFilter, sortField, sortOrder])
+    return filtered
+  }, [tickets, searchTerm, sortField, sortOrder])
 
   // Stats calculation (This should ideally be a separate API call for accuracy with pagination)
   // For now, we'll just show stats for loaded tickets or remove them if misleading
@@ -422,15 +431,59 @@ const TicketManagementPage = () => {
           </div>
 
           {/* Date Filters */}
-          <Tabs defaultValue="ALL" value={dateFilter} onValueChange={setDateFilter} className="w-full">
-            <TabsList className="grid w-full grid-cols-5 lg:w-[600px]">
-              <TabsTrigger value="ALL">All</TabsTrigger>
-              <TabsTrigger value="TODAY">Today</TabsTrigger>
-              <TabsTrigger value="YESTERDAY">Yesterday</TabsTrigger>
-              <TabsTrigger value="UPCOMING">Upcoming</TabsTrigger>
-              <TabsTrigger value="BACKLOG">Backlog</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+            <Tabs defaultValue="ALL" value={filterType} onValueChange={(v: any) => setFilterType(v)} className="w-full md:w-auto">
+              <TabsList>
+                <TabsTrigger value="ALL">All</TabsTrigger>
+                <TabsTrigger value="TODAY">Today</TabsTrigger>
+                <TabsTrigger value="YESTERDAY">Yesterday</TabsTrigger>
+                <TabsTrigger value="UPCOMING">Upcoming</TabsTrigger>
+                <TabsTrigger value="BACKLOG">Backlog</TabsTrigger>
+                <TabsTrigger value="CUSTOM">Custom</TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            {filterType === 'CUSTOM' && (
+              <div className="grid gap-2 animate-in fade-in slide-in-from-left-5 duration-300">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      id="date"
+                      variant={"outline"}
+                      className={cn(
+                        "w-[300px] justify-start text-left font-normal",
+                        !date && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {date?.from ? (
+                        date.to ? (
+                          <>
+                            {format(date.from, "LLL dd, y")} -{" "}
+                            {format(date.to, "LLL dd, y")}
+                          </>
+                        ) : (
+                          format(date.from, "LLL dd, y")
+                        )
+                      ) : (
+                        <span>Pick a date</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      initialFocus
+                      mode="range"
+                      defaultMonth={date?.from}
+                      selected={date}
+                      onSelect={setDate}
+                      numberOfMonths={2}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
+          </div>
 
           {/* Filters and Search */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -597,7 +650,7 @@ const TicketManagementPage = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                           <span className="text-sm">
                             {ticket.serviceEvent?.actionDate
                               ? formatDate(ticket.serviceEvent.actionDate)

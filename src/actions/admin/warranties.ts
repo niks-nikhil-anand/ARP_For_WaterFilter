@@ -53,3 +53,34 @@ export async function getAllWarranties() {
     return { success: false, error: error.message }
   }
 }
+
+export async function updateWarranty(warrantyId: number, data: {
+  warrantyType: string;
+  startDate: Date;
+  endDate: Date;
+  status: string;
+  warrantyAmount?: number | null;
+}) {
+  try {
+    // Validate dates
+    if (new Date(data.endDate) <= new Date(data.startDate)) {
+      return { success: false, error: 'End date must be after start date' }
+    }
+
+    const warranty = await prisma.warranty.update({
+      where: { id: warrantyId },
+      data: {
+        warrantyType: data.warrantyType,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        isActive: data.status === 'Active',
+        warrantyAmount: data.warrantyAmount
+      }
+    })
+
+    return { success: true, data: warranty }
+  } catch (error: any) {
+    console.error('Update warranty error:', error)
+    return { success: false, error: error.message }
+  }
+}

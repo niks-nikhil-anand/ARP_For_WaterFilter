@@ -17,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -42,9 +43,12 @@ import {
   Clock,
   XCircle,
   Loader2,
+  FileText,
+  Pencil,
 } from "lucide-react";
-import { getAllWarranties } from "@/actions/admin/warranties";
+import { getAllWarranties, updateWarranty } from "@/actions/admin/warranties";
 import { toast } from "sonner";
+import jsPDF from "jspdf";
 
 type Warranty = {
   id: number;
@@ -77,6 +81,7 @@ type Warranty = {
   status: string;
   isActive: boolean;
   additionalWarranty: boolean;
+  warrantyAmount: number | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -104,7 +109,24 @@ const WarrantyManagementPage = () => {
 
   // Modal states
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedWarranty, setSelectedWarranty] = useState<Warranty | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  // Edit form state
+  const [editForm, setEditForm] = useState<{
+    warrantyType: string;
+    startDate: string;
+    endDate: string;
+    status: string;
+    warrantyAmount: string;
+  }>({
+    warrantyType: '',
+    startDate: '',
+    endDate: '',
+    status: '',
+    warrantyAmount: ''
+  });
 
   const warrantyStatuses = ["Active", "Expired", "Expiring Soon"];
 
@@ -227,6 +249,59 @@ const WarrantyManagementPage = () => {
     setViewDialogOpen(true);
   };
 
+  const handleEdit = (warranty: Warranty) => {
+    setSelectedWarranty(warranty);
+    setEditForm({
+      warrantyType: warranty.warrantyType,
+      startDate: new Date(warranty.startDate).toISOString().split('T')[0],
+      endDate: new Date(warranty.endDate).toISOString().split('T')[0],
+      status: warranty.status,
+      warrantyAmount: warranty.warrantyAmount ? warranty.warrantyAmount.toString() : ''
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!selectedWarranty) return;
+
+    // Validate End Date
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selectedEndDate = new Date(editForm.endDate);
+
+    if (selectedEndDate < today) {
+      toast.error("End Date cannot be in the past");
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      const result = await updateWarranty(selectedWarranty.id, {
+        warrantyType: editForm.warrantyType,
+        startDate: new Date(editForm.startDate),
+        endDate: new Date(editForm.endDate),
+        status: editForm.status,
+        warrantyAmount: (editForm.warrantyType === 'EXTENDED' || editForm.warrantyType === 'paid') && editForm.warrantyAmount
+          ? Number(editForm.warrantyAmount)
+          : null
+      });
+
+      if (result.success) {
+        toast.success('Warranty updated successfully');
+        setEditDialogOpen(false);
+        // Refresh the page to show updated data
+        window.location.reload();
+      } else {
+        toast.error(result.error || 'Failed to update warranty');
+      }
+    } catch (error) {
+      console.error('Update error:', error);
+      toast.error('An error occurred while updating');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const getSortIcon = (field: keyof Warranty) => {
     if (sortField !== field) {
       return <ArrowUpDown className="h-4 w-4 ml-2" />;
@@ -282,6 +357,207 @@ const WarrantyManagementPage = () => {
         </span>
       </Badge>
     );
+  };
+
+  const generateReceipt = (warranty: Warranty) => {
+    try {
+      const doc = new jsPDF();
+      const themeColor = [41, 128, 185]; // Blue
+      const secondaryColor = [100, 100, 100];
+
+      // Helper to format currency
+      const formatCurrency = (amount: number) => `Rs. ${amount.toLocaleString('en-IN')}`;
+
+      // --- Background Watermark ---
+      doc.setTextColor(245, 245, 245);
+      doc.setFontSize(60);
+      doc.setFont('helvetica', 'bold');
+      doc.text('SAMARTH', 105, 150, { align: 'center', angle: 45 });
+
+      // --- Header Section ---
+      // Top Bar
+      doc.setFillColor(themeColor[0], themeColor[1], themeColor[2]);
+      doc.rect(0, 0, 210, 6, 'F');
+
+      // Logo Placeholder (Left)
+      doc.setFillColor(themeColor[0], themeColor[1], themeColor[2]);
+      doc.roundedRect(15, 15, 20, 20, 2, 2, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('SE', 25, 28, { align: 'center' });
+
+      // Company Name (Left)
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Samarth Enterprise', 40, 22);
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+      doc.text('WaterFilter Management System', 40, 28);
+      doc.text('GSTIN: 27ABCDE1234F1Z5', 40, 33); // Mock GSTIN
+
+      // Receipt Title (Right)
+      doc.setTextColor(themeColor[0], themeColor[1], themeColor[2]);
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('WARRANTY RECEIPT', 195, 25, { align: 'right' });
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(0, 0, 0);
+      doc.text(`# WAR-${warranty.id.toString().padStart(6, '0')}`, 195, 33, { align: 'right' });
+
+      // --- Info Grid ---
+      const gridY = 45;
+
+      // Left Column: Company Address
+      doc.setFontSize(9);
+      doc.setTextColor(0, 0, 0);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Issued By:', 15, gridY);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(60, 60, 60);
+      doc.text('123, Enterprise Hub, Business District', 15, gridY + 5);
+      doc.text('Mumbai, Maharashtra - 400001', 15, gridY + 10);
+      doc.text('Phone: +91 98765 43210', 15, gridY + 15);
+      doc.text('Email: contact@samarth-enterprise.com', 15, gridY + 20);
+
+      // Right Column: Issued To
+      doc.setTextColor(0, 0, 0);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Issued To:', 110, gridY);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(60, 60, 60);
+      doc.text(warranty.order.customerName, 110, gridY + 5);
+      if (warranty.order.customerEmail) doc.text(warranty.order.customerEmail, 110, gridY + 10);
+      if (warranty.order.customerPhone) doc.text(warranty.order.customerPhone, 110, gridY + 15);
+
+      // Address
+      const address = [
+        warranty.order.apartmentNo,
+        warranty.order.locality,
+        warranty.order.landmark,
+        warranty.order.state,
+        warranty.order.pincode
+      ].filter(Boolean).join(', ');
+
+      if (address) {
+        const splitAddress = doc.splitTextToSize(address, 80);
+        doc.text(splitAddress, 110, gridY + 20);
+      }
+
+      // --- Warranty Details Bar ---
+      const payY = 85;
+      doc.setFillColor(245, 245, 245);
+      doc.roundedRect(15, payY, 180, 15, 2, 2, 'F');
+
+      doc.setFontSize(9);
+      doc.setTextColor(0, 0, 0);
+
+      // Status
+      doc.setFont('helvetica', 'bold');
+      doc.text('Status:', 25, payY + 9);
+      doc.setFont('helvetica', 'normal');
+      const statusColor = warranty.status === 'Active' ? [39, 174, 96] : [192, 57, 43];
+      doc.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
+      doc.text(warranty.status, 40, payY + 9);
+
+      // Type
+      doc.setTextColor(0, 0, 0);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Type:', 80, payY + 9);
+      doc.setFont('helvetica', 'normal');
+      doc.text(warranty.warrantyType, 95, payY + 9);
+
+      // Duration
+      doc.setFont('helvetica', 'bold');
+      doc.text('Period:', 140, payY + 9);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${formatDate(warranty.startDate)} - ${formatDate(warranty.endDate)}`, 155, payY + 9);
+
+      // --- Product Details ---
+      let yPos = 115;
+
+      // Headers
+      doc.setFillColor(themeColor[0], themeColor[1], themeColor[2]);
+      doc.rect(15, yPos, 180, 10, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.text('Product Details', 20, yPos + 6);
+
+      // Row 1
+      yPos += 10;
+      doc.setFillColor(250, 250, 250);
+      doc.rect(15, yPos, 180, 45, 'F'); // Increased height for more rows
+
+      doc.setTextColor(0, 0, 0);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Product Name:', 20, yPos + 6);
+      doc.setFont('helvetica', 'normal');
+      doc.text(warranty.product.productName || 'N/A', 50, yPos + 6);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('Company:', 110, yPos + 6);
+      doc.setFont('helvetica', 'normal');
+      doc.text(warranty.product.company, 130, yPos + 6);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('Type:', 20, yPos + 14);
+      doc.setFont('helvetica', 'normal');
+      doc.text(warranty.product.type, 50, yPos + 14);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('Color:', 20, yPos + 22); // Moved to new line
+      doc.setFont('helvetica', 'normal');
+      doc.text(warranty.product.color || 'N/A', 50, yPos + 22);
+
+      if (warranty.product.description) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('Description:', 20, yPos + 30); // Moved down
+        doc.setFont('helvetica', 'normal');
+        doc.text(truncateText(warranty.product.description, 60), 50, yPos + 30); // Increased truncate limit
+      }
+
+      // --- Footer Section ---
+      const pageHeight = doc.internal.pageSize.height;
+
+      // Terms
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Terms & Conditions:', 15, pageHeight - 50);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(80, 80, 80);
+      doc.text('1. This receipt serves as proof of warranty coverage.', 15, pageHeight - 45);
+      doc.text('2. Warranty covers manufacturing defects only.', 15, pageHeight - 41);
+      doc.text('3. Physical damage is not covered under warranty.', 15, pageHeight - 37);
+
+      // Authorized Signatory - REMOVED
+      // doc.setTextColor(0, 0, 0);
+      // doc.text('For Samarth Enterprise', 150, pageHeight - 50);
+      // doc.setDrawColor(0, 0, 0);
+      // doc.line(150, pageHeight - 35, 190, pageHeight - 35);
+      // doc.text('Authorized Signatory', 150, pageHeight - 30);
+
+      // Bottom Bar
+      doc.setFillColor(themeColor[0], themeColor[1], themeColor[2]);
+      doc.rect(0, pageHeight - 10, 210, 10, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(8);
+      doc.text('Thank you for choosing Samarth Enterprise!', 105, pageHeight - 4, { align: 'center' });
+
+      // Save
+      const fileName = `Warranty_Receipt_${warranty.id}_${new Date().getTime()}.pdf`;
+      doc.save(fileName);
+      toast.success('Receipt downloaded successfully');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('Failed to generate PDF');
+    }
   };
 
   const formatDate = (date: Date | null) => {
@@ -445,6 +721,7 @@ const WarrantyManagementPage = () => {
                   </TableHead>
                   <TableHead>Product</TableHead>
                   <TableHead>Customer</TableHead>
+                  <TableHead>Type</TableHead>
                   <TableHead
                     className="cursor-pointer select-none"
                     onClick={() => handleSort("startDate")}
@@ -533,6 +810,18 @@ const WarrantyManagementPage = () => {
                         </div>
                       </TableCell>
                       <TableCell>
+                        <div className="flex flex-col">
+                          <Badge variant="outline" className="w-fit">
+                            {warranty.warrantyType}
+                          </Badge>
+                          {(warranty.warrantyType === 'EXTENDED' || warranty.warrantyType === 'paid') && warranty.warrantyAmount && (
+                            <span className="text-xs text-muted-foreground mt-1">
+                              ₹{Number(warranty.warrantyAmount).toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-muted-foreground" />
                           <span className="text-sm">
@@ -556,6 +845,22 @@ const WarrantyManagementPage = () => {
                           <Button
                             variant="ghost"
                             size="icon"
+                            onClick={() => handleEdit(warranty)}
+                            title="Edit Warranty"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => generateReceipt(warranty)}
+                            title="Download Receipt"
+                          >
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() => handleView(warranty)}
                             title="View details"
                           >
@@ -571,6 +876,103 @@ const WarrantyManagementPage = () => {
           </div>
         </div>
       </div>
+
+      {/* View Dialog */}
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Warranty Details</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="warrantyType" className="text-right">
+                Type
+              </Label>
+              <Select
+                value={editForm.warrantyType}
+                onValueChange={(value) => setEditForm({ ...editForm, warrantyType: value })}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="FREE">FREE</SelectItem>
+                  <SelectItem value="EXTENDED">EXTENDED</SelectItem>
+                  <SelectItem value="paid">PAID</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="status" className="text-right">
+                Status
+              </Label>
+              <Select
+                value={editForm.status}
+                onValueChange={(value) => setEditForm({ ...editForm, status: value })}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="Expired">Expired</SelectItem>
+                  <SelectItem value="Expiring Soon">Expiring Soon</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {(editForm.warrantyType === 'EXTENDED' || editForm.warrantyType === 'paid') && (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="warrantyAmount" className="text-right">
+                  Amount Paid
+                </Label>
+                <Input
+                  id="warrantyAmount"
+                  type="number"
+                  className="col-span-3"
+                  value={editForm.warrantyAmount}
+                  onChange={(e) => setEditForm({ ...editForm, warrantyAmount: e.target.value })}
+                  placeholder="Enter amount"
+                  required
+                />
+              </div>
+            )}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="startDate" className="text-right">
+                Start Date
+              </Label>
+              <Input
+                id="startDate"
+                type="date"
+                className="col-span-3"
+                value={editForm.startDate}
+                onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="endDate" className="text-right">
+                End Date
+              </Label>
+              <Input
+                id="endDate"
+                type="date"
+                className="col-span-3"
+                value={editForm.endDate}
+                onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdate} disabled={isUpdating}>
+              {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* View Dialog */}
       <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
@@ -592,7 +994,14 @@ const WarrantyManagementPage = () => {
               </div>
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Warranty Type</h4>
-                <p className="font-medium mt-1">{selectedWarranty.warrantyType}</p>
+                <p className="font-medium mt-1">
+                  {selectedWarranty.warrantyType}
+                  {(selectedWarranty.warrantyType === 'EXTENDED' || selectedWarranty.warrantyType === 'paid') && selectedWarranty.warrantyAmount && (
+                    <span className="ml-2 text-muted-foreground">
+                      (₹{Number(selectedWarranty.warrantyAmount).toLocaleString()})
+                    </span>
+                  )}
+                </p>
               </div>
             </div>
 
@@ -697,7 +1106,17 @@ const WarrantyManagementPage = () => {
             </div>
           </div>
           }
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
+            {selectedWarranty && (
+              <Button
+                variant="outline"
+                onClick={() => generateReceipt(selectedWarranty)}
+                className="gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                Download Receipt
+              </Button>
+            )}
             <Button onClick={() => setViewDialogOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>

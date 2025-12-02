@@ -20,6 +20,7 @@ export async function getDashboardStats() {
       totalServiceEvents,
       pendingTickets,
       activeWarranties,
+      totalWarrantyRevenueResult,
       monthlyOrderStats,
       monthlyAMCStats,
     ] = await Promise.all([
@@ -50,8 +51,9 @@ export async function getDashboardStats() {
       prisma.warranty.count({
         where: { isActive: true },
       }),
-
-
+      prisma.warranty.aggregate({
+        _sum: { warrantyAmount: true },
+      }),
 
       // Graph Data - Orders
       prisma.order.groupBy({
@@ -76,7 +78,8 @@ export async function getDashboardStats() {
 
     const totalSaleRevenue = Number(totalOrderRevenueResult._sum.amountPaid || 0);
     const totalAMCRevenue = Number(totalAMCRevenueResult._sum.paymentPaid || 0);
-    const totalRevenue = totalSaleRevenue + totalAMCRevenue;
+    const totalWarrantyRevenue = Number(totalWarrantyRevenueResult._sum.warrantyAmount || 0);
+    const totalRevenue = totalSaleRevenue + totalAMCRevenue + totalWarrantyRevenue;
     const totalPendingAmount = Number(totalAMCDueResult._sum.paymentDue || 0);
 
     // Process Graph Data
@@ -119,6 +122,7 @@ export async function getDashboardStats() {
         totalRevenue,
         totalSaleRevenue,
         totalAMCRevenue,
+        totalWarrantyRevenue,
         totalPendingAmount,
         totalOrders,
         totalShops,

@@ -31,9 +31,21 @@ import {
   Phone,
   Mail,
   MapPin,
+  ArrowUpDown,
+  Filter,
+  X,
+  Loader2,
 } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
-import { getUsersByRole, deleteUser, updateUser, createUser } from '@/actions/admin/users'
+import { deleteUser, updateUser, createUser, getShopOwners } from '@/actions/admin/users'
 import { getShops, createOrUpdateShop } from '@/app/actions/shop'
 import { createAddress, updateAddress } from '@/app/actions/address'
 import { toast } from 'sonner'
@@ -62,38 +74,41 @@ const ShopDetailsPage = () => {
   const [addressId, setAddressId] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  const [sortBy, setSortBy] = useState('createdAt')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [filterStatus, setFilterStatus] = useState('ALL')
+
   useEffect(() => {
     loadAdminUsers()
-  }, [])
+  }, [sortBy, sortOrder, filterStatus, searchTerm])
 
   const loadAdminUsers = async () => {
     setLoading(true)
-    // Load both ADMIN and SUPERADMIN users
-    const adminResult = await getUsersByRole('ADMIN')
-    const superAdminResult = await getUsersByRole('SUPERADMIN')
+    const result = await getShopOwners({
+      sortBy,
+      sortOrder,
+      filterBy: {
+        status: filterStatus,
+        search: searchTerm,
+      },
+    })
 
-    const allUsers = [
-      ...(adminResult.success && adminResult.data ? adminResult.data : []),
-      ...(superAdminResult.success && superAdminResult.data ? superAdminResult.data : [])
-    ]
-
-    if (allUsers.length > 0) {
-      // Fetch shops for each user
-      const shopsResult = await getShops()
-      if (shopsResult.success && shopsResult.data) {
-        const usersWithShops = allUsers.map((user: any) => ({
-          ...user,
-          shops: shopsResult.data.filter((shop: any) => shop.userId === user.id)
-        }))
-        setAdminUsers(usersWithShops)
-      } else {
-        setAdminUsers(allUsers)
-      }
+    if (result.success && result.data) {
+      setAdminUsers(result.data)
     } else {
       console.error('Failed to load shop users')
       toast.error('Failed to load shop users')
     }
     setLoading(false)
+  }
+
+  const handleSort = (column: string) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(column)
+      setSortOrder('asc')
+    }
   }
 
   const handleDeleteUser = async (user: AdminUser) => {
@@ -160,7 +175,7 @@ const ShopDetailsPage = () => {
     })
 
     let addressResult = { success: true }
-    
+
     // Create or update shop for this user
     const shopResult = await createOrUpdateShop(selectedUser.id, {
       name: data.name,
@@ -237,7 +252,7 @@ const ShopDetailsPage = () => {
       // Create address if any field is filled
       let addressResult = { success: true }
       if (shopResult.success && shopResult.data &&
-          (data.address.apartmentNo || data.address.locality)) {
+        (data.address.apartmentNo || data.address.locality)) {
         addressResult = await createAddress({
           ...data.address,
           shopId: shopResult.data.id,
@@ -257,17 +272,8 @@ const ShopDetailsPage = () => {
     }
   }
 
-  // Filter users based on search term
-  const filteredUsers = adminUsers.filter((user) => {
-    const shop = user.shops && user.shops[0]
-    return (
-      user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      shop?.shopName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      shop?.gstNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      shop?.panNumber?.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  })
+  // Client-side filtering is no longer needed as we do it server-side
+  const filteredUsers = adminUsers
 
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString('en-IN', {
@@ -333,6 +339,41 @@ const ShopDetailsPage = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
             />
+
+          </div>
+
+          {/* Filters */}
+          <div className="flex flex-wrap gap-4 items-center">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Filters:</span>
+            </div>
+
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Status</SelectItem>
+                <SelectItem value="ACTIVE">Active</SelectItem>
+                <SelectItem value="PENDING">Pending</SelectItem>
+                <SelectItem value="BLOCKED">Blocked</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {(filterStatus !== 'ALL' || searchTerm) && (
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setFilterStatus('ALL')
+                  setSearchTerm('')
+                }}
+                className="h-8 px-2 lg:px-3"
+              >
+                Reset
+                <X className="ml-2 h-4 w-4" />
+              </Button>
+            )}
           </div>
 
           {/* Table */}
@@ -341,21 +382,48 @@ const ShopDetailsPage = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>ID</TableHead>
-                  <TableHead>Owner Name</TableHead>
+                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('name')}>
+                    <div className="flex items-center gap-1">
+                      Owner Name
+                      <ArrowUpDown className="h-3 w-3" />
+                    </div>
+                  </TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Contact Details</TableHead>
                   <TableHead>Address</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('status')}>
+                    <div className="flex items-center gap-1">
+                      Status
+                      <ArrowUpDown className="h-3 w-3" />
+                    </div>
+                  </TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-10">
-                      <p className="text-muted-foreground">Loading...</p>
-                    </TableCell>
-                  </TableRow>
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <TableRow key={index}>
+                      <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                      <TableCell>
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-3 w-32" />
+                        </div>
+                      </TableCell>
+                      <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Skeleton className="h-8 w-8" />
+                          <Skeleton className="h-8 w-8" />
+                          <Skeleton className="h-8 w-8" />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
                 ) : filteredUsers.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-10">
@@ -426,8 +494,8 @@ const ShopDetailsPage = () => {
                             user.status === 'ACTIVE'
                               ? 'bg-green-100 text-green-800'
                               : user.status === 'BLOCKED'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-yellow-100 text-yellow-800'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-yellow-100 text-yellow-800'
                           }>
                             {user.status}
                           </Badge>
@@ -505,11 +573,11 @@ const ShopDetailsPage = () => {
               <div className="space-y-2">
                 <Label className="text-muted-foreground">Status</Label>
                 <Badge className={
-                  selectedUser.status === 'ACTIVE' 
-                    ? 'bg-green-100 text-green-800' 
+                  selectedUser.status === 'ACTIVE'
+                    ? 'bg-green-100 text-green-800'
                     : selectedUser.status === 'BLOCKED'
-                    ? 'bg-red-100 text-red-800'
-                    : 'bg-yellow-100 text-yellow-800'
+                      ? 'bg-red-100 text-red-800'
+                      : 'bg-yellow-100 text-yellow-800'
                 }>
                   {selectedUser.status}
                 </Badge>

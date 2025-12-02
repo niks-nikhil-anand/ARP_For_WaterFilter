@@ -566,7 +566,7 @@ export default function AMCRepairsPage() {
       <Dialog open={viewOpen} onOpenChange={setViewOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Event Details #{selectedEvent?.id}</DialogTitle>
+            <DialogTitle>#{selectedEvent?.amcUniqueId || selectedEvent?.id}</DialogTitle>
           </DialogHeader>
 
           <Tabs defaultValue="overview" className="w-full">

@@ -576,8 +576,7 @@ export default function AMCRepairsPage() {
                 </p>
               </div>
               <Badge
-                variant={selectedEvent?.status === 'ACTIVE' || selectedEvent?.status === 'COMPLETED' ? 'default' : 'secondary'}
-                className="text-base px-4 py-1"
+                className={`text-base px-4 py-1 ${getStatusColor(selectedEvent?.status || '')}`}
               >
                 {selectedEvent?.status}
               </Badge>

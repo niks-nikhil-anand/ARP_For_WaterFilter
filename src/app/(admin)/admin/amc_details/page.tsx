@@ -25,12 +25,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
-import { Calendar, Search, Filter, CheckCircle, Ticket, User, Wrench, Plus, FileText, Phone, Mail, MapPin, Eye, Receipt } from 'lucide-react'
+import { Calendar, Search, Filter, CheckCircle, Ticket, User, Wrench, Plus, FileText, Phone, Mail, MapPin, Eye, Receipt, Pencil } from 'lucide-react'
 import jsPDF from 'jspdf'
 import { getServiceEvents, createTicketForEvent, updateServiceEvent, getAgents, getAllAMCs, createAMCContract } from '@/actions/admin/serviceEvents'
 import { getAdminProducts } from '@/actions/admin/products'
 import { getUsersByRole } from '@/actions/admin/users'
 import { AddAMCContractDialog } from '@/components/admin/amc/AddAMCContractDialog'
+import { EditAMCContractDialog } from '@/components/admin/amc/EditAMCContractDialog'
 import { PaginationControls } from '@/components/ui/pagination-controls'
 import { SkeletonTable } from '@/components/common/SkeletonTable'
 
@@ -43,6 +44,8 @@ export default function AMCRepairsPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [addAMCOpen, setAddAMCOpen] = useState(false)
+  const [editAMCOpen, setEditAMCOpen] = useState(false)
+  const [selectedAMC, setSelectedAMC] = useState<any>(null)
 
   // Filter & Sort State
   const [statusFilter, setStatusFilter] = useState<string>('ALL')
@@ -190,6 +193,15 @@ export default function AMCRepairsPage() {
   }
 
   const handleAMCAdded = () => {
+    fetchData()
+  }
+
+  const handleEditClick = (amc: any) => {
+    setSelectedAMC(amc)
+    setEditAMCOpen(true)
+  }
+
+  const handleAMCUpdated = () => {
     fetchData()
   }
 
@@ -523,6 +535,7 @@ export default function AMCRepairsPage() {
                   <TableHead>Start Date</TableHead>
                   <TableHead>End Date</TableHead>
                   <TableHead>Payment Status</TableHead>
+                  <TableHead>Total Amount</TableHead>
                   <TableHead>Paid</TableHead>
                   <TableHead>Due</TableHead>
                   <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('status')}>
@@ -578,6 +591,9 @@ export default function AMCRepairsPage() {
                           ) : '-'}
                         </TableCell>
                         <TableCell>
+                          {latestContract ? `₹${latestContract.finalPrice}` : '-'}
+                        </TableCell>
+                        <TableCell>
                           {latestContract ? `₹${latestContract.paymentPaid}` : '-'}
                         </TableCell>
                         <TableCell>
@@ -612,6 +628,15 @@ export default function AMCRepairsPage() {
                             >
                               <FileText className="h-4 w-4" />
                             </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0"
+                              onClick={() => handleEditClick(item)}
+                              title="Edit AMC"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -640,6 +665,13 @@ export default function AMCRepairsPage() {
         products={products.map(p => ({ id: p.id, productName: p.productName }))}
         customers={customers.map(c => ({ id: c.id, name: c.name, email: c.email }))}
         agents={agents}
+      />
+
+      <EditAMCContractDialog
+        open={editAMCOpen}
+        onOpenChange={setEditAMCOpen}
+        amc={selectedAMC}
+        onSuccess={handleAMCUpdated}
       />
 
       {/* Create Ticket Dialog */}

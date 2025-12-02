@@ -798,11 +798,11 @@ export async function createAMCContract(data: {
           status: 'SCHEDULED', // Should be SCHEDULED for future events
           description: `AMC Service ${i + 1} of ${data.noOfServices}`,
           remarks: 'Scheduled via AMC Contract',
-          agentId: data.agentId, // Assign same agent
+          amcEventType: 'REGULAR_SERVICE',
           shopId: shop.id,
           actionDate: serviceDate,
           scheduledDates: [serviceDate],
-          amcEventType: 'REGULAR_SERVICE',
+          agentId: data.agentId, // Assign same agent
         }
       })
       serviceEvents.push(event)
@@ -869,6 +869,105 @@ export async function resolveServiceEvent(id: number, data: {
     return { success: true, data: event }
   } catch (error: any) {
     console.error('Resolve service event error:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+export async function updateAMCContract(id: number, data: {
+  price?: number
+  paymentPaid?: number
+  paymentMethod?: 'CASH' | 'ONLINE' | 'UPI' | 'CARD' | 'NET_BANKING'
+  paymentStatus?: 'PENDING' | 'COMPLETED'
+  startDate?: Date
+  endDate?: Date
+  duration?: string
+  remarks?: string
+  status?: string
+}) {
+  try {
+    // 1. Get existing contract to find related order
+    const existingContract = await prisma.aMCContract.findUnique({
+      where: { id },
+      include: { order: true }
+    })
+
+    if (!existingContract) {
+      return { success: false, error: 'Contract not found' }
+    }
+
+    // 2. Calculate new payment due if price or paid changes
+    let paymentDue = Number(existingContract.paymentDue)
+    let finalPrice = Number(existingContract.finalPrice)
+    
+    if (data.price !== undefined) {
+      // Recalculate final price based on existing discount
+      const price = data.price
+      const discount = existingContract.discount ? Number(existingContract.discount) : 0
+      
+      if (existingContract.discountType === 'PERCENTAGE') {
+        finalPrice = price - (price * discount / 100)
+      } else {
+        finalPrice = price - discount
+      }
+    }
+
+    if (data.paymentPaid !== undefined || data.price !== undefined) {
+      const paid = data.paymentPaid !== undefined ? data.paymentPaid : Number(existingContract.paymentPaid)
+      paymentDue = finalPrice - paid
+    }
+
+    // 3. Update Contract
+    const contract = await prisma.aMCContract.update({
+      where: { id },
+      data: {
+        price: data.price,
+        finalPrice,
+        paymentPaid: data.paymentPaid,
+        paymentDue,
+        paymentMethod: data.paymentMethod,
+        paymentStatus: data.paymentStatus || (paymentDue > 0 ? 'PENDING' : 'COMPLETED'),
+        startDate: data.startDate,
+        endDate: data.endDate,
+        duration: data.duration,
+        paymentNotes: data.remarks,
+        description: data.remarks
+      }
+    })
+
+    // 4. Update Related Order
+    if (existingContract.orderId) {
+      await prisma.order.update({
+        where: { id: existingContract.orderId },
+        data: {
+          amountPaid: data.paymentPaid,
+          paymentStatus: data.paymentStatus || (paymentDue > 0 ? 'PENDING' : 'COMPLETED'),
+          paymentMethod: data.paymentMethod,
+          status: 'COMPLETED' // Ensure order stays completed
+        }
+      })
+    }
+
+    // 5. Update AMC Status if provided
+    if (data.status) {
+      await prisma.aMC.update({
+        where: { id: existingContract.amcId },
+        data: { status: data.status }
+      })
+    }
+
+    // Serialize and return
+    const serializedContract = {
+      ...contract,
+      price: Number(contract.price),
+      discount: contract.discount ? Number(contract.discount) : null,
+      finalPrice: Number(contract.finalPrice),
+      paymentPaid: Number(contract.paymentPaid),
+      paymentDue: Number(contract.paymentDue),
+    }
+
+    return { success: true, data: serializedContract }
+  } catch (error: any) {
+    console.error('Update AMC contract error:', error)
     return { success: false, error: error.message }
   }
 }

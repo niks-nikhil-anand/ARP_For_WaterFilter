@@ -14,7 +14,7 @@ import {
   Search,
   User,
   MapPin,
-  Calendar,
+  Calendar as CalendarIcon,
   FileText,
   AlertCircle,
   Clock,
@@ -24,11 +24,31 @@ import {
   MessageCircle,
   AlertTriangle,
   HelpCircle,
+  ArrowUpDown,
+  Filter,
+  X
 } from 'lucide-react'
 import { getAllComplaints } from '@/actions/common/complaints'
 import { PaginationControls } from '@/components/ui/pagination-controls'
 import { SkeletonTable } from '@/components/common/SkeletonTable'
 import { Badge } from '@/components/ui/badge'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
+import { format } from "date-fns"
+import { DateRange } from "react-day-picker"
 
 interface ComplaintType {
   id: number
@@ -48,8 +68,6 @@ interface ComplaintType {
 
 import { AddComplaintDialog } from '@/components/admin/complaints/AddComplaintDialog'
 
-// ... existing imports
-
 const ComplaintsManagementPage = () => {
   const [complaints, setComplaints] = useState<ComplaintType[]>([])
   const [loading, setLoading] = useState(true)
@@ -58,9 +76,15 @@ const ComplaintsManagementPage = () => {
   const [itemsPerPage] = useState(10)
   const [totalPages, setTotalPages] = useState(1)
 
+  // Filter & Sort States
+  const [sortBy, setSortBy] = useState('createdAt')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [filterServiceType, setFilterServiceType] = useState('ALL')
+  const [dateRange, setDateRange] = useState<DateRange | undefined>()
+
   useEffect(() => {
     loadComplaints()
-  }, [currentPage, searchTerm])
+  }, [currentPage, searchTerm, sortBy, sortOrder, filterServiceType, dateRange])
 
   const loadComplaints = async () => {
     setLoading(true)
@@ -69,6 +93,11 @@ const ComplaintsManagementPage = () => {
         page: currentPage,
         limit: itemsPerPage,
         search: searchTerm,
+        sortBy,
+        sortOrder,
+        serviceType: filterServiceType === 'ALL' ? undefined : filterServiceType,
+        startDate: dateRange?.from ? dateRange.from.toISOString() : undefined,
+        endDate: dateRange?.to ? dateRange.to.toISOString() : undefined,
       }
 
       const result = await getAllComplaints(filters)
@@ -83,6 +112,25 @@ const ComplaintsManagementPage = () => {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleSort = (column: string) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(column)
+      setSortOrder('asc')
+    }
+    setCurrentPage(1)
+  }
+
+  const clearFilters = () => {
+    setSearchTerm('')
+    setFilterServiceType('ALL')
+    setDateRange(undefined)
+    setSortBy('createdAt')
+    setSortOrder('desc')
+    setCurrentPage(1)
   }
 
   const formatDate = (date: Date | string) => {
@@ -157,20 +205,93 @@ const ComplaintsManagementPage = () => {
             <AddComplaintDialog onComplaintAdded={loadComplaints} />
           </div>
 
-          {/* Search */}
-          <div className="flex items-center space-x-2">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by customer, service..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value)
+          {/* Filters & Search */}
+          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+            <div className="flex flex-1 gap-4 w-full md:w-auto">
+              {/* Search */}
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by customer, service..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value)
+                    setCurrentPage(1)
+                  }}
+                  className="pl-10"
+                />
+              </div>
+
+              {/* Service Type Filter */}
+              <Select
+                value={filterServiceType}
+                onValueChange={(val) => {
+                  setFilterServiceType(val)
                   setCurrentPage(1)
                 }}
-                className="pl-10"
-              />
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Service Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Services</SelectItem>
+                  <SelectItem value="Installation">Installation</SelectItem>
+                  <SelectItem value="Repair">Repair</SelectItem>
+                  <SelectItem value="Maintenance">Maintenance</SelectItem>
+                  <SelectItem value="AMC">AMC</SelectItem>
+                  <SelectItem value="Consultation">Consultation</SelectItem>
+                  <SelectItem value="Complaint">Complaint</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Date Range Filter */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="date"
+                    variant={"outline"}
+                    className={cn(
+                      "w-[260px] justify-start text-left font-normal",
+                      !dateRange && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateRange?.from ? (
+                      dateRange.to ? (
+                        <>
+                          {format(dateRange.from, "LLL dd, y")} -{" "}
+                          {format(dateRange.to, "LLL dd, y")}
+                        </>
+                      ) : (
+                        format(dateRange.from, "LLL dd, y")
+                      )
+                    ) : (
+                      <span>Pick a date range</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    initialFocus
+                    mode="range"
+                    defaultMonth={dateRange?.from}
+                    selected={dateRange}
+                    onSelect={(range) => {
+                      setDateRange(range)
+                      setCurrentPage(1)
+                    }}
+                    numberOfMonths={2}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
+
+            {(searchTerm || filterServiceType !== 'ALL' || dateRange) && (
+              <Button variant="ghost" onClick={clearFilters} className="h-8 px-2 lg:px-3">
+                Reset
+                <X className="ml-2 h-4 w-4" />
+              </Button>
+            )}
           </div>
 
           {/* Table */}
@@ -178,14 +299,34 @@ const ComplaintsManagementPage = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Service Type</TableHead>
+                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('id')}>
+                    <div className="flex items-center gap-1">
+                      ID <ArrowUpDown className="h-3 w-3" />
+                    </div>
+                  </TableHead>
+                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('user.name')}>
+                    <div className="flex items-center gap-1">
+                      Customer <ArrowUpDown className="h-3 w-3" />
+                    </div>
+                  </TableHead>
+                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('serviceType')}>
+                    <div className="flex items-center gap-1">
+                      Service Type <ArrowUpDown className="h-3 w-3" />
+                    </div>
+                  </TableHead>
                   <TableHead>Address</TableHead>
-                  <TableHead>Preferred Date</TableHead>
+                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('preferredDate')}>
+                    <div className="flex items-center gap-1">
+                      Preferred Date <ArrowUpDown className="h-3 w-3" />
+                    </div>
+                  </TableHead>
                   <TableHead>Preferred Time</TableHead>
                   <TableHead>Description</TableHead>
-                  <TableHead>Created Date</TableHead>
+                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('createdAt')}>
+                    <div className="flex items-center gap-1">
+                      Created Date <ArrowUpDown className="h-3 w-3" />
+                    </div>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -246,7 +387,7 @@ const ComplaintsManagementPage = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                           <span className="text-sm">{formatDate(complaint.preferredDate || '')}</span>
                         </div>
                       </TableCell>

@@ -82,7 +82,11 @@ export async function getAllComplaints(filters?: {
   page?: number
   limit?: number
   search?: string
-  date?: string
+  sortBy?: string
+  sortOrder?: 'asc' | 'desc'
+  serviceType?: string
+  startDate?: string
+  endDate?: string
 }) {
   try {
     const page = filters?.page || 1
@@ -101,30 +105,31 @@ export async function getAllComplaints(filters?: {
       ]
     }
 
-    if (filters?.date && filters.date !== 'ALL') {
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      const tomorrow = new Date(today)
-      tomorrow.setDate(tomorrow.getDate() + 1)
-      const yesterday = new Date(today)
-      yesterday.setDate(yesterday.getDate() - 1)
+    if (filters?.serviceType && filters.serviceType !== 'ALL') {
+      where.serviceType = { equals: filters.serviceType, mode: 'insensitive' }
+    }
 
-      if (filters.date === 'TODAY') {
-        where.createdAt = { gte: today, lt: tomorrow }
-      } else if (filters.date === 'YESTERDAY') {
-        where.createdAt = { gte: yesterday, lt: today }
-      } else if (filters.date === 'UPCOMING') {
-        // Complaints don't usually have "upcoming" creation date, but maybe based on preferredDate?
-        // Let's stick to createdAt for now or use preferredDate if requested.
-        // User asked for "startdate end date" in previous task, but that was for AMC.
-        // For complaints, "UPCOMING" might mean preferredDate >= tomorrow.
-        if (where.preferredDate) {
-             where.preferredDate = { gte: tomorrow }
-        }
-      } else if (filters.date === 'BACKLOG') {
-         // Backlog logic? Maybe older than yesterday?
-         where.createdAt = { lt: yesterday }
+    if (filters?.startDate || filters?.endDate) {
+      where.createdAt = {}
+      if (filters.startDate) {
+        where.createdAt.gte = new Date(filters.startDate)
       }
+      if (filters.endDate) {
+        const endDate = new Date(filters.endDate)
+        endDate.setHours(23, 59, 59, 999)
+        where.createdAt.lte = endDate
+      }
+    }
+
+    const orderBy: any = {}
+    if (filters?.sortBy) {
+      if (filters.sortBy === 'user.name') {
+        orderBy.user = { name: filters.sortOrder || 'asc' }
+      } else {
+        orderBy[filters.sortBy] = filters.sortOrder || 'desc'
+      }
+    } else {
+      orderBy.createdAt = 'desc'
     }
 
     const [total, complaints] = await Promise.all([
@@ -140,7 +145,7 @@ export async function getAllComplaints(filters?: {
             }
           }
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         skip,
         take: limit,
       })

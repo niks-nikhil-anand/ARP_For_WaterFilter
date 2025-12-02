@@ -180,8 +180,31 @@ export async function createTicket(data: {
   shopId?: number
   agentId?: number
   source?: string
+  assignToUserId?: number
 }) {
   try {
+    let agentId = data.agentId
+
+    // Handle assignToUserId if provided
+    if (data.assignToUserId) {
+      const existingAgent = await prisma.agent.findUnique({
+        where: { userId: data.assignToUserId }
+      })
+
+      if (existingAgent) {
+        agentId = existingAgent.id
+      } else {
+        // Create new agent record
+        const newAgent = await prisma.agent.create({
+          data: {
+            userId: data.assignToUserId,
+            shopId: data.shopId || null
+          }
+        })
+        agentId = newAgent.id
+      }
+    }
+
     const ticket = await prisma.ticket.create({
       data: {
         customerName: data.customerName,
@@ -197,7 +220,7 @@ export async function createTicket(data: {
         status: TicketStatus.OPEN,
         source: data.source || 'WEBSITE',
         shopId: data.shopId,
-        agentId: data.agentId,
+        agentId: agentId,
       },
       include: {
         assignedToAgent: {

@@ -72,3 +72,52 @@ export async function getActiveAgents() {
     return { success: false, error: 'Failed to fetch active agents' }
   }
 }
+
+export async function createAgentUser(data: {
+  name: string
+  email: string
+  mobile: string
+  password?: string
+  shopId?: number
+}) {
+  try {
+    // Check if user already exists
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: data.email },
+          { mobile: data.mobile }
+        ]
+      }
+    })
+
+    if (existingUser) {
+      return { success: false, error: 'User with this email or mobile already exists' }
+    }
+
+    // Create user
+    const user = await prisma.user.create({
+      data: {
+        name: data.name,
+        email: data.email,
+        mobile: data.mobile,
+        password: data.password || '123456', // Default password if not provided
+        role: 'AGENT',
+        status: UserStatus.ACTIVE,
+      }
+    })
+
+    // Create agent record
+    await prisma.agent.create({
+      data: {
+        userId: user.id,
+        shopId: data.shopId || null
+      }
+    })
+
+    return { success: true, data: user, message: 'Agent created successfully' }
+  } catch (error) {
+    console.error('Failed to create agent:', error)
+    return { success: false, error: 'Failed to create agent' }
+  }
+}

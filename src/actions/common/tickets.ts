@@ -29,6 +29,9 @@ export async function getAllTickets(filters?: {
   priority?: TicketPriority
   shopId?: number
   serviceType?: string
+  startDate?: Date
+  endDate?: Date
+  isBacklog?: boolean
   page?: number
   limit?: number
 }) {
@@ -57,6 +60,41 @@ export async function getAllTickets(filters?: {
       } else {
         where.serviceType = filters.serviceType
       }
+    }
+
+    if (filters?.startDate && filters?.endDate) {
+      where.serviceEvent = {
+        actionDate: {
+          gte: filters.startDate,
+          lte: filters.endDate
+        }
+      }
+    } else if (filters?.startDate) {
+      where.serviceEvent = {
+        actionDate: {
+          gte: filters.startDate
+        }
+      }
+    }
+
+    if (filters?.isBacklog) {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      
+      where.AND = [
+        {
+          serviceEvent: {
+            actionDate: {
+              lt: today
+            }
+          }
+        },
+        {
+          status: {
+            notIn: [TicketStatus.RESOLVED, TicketStatus.CLOSED, TicketStatus.CANCELLED]
+          }
+        }
+      ]
     }
 
     // Pagination

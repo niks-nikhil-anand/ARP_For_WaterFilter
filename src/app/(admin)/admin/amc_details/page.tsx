@@ -25,7 +25,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
-import { Calendar, Search, Filter, CheckCircle, Ticket, User, Wrench, Plus, FileText, Phone, Mail, MapPin, Eye } from 'lucide-react'
+import { Calendar, Search, Filter, CheckCircle, Ticket, User, Wrench, Plus, FileText, Phone, Mail, MapPin, Eye, Receipt } from 'lucide-react'
+import jsPDF from 'jspdf'
 import { getServiceEvents, createTicketForEvent, updateServiceEvent, getAgents, getAllAMCs, createAMCContract } from '@/actions/admin/serviceEvents'
 import { getAdminProducts } from '@/actions/admin/products'
 import { getUsersByRole } from '@/actions/admin/users'
@@ -209,6 +210,250 @@ export default function AMCRepairsPage() {
     }
   }
 
+  const generateInvoice = (amc: any) => {
+    try {
+      const doc = new jsPDF()
+      const themeColor = [41, 128, 185] // Blue
+      const secondaryColor = [100, 100, 100]
+
+      // Helper to format currency
+      const formatCurrency = (amount: number) => `Rs. ${amount.toLocaleString('en-IN')}`
+
+      // --- Background Watermark ---
+      doc.setTextColor(245, 245, 245)
+      doc.setFontSize(60)
+      doc.setFont('helvetica', 'bold')
+      doc.text('SAMARTH', 105, 150, { align: 'center', angle: 45 })
+
+      // --- Header Section ---
+      // Top Bar
+      doc.setFillColor(themeColor[0], themeColor[1], themeColor[2])
+      doc.rect(0, 0, 210, 6, 'F')
+
+      // Logo Placeholder (Left)
+      doc.setFillColor(themeColor[0], themeColor[1], themeColor[2])
+      doc.roundedRect(15, 15, 20, 20, 2, 2, 'F')
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(14)
+      doc.setFont('helvetica', 'bold')
+      doc.text('SE', 25, 28, { align: 'center' })
+
+      // Company Name (Left)
+      doc.setTextColor(0, 0, 0)
+      doc.setFontSize(20)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Samarth Enterprise', 40, 22)
+
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2])
+      doc.text('WaterFilter Management System', 40, 28)
+      doc.text('GSTIN: 27ABCDE1234F1Z5', 40, 33) // Mock GSTIN
+
+      // Invoice Title (Right)
+      doc.setTextColor(themeColor[0], themeColor[1], themeColor[2])
+      doc.setFontSize(16)
+      doc.setFont('helvetica', 'bold')
+      doc.text('AMC INVOICE', 195, 25, { align: 'right' })
+
+      const latestContract = amc.contracts && amc.contracts.length > 0 ? amc.contracts[0] : null
+      const invoiceNum = latestContract?.invoiceNumber || `AMC-${amc.id}`
+
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(0, 0, 0)
+      doc.text(`# ${invoiceNum}`, 195, 33, { align: 'right' })
+
+      // --- Info Grid ---
+      const gridY = 45
+
+      // Left Column: Company Address
+      doc.setFontSize(9)
+      doc.setTextColor(0, 0, 0)
+      doc.setFont('helvetica', 'bold')
+      doc.text('From:', 15, gridY)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(60, 60, 60)
+      doc.text('123, Enterprise Hub, Business District', 15, gridY + 5)
+      doc.text('Mumbai, Maharashtra - 400001', 15, gridY + 10)
+      doc.text('Phone: +91 98765 43210', 15, gridY + 15)
+      doc.text('Email: contact@samarth-enterprise.com', 15, gridY + 20)
+
+      // Right Column: Bill To
+      doc.setTextColor(0, 0, 0)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Bill To:', 110, gridY)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(60, 60, 60)
+
+      const customerName = amc.customer?.name || amc.user?.name || 'Unknown'
+      const customerEmail = amc.customer?.email || amc.user?.email || ''
+      const customerPhone = amc.customer?.mobile || amc.user?.phone || ''
+
+      doc.text(customerName, 110, gridY + 5)
+      if (customerEmail) doc.text(customerEmail, 110, gridY + 10)
+      if (customerPhone) doc.text(customerPhone, 110, gridY + 15)
+
+      // Address
+      const address = [
+        amc.customer?.addresses?.[0]?.apartmentNo,
+        amc.customer?.addresses?.[0]?.locality,
+        amc.customer?.addresses?.[0]?.city,
+        amc.customer?.addresses?.[0]?.state,
+        amc.customer?.addresses?.[0]?.pincode
+      ].filter(Boolean).join(', ')
+
+      if (address) {
+        const splitAddress = doc.splitTextToSize(address, 80)
+        doc.text(splitAddress, 110, gridY + 20)
+      }
+
+      // --- Contract Details Bar ---
+      const payY = 85
+      doc.setFillColor(245, 245, 245)
+      doc.roundedRect(15, payY, 180, 15, 2, 2, 'F')
+
+      doc.setFontSize(9)
+      doc.setTextColor(0, 0, 0)
+
+      // Status
+      doc.setFont('helvetica', 'bold')
+      doc.text('Status:', 25, payY + 9)
+      doc.setFont('helvetica', 'normal')
+      const statusColor = amc.status === 'ACTIVE' ? [39, 174, 96] : [192, 57, 43]
+      doc.setTextColor(statusColor[0], statusColor[1], statusColor[2])
+      doc.text(amc.status, 40, payY + 9)
+
+      // Payment Status
+      if (latestContract) {
+        doc.setTextColor(0, 0, 0)
+        doc.setFont('helvetica', 'bold')
+        doc.text('Payment:', 80, payY + 9)
+        doc.setFont('helvetica', 'normal')
+        const paymentColor = latestContract.paymentStatus === 'COMPLETED' ? [39, 174, 96] : [192, 57, 43]
+        doc.setTextColor(paymentColor[0], paymentColor[1], paymentColor[2])
+        doc.text(latestContract.paymentStatus, 95, payY + 9)
+      }
+
+      // Period
+      if (latestContract) {
+        doc.setTextColor(0, 0, 0)
+        doc.setFont('helvetica', 'bold')
+        doc.text('Period:', 140, payY + 9)
+        doc.setFont('helvetica', 'normal')
+        const startDate = new Date(latestContract.startDate).toLocaleDateString()
+        const endDate = new Date(latestContract.endDate).toLocaleDateString()
+        doc.text(`${startDate} - ${endDate}`, 155, payY + 9)
+      }
+
+      // --- Item Table ---
+      let yPos = 115
+
+      // Headers
+      doc.setFillColor(themeColor[0], themeColor[1], themeColor[2])
+      doc.rect(15, yPos, 180, 10, 'F')
+      doc.setTextColor(255, 255, 255)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(9)
+      doc.text('#', 20, yPos + 6)
+      doc.text('Description', 35, yPos + 6)
+      doc.text('Price', 155, yPos + 6, { align: 'right' })
+      doc.text('Total', 190, yPos + 6, { align: 'right' })
+
+      // Row 1
+      yPos += 10
+      doc.setFillColor(250, 250, 250)
+      doc.rect(15, yPos, 180, 15, 'F')
+
+      doc.setTextColor(0, 0, 0)
+      doc.setFont('helvetica', 'normal')
+      doc.text('1', 20, yPos + 6)
+
+      // Product Name & Desc
+      const productName = amc.product?.productName || 'AMC Service'
+      const productDesc = `Annual Maintenance Contract for ${amc.product?.company || ''} ${amc.product?.type || ''}`
+
+      doc.setFont('helvetica', 'bold')
+      doc.text(productName, 35, yPos + 6)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      doc.setTextColor(80, 80, 80)
+
+      const splitDesc = doc.splitTextToSize(productDesc, 90)
+      doc.text(splitDesc, 35, yPos + 11)
+
+      // Numbers
+      doc.setFontSize(9)
+      doc.setTextColor(0, 0, 0)
+      const amount = latestContract?.price || 0
+      doc.text(formatCurrency(amount), 155, yPos + 8, { align: 'right' })
+      doc.text(formatCurrency(amount), 190, yPos + 8, { align: 'right' })
+
+      // Bottom Line
+      yPos += 25
+      doc.setDrawColor(220, 220, 220)
+      doc.line(15, yPos, 195, yPos)
+
+      // --- Totals ---
+      yPos += 5
+      const totalX = 140
+      const valX = 190
+
+      doc.setFontSize(9)
+      doc.text('Subtotal:', totalX, yPos + 5)
+      doc.text(formatCurrency(amount), valX, yPos + 5, { align: 'right' })
+
+      doc.text('Tax (0%):', totalX, yPos + 10)
+      doc.text(formatCurrency(0), valX, yPos + 10, { align: 'right' })
+
+      yPos += 15
+      doc.setFillColor(themeColor[0], themeColor[1], themeColor[2])
+      doc.rect(totalX - 5, yPos, 60, 10, 'F')
+      doc.setTextColor(255, 255, 255)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(11)
+      doc.text('Grand Total:', totalX, yPos + 6)
+      doc.text(formatCurrency(amount), valX, yPos + 6, { align: 'right' })
+
+      if (latestContract) {
+        doc.setTextColor(0, 0, 0)
+        doc.setFontSize(9)
+        doc.setFont('helvetica', 'normal')
+        doc.text(`Paid: ${formatCurrency(latestContract.paymentPaid)}`, totalX, yPos + 15)
+        doc.text(`Due: ${formatCurrency(latestContract.paymentDue)}`, totalX, yPos + 20)
+      }
+
+      // --- Footer Section ---
+      const pageHeight = doc.internal.pageSize.height
+
+      // Terms
+      doc.setTextColor(0, 0, 0)
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Terms & Conditions:', 15, pageHeight - 50)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(80, 80, 80)
+      doc.text('1. AMC services are subject to terms of contract.', 15, pageHeight - 45)
+      doc.text('2. Parts replacement is subject to warranty terms.', 15, pageHeight - 41)
+      doc.text('3. This is a computer generated invoice.', 15, pageHeight - 37)
+
+      // Bottom Bar
+      doc.setFillColor(themeColor[0], themeColor[1], themeColor[2])
+      doc.rect(0, pageHeight - 10, 210, 10, 'F')
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(8)
+      doc.text('Thank you for choosing Samarth Enterprise!', 105, pageHeight - 4, { align: 'center' })
+
+      // Save
+      const fileName = `AMC_Invoice_${amc.id}_${new Date().getTime()}.pdf`
+      doc.save(fileName)
+      toast.success('Invoice downloaded successfully')
+    } catch (error) {
+      console.error('Error generating PDF:', error)
+      toast.error('Failed to generate PDF')
+    }
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -357,6 +602,15 @@ export default function AMCRepairsPage() {
                               title="View Contract"
                             >
                               <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0"
+                              onClick={() => generateInvoice(item)}
+                              title="Download Invoice"
+                            >
+                              <FileText className="h-4 w-4" />
                             </Button>
                           </div>
                         </TableCell>

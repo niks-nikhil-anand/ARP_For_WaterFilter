@@ -848,14 +848,6 @@ const WarrantyManagementPage = () => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleEdit(warranty)}
-                            title="Edit Warranty"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
                             onClick={() => generateReceipt(warranty)}
                             title="Download Receipt"
                           >
@@ -865,9 +857,17 @@ const WarrantyManagementPage = () => {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleView(warranty)}
-                            title="View details"
+                            title="View Details"
                           >
                             <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(warranty)}
+                            title="Edit Warranty"
+                          >
+                            <Pencil className="h-4 w-4" />
                           </Button>
                         </div>
                       </TableCell>

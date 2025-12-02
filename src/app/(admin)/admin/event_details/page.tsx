@@ -25,7 +25,16 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
-import { Calendar, Search, Filter, CheckCircle, Ticket, User, Wrench } from 'lucide-react'
+import { Calendar as CalendarIcon, Search, Filter, CheckCircle, Ticket, User, Wrench } from 'lucide-react'
+import { format } from "date-fns"
+import { DateRange } from "react-day-picker"
+import { cn } from "@/lib/utils"
+import { Calendar } from "@/components/ui/calendar"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { getServiceEvents, createTicketForEvent, getAgents, resolveServiceEvent } from '@/actions/admin/serviceEvents'
 import { PaginationControls } from '@/components/ui/pagination-controls'
 import { SkeletonTable } from '@/components/common/SkeletonTable'
@@ -39,8 +48,7 @@ export default function EventDetailsPage() {
   const [selectedMonth, setSelectedMonth] = useState<string>('all')
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL')
   const [search, setSearch] = useState('')
-  const [customStartDate, setCustomStartDate] = useState<string>('')
-  const [customEndDate, setCustomEndDate] = useState<string>('')
+  const [date, setDate] = useState<DateRange | undefined>()
   const [sortBy, setSortBy] = useState<string>('actionDate')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
@@ -79,8 +87,9 @@ export default function EventDetailsPage() {
         selectedStatus,
         currentPage,
         itemsPerPage,
-        customStartDate ? new Date(customStartDate) : undefined,
-        customEndDate ? new Date(customEndDate) : undefined,
+        itemsPerPage,
+        date?.from,
+        date?.to,
         sortBy,
         sortOrder
       ),
@@ -101,7 +110,7 @@ export default function EventDetailsPage() {
     }
 
     setLoading(false)
-  }, [filter, selectedMonth, selectedStatus, currentPage, itemsPerPage, customStartDate, customEndDate, sortBy, sortOrder])
+  }, [filter, selectedMonth, selectedStatus, currentPage, itemsPerPage, date, sortBy, sortOrder])
 
   useEffect(() => {
     fetchEvents()
@@ -110,7 +119,7 @@ export default function EventDetailsPage() {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [filter, selectedMonth, selectedStatus, customStartDate, customEndDate, sortBy, sortOrder])
+  }, [filter, selectedMonth, selectedStatus, date, sortBy, sortOrder])
 
   const handleTicketClick = (event: any) => {
     setSelectedEvent(event)
@@ -237,20 +246,43 @@ export default function EventDetailsPage() {
                 </Tabs>
 
                 {filter === 'custom' && (
-                  <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-5 duration-300">
-                    <Input
-                      type="date"
-                      value={customStartDate}
-                      onChange={(e) => setCustomStartDate(e.target.value)}
-                      className="w-[140px]"
-                    />
-                    <span className="text-muted-foreground">-</span>
-                    <Input
-                      type="date"
-                      value={customEndDate}
-                      onChange={(e) => setCustomEndDate(e.target.value)}
-                      className="w-[140px]"
-                    />
+                  <div className="grid gap-2 animate-in fade-in slide-in-from-left-5 duration-300">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          id="date"
+                          variant={"outline"}
+                          className={cn(
+                            "w-[300px] justify-start text-left font-normal",
+                            !date && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {date?.from ? (
+                            date.to ? (
+                              <>
+                                {format(date.from, "LLL dd, y")} -{" "}
+                                {format(date.to, "LLL dd, y")}
+                              </>
+                            ) : (
+                              format(date.from, "LLL dd, y")
+                            )
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          initialFocus
+                          mode="range"
+                          defaultMonth={date?.from}
+                          selected={date}
+                          onSelect={setDate}
+                          numberOfMonths={2}
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 )}
               </div>
@@ -393,7 +425,7 @@ export default function EventDetailsPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                           {new Date(event.actionDate).toLocaleDateString()}
                         </div>
                       </TableCell>

@@ -564,246 +564,337 @@ export default function AMCRepairsPage() {
 
       {/* View Details Dialog */}
       <Dialog open={viewOpen} onOpenChange={setViewOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>#{selectedEvent?.amcUniqueId || selectedEvent?.id}</DialogTitle>
+        <DialogContent className="!max-w-[70vw] !h-[70vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="p-6 pb-4 border-b shrink-0 bg-muted/5">
+            <div className="flex items-center justify-between mr-8">
+              <div className="space-y-1">
+                <DialogTitle className="text-2xl font-bold tracking-tight">
+                  #{selectedEvent?.amcUniqueId || selectedEvent?.id}
+                </DialogTitle>
+                <p className="text-sm text-muted-foreground">
+                  View complete details for this AMC/Service Event.
+                </p>
+              </div>
+              <Badge
+                variant={selectedEvent?.status === 'ACTIVE' || selectedEvent?.status === 'COMPLETED' ? 'default' : 'secondary'}
+                className="text-base px-4 py-1"
+              >
+                {selectedEvent?.status}
+              </Badge>
+            </div>
           </DialogHeader>
 
-          <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="contract" disabled={!selectedEvent?.amcContract && selectedEvent?.dataType !== 'AMC'}>
-                AMC Contract
-              </TabsTrigger>
-              <TabsTrigger value="history">History & Events</TabsTrigger>
-            </TabsList>
+          <Tabs defaultValue="overview" className="flex-1 flex flex-col overflow-hidden">
+            <div className="px-6 pt-2 border-b shrink-0 bg-muted/5">
+              <TabsList className="grid w-full max-w-md grid-cols-3">
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="contract" disabled={!selectedEvent?.amcContract && selectedEvent?.dataType !== 'AMC'}>
+                  Contract
+                </TabsTrigger>
+                <TabsTrigger value="history">History</TabsTrigger>
+              </TabsList>
+            </div>
 
             {/* TAB 1: OVERVIEW */}
-            <TabsContent value="overview" className="space-y-4 py-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-semibold mb-2 flex items-center gap-2">
-                      <User className="h-4 w-4" /> Customer Details
-                    </h4>
-                    <div className="text-sm space-y-1 text-muted-foreground border p-3 rounded-md">
-                      <p><span className="font-medium text-foreground">Name:</span> {selectedEvent?.customer?.name || selectedEvent?.user?.name}</p>
-                      <p><span className="font-medium text-foreground">Email:</span> {selectedEvent?.customer?.email || selectedEvent?.user?.email}</p>
-                      <p><span className="font-medium text-foreground">Mobile:</span> {selectedEvent?.customer?.mobile || 'N/A'}</p>
-                      <p><span className="font-medium text-foreground">Address:</span> {[
-                        selectedEvent?.customer?.addresses?.[0]?.locality,
-                        selectedEvent?.customer?.addresses?.[0]?.city,
-                        selectedEvent?.customer?.addresses?.[0]?.state,
-                        selectedEvent?.customer?.addresses?.[0]?.pincode
-                      ].filter(Boolean).join(', ') || 'N/A'}</p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold mb-2 flex items-center gap-2">
-                      <Wrench className="h-4 w-4" /> Service Info
-                    </h4>
-                    <div className="text-sm space-y-1 text-muted-foreground border p-3 rounded-md">
-                      <p><span className="font-medium text-foreground">Type:</span> {selectedEvent?.type || 'AMC Contract'}</p>
-                      <p><span className="font-medium text-foreground">Product:</span> {selectedEvent?.product?.productName}</p>
-                      <p><span className="font-medium text-foreground">Status:</span> <Badge variant="outline">{selectedEvent?.status}</Badge></p>
-                      <p><span className="font-medium text-foreground">Scheduled:</span> {selectedEvent?.actionDate && new Date(selectedEvent.actionDate).toLocaleDateString()}</p>
-                      <p><span className="font-medium text-foreground">Agent:</span> {selectedEvent?.assignedTo?.user?.name || 'Unassigned'}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-semibold mb-2 flex items-center gap-2">
-                      <Ticket className="h-4 w-4" /> Ticket & Remarks
-                    </h4>
-                    <div className="text-sm space-y-3 text-muted-foreground border p-3 rounded-md h-full">
-                      <div>
-                        <span className="font-medium text-foreground block mb-1">Description:</span>
-                        <p className="bg-muted p-2 rounded text-xs">{selectedEvent?.description || 'No description'}</p>
+            <TabsContent value="overview" className="flex-1 overflow-y-auto p-6 m-0 bg-muted/5">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Column 1: Customer Profile */}
+                <Card className="h-full shadow-sm">
+                  <CardHeader className="pb-3 border-b bg-muted/10">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                      <User className="h-4 w-4 text-primary" /> Customer Profile
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
+                        {(selectedEvent?.customer?.name || selectedEvent?.user?.name || '?')[0].toUpperCase()}
                       </div>
                       <div>
-                        <span className="font-medium text-foreground block mb-1">Remarks:</span>
-                        <p className="bg-muted p-2 rounded text-xs">{selectedEvent?.remarks || 'No remarks'}</p>
+                        <p className="font-medium text-base">{selectedEvent?.customer?.name || selectedEvent?.user?.name}</p>
+                        <p className="text-xs text-muted-foreground">Customer ID: #{selectedEvent?.customer?.id || selectedEvent?.user?.id}</p>
                       </div>
-                      {selectedEvent?.ticket && (
-                        <div className="mt-4 pt-4 border-t">
-                          <p className="font-medium text-foreground mb-1">Linked Ticket:</p>
-                          <Badge variant="secondary" className="bg-purple-100 text-purple-800">
-                            Ticket #{selectedEvent.ticket.id} - {selectedEvent.ticket.status}
+                    </div>
+
+                    <div className="space-y-3 pt-2">
+                      <div className="flex items-start gap-3 text-sm">
+                        <Mail className="h-4 w-4 text-muted-foreground mt-0.5" />
+                        <span className="break-all">{selectedEvent?.customer?.email || selectedEvent?.user?.email || 'N/A'}</span>
+                      </div>
+                      <div className="flex items-start gap-3 text-sm">
+                        <Phone className="h-4 w-4 text-muted-foreground mt-0.5" />
+                        <span>{selectedEvent?.customer?.mobile || 'N/A'}</span>
+                      </div>
+                      <div className="flex items-start gap-3 text-sm">
+                        <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                        <span>{[
+                          selectedEvent?.customer?.addresses?.[0]?.locality,
+                          selectedEvent?.customer?.addresses?.[0]?.city,
+                          selectedEvent?.customer?.addresses?.[0]?.state,
+                          selectedEvent?.customer?.addresses?.[0]?.pincode
+                        ].filter(Boolean).join(', ') || 'No address found'}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Column 2: Service & Product Info */}
+                <Card className="h-full shadow-sm">
+                  <CardHeader className="pb-3 border-b bg-muted/10">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                      <Wrench className="h-4 w-4 text-primary" /> Service & Product
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground uppercase tracking-wider">Type</Label>
+                        <p className="font-medium">{selectedEvent?.type || 'AMC Contract'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground uppercase tracking-wider">Product</Label>
+                        <p className="font-medium">{selectedEvent?.product?.productName}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground uppercase tracking-wider">Scheduled</Label>
+                        <p className="font-medium">
+                          {selectedEvent?.actionDate ? new Date(selectedEvent.actionDate).toLocaleDateString() : 'N/A'}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground uppercase tracking-wider">Agent</Label>
+                        <div className="flex items-center gap-1">
+                          <Badge variant="outline" className="font-normal">
+                            {selectedEvent?.assignedTo?.user?.name || 'Unassigned'}
                           </Badge>
                         </div>
-                      )}
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
+
+                {/* Column 3: Status & Remarks */}
+                <Card className="h-full shadow-sm">
+                  <CardHeader className="pb-3 border-b bg-muted/10">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                      <Ticket className="h-4 w-4 text-primary" /> Status & Remarks
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 space-y-4">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground uppercase tracking-wider">Description</Label>
+                      <div className="bg-muted/50 p-3 rounded-md text-sm min-h-[60px]">
+                        {selectedEvent?.description || 'No description provided.'}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground uppercase tracking-wider">Remarks</Label>
+                      <div className="bg-muted/50 p-3 rounded-md text-sm min-h-[60px]">
+                        {selectedEvent?.remarks || 'No remarks provided.'}
+                      </div>
+                    </div>
+
+                    {selectedEvent?.ticket && (
+                      <div className="pt-2">
+                        <div className="flex items-center justify-between p-3 border rounded-md bg-purple-50 dark:bg-purple-900/10 border-purple-100 dark:border-purple-900/20">
+                          <div className="flex items-center gap-2">
+                            <Ticket className="h-4 w-4 text-purple-600" />
+                            <span className="text-sm font-medium text-purple-900 dark:text-purple-300">Ticket #{selectedEvent.ticket.id}</span>
+                          </div>
+                          <Badge variant="secondary" className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
+                            {selectedEvent.ticket.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
             </TabsContent>
 
-            {/* TAB 2: AMC CONTRACT */}
-            <TabsContent value="contract" className="space-y-4 py-4">
-              {selectedEvent?.amcContract ? (
-                <div className="border rounded-md p-4 space-y-4">
-                  <div className="flex justify-between items-center border-b pb-2">
-                    <h3 className="font-semibold text-lg">Contract #{selectedEvent.amcContract.invoiceNumber}</h3>
-                    <Badge>{selectedEvent.amcContract.status}</Badge>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <Label className="text-muted-foreground">Duration</Label>
-                      <p className="font-medium">{selectedEvent.amcContract.duration}</p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">Price</Label>
-                      <p className="font-medium">₹{selectedEvent.amcContract.price}</p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">Start Date</Label>
-                      <p className="font-medium">{new Date(selectedEvent.amcContract.startDate).toLocaleDateString()}</p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">End Date</Label>
-                      <p className="font-medium">{new Date(selectedEvent.amcContract.endDate).toLocaleDateString()}</p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">Payment Status</Label>
-                      <Badge variant={selectedEvent.amcContract.paymentStatus === 'COMPLETED' ? 'default' : 'destructive'}>
-                        {selectedEvent.amcContract.paymentStatus}
-                      </Badge>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">Payment Method</Label>
-                      <p className="font-medium">{selectedEvent.amcContract.paymentMethod || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">Amount Paid</Label>
-                      <p className="font-medium text-green-600">₹{selectedEvent.amcContract.paymentPaid}</p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">Amount Due</Label>
-                      <p className="font-medium text-red-600">₹{selectedEvent.amcContract.paymentDue}</p>
-                    </div>
-                    {selectedEvent.amcContract.paymentNotes && (
-                      <div className="col-span-2">
-                        <Label className="text-muted-foreground">Payment Notes</Label>
-                        <p className="bg-muted p-2 rounded text-xs mt-1">{selectedEvent.amcContract.paymentNotes}</p>
-                      </div>
-                    )}
-                    {selectedEvent.amcContract.description && (
-                      <div className="col-span-2">
-                        <Label className="text-muted-foreground">Description</Label>
-                        <p className="bg-muted p-2 rounded text-xs mt-1">{selectedEvent.amcContract.description}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : selectedEvent?.dataType === 'AMC' ? (
-                <div className="border rounded-md p-4 space-y-4">
-                  <div className="flex justify-between items-center border-b pb-2">
-                    <h3 className="font-semibold text-lg">AMC Details</h3>
-                    <Badge>{selectedEvent.status}</Badge>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    <p>AMC ID: {selectedEvent.amcUniqueId}</p>
-                    <p>Created: {new Date(selectedEvent.createdAt).toLocaleDateString()}</p>
-                    {selectedEvent.contracts && selectedEvent.contracts.length > 0 && (
-                      <div className="mt-4">
-                        <h4 className="font-medium text-foreground mb-2">Latest Contract</h4>
-                        <div className="border p-3 rounded bg-muted/50 space-y-2">
-                          <div className="grid grid-cols-2 gap-2">
-                            <p><strong>Invoice:</strong> {selectedEvent.contracts[0].invoiceNumber}</p>
-                            <p><strong>Duration:</strong> {selectedEvent.contracts[0].duration}</p>
-                            <p><strong>Price:</strong> ₹{selectedEvent.contracts[0].finalPrice}</p>
-                            <p><strong>Status:</strong> {selectedEvent.contracts[0].status}</p>
+            {/* TAB 2: CONTRACT */}
+            <TabsContent value="contract" className="flex-1 overflow-y-auto p-6 m-0 bg-muted/5">
+              {(selectedEvent?.amcContract || selectedEvent?.dataType === 'AMC') ? (
+                <div className="space-y-6">
+                  {/* Stat Cards */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[
+                      {
+                        label: 'Total Price',
+                        value: `₹${selectedEvent?.amcContract?.price || selectedEvent?.contracts?.[0]?.finalPrice || 0}`,
+                        icon: Ticket,
+                        color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20'
+                      },
+                      {
+                        label: 'Amount Paid',
+                        value: `₹${selectedEvent?.amcContract?.paymentPaid || selectedEvent?.contracts?.[0]?.paymentPaid || 0}`,
+                        icon: CheckCircle,
+                        color: 'text-green-600 bg-green-50 dark:bg-green-900/20'
+                      },
+                      {
+                        label: 'Amount Due',
+                        value: `₹${selectedEvent?.amcContract?.paymentDue || selectedEvent?.contracts?.[0]?.paymentDue || 0}`,
+                        icon: FileText,
+                        color: (selectedEvent?.amcContract?.paymentDue || selectedEvent?.contracts?.[0]?.paymentDue) > 0 ? 'text-red-600 bg-red-50 dark:bg-red-900/20' : 'text-gray-600 bg-gray-50'
+                      },
+                      {
+                        label: 'Duration',
+                        value: selectedEvent?.amcContract?.duration || selectedEvent?.contracts?.[0]?.duration || 'N/A',
+                        icon: Calendar,
+                        color: 'text-orange-600 bg-orange-50 dark:bg-orange-900/20'
+                      },
+                    ].map((stat, i) => (
+                      <Card key={i} className="border-none shadow-sm">
+                        <CardContent className="p-4 flex items-center gap-4">
+                          <div className={`h-10 w-10 rounded-full flex items-center justify-center ${stat.color}`}>
+                            <stat.icon className="h-5 w-5" />
                           </div>
-                          <div className="grid grid-cols-2 gap-2 pt-2 border-t">
-                            <p><strong>Paid:</strong> ₹{selectedEvent.contracts[0].paymentPaid}</p>
-                            <p><strong>Due:</strong> ₹{selectedEvent.contracts[0].paymentDue}</p>
+                          <div>
+                            <p className="text-xs text-muted-foreground font-medium uppercase">{stat.label}</p>
+                            <p className="text-xl font-bold">{stat.value}</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+
+                  {/* Detailed Contract Info */}
+                  <Card>
+                    <CardHeader className="pb-3 border-b">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg">Contract Details</CardTitle>
+                        <Badge variant="outline" className="text-sm">
+                          Invoice: {selectedEvent?.amcContract?.invoiceNumber || selectedEvent?.contracts?.[0]?.invoiceNumber}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-4 border-b pb-4">
+                            <div>
+                              <Label className="text-muted-foreground text-xs">Start Date</Label>
+                              <p className="font-medium">
+                                {new Date(selectedEvent?.amcContract?.startDate || selectedEvent?.contracts?.[0]?.startDate).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <div>
+                              <Label className="text-muted-foreground text-xs">End Date</Label>
+                              <p className="font-medium">
+                                {new Date(selectedEvent?.amcContract?.endDate || selectedEvent?.contracts?.[0]?.endDate).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-muted-foreground text-xs">Payment Method</Label>
+                            <p className="font-medium">
+                              {selectedEvent?.amcContract?.paymentMethod || selectedEvent?.contracts?.[0]?.paymentMethod || 'N/A'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <div>
+                            <Label className="text-muted-foreground text-xs">Payment Status</Label>
+                            <div className="mt-1">
+                              <Badge variant={(selectedEvent?.amcContract?.paymentStatus || selectedEvent?.contracts?.[0]?.paymentStatus) === 'COMPLETED' ? 'default' : 'destructive'}>
+                                {selectedEvent?.amcContract?.paymentStatus || selectedEvent?.contracts?.[0]?.paymentStatus}
+                              </Badge>
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-muted-foreground text-xs">Payment Notes</Label>
+                            <p className="bg-muted p-2 rounded text-sm mt-1">
+                              {selectedEvent?.amcContract?.paymentNotes || 'No payment notes.'}
+                            </p>
                           </div>
                         </div>
                       </div>
-                    )}
-                  </div>
+                    </CardContent>
+                  </Card>
                 </div>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  No AMC Contract linked to this event.
+                <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
+                  <FileText className="h-12 w-12 mb-4 opacity-20" />
+                  <p>No AMC Contract linked to this event.</p>
                 </div>
               )}
             </TabsContent>
 
-            {/* TAB 3: HISTORY & EVENTS */}
-            <TabsContent value="history" className="space-y-4 py-4">
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Product</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Ticket</TableHead>
-                      <TableHead className="text-right">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {events
-                      .filter(e =>
+            {/* TAB 3: HISTORY */}
+            <TabsContent value="history" className="flex-1 overflow-y-auto p-6 m-0 bg-muted/5">
+              <Card className="border-none shadow-sm">
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead>Date</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Product</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Ticket</TableHead>
+                        <TableHead className="text-right">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {events
+                        .filter(e =>
+                          (selectedEvent?.customer?.id && e.customer?.id === selectedEvent.customer.id) ||
+                          (selectedEvent?.user?.id && e.customer?.id === selectedEvent.user.id)
+                        )
+                        .sort((a, b) => new Date(b.actionDate).getTime() - new Date(a.actionDate).getTime())
+                        .map((historyEvent) => (
+                          <TableRow key={historyEvent.id} className="hover:bg-muted/5">
+                            <TableCell className="font-medium">{new Date(historyEvent.actionDate || historyEvent.createdAt).toLocaleDateString()}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{historyEvent.type}</Badge>
+                            </TableCell>
+                            <TableCell>{historyEvent.product?.productName}</TableCell>
+                            <TableCell>
+                              <Badge className={getStatusColor(historyEvent.status)} variant="secondary">
+                                {historyEvent.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {historyEvent.ticket ? (
+                                <Badge variant="outline" className="text-xs">
+                                  #{historyEvent.ticket.id} {historyEvent.ticket.status}
+                                </Badge>
+                              ) : '-'}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0"
+                                onClick={() => setSelectedEvent(historyEvent)}
+                                title="View Details"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      {events.filter(e =>
                         (selectedEvent?.customer?.id && e.customer?.id === selectedEvent.customer.id) ||
                         (selectedEvent?.user?.id && e.customer?.id === selectedEvent.user.id)
-                      )
-                      .sort((a, b) => new Date(b.actionDate).getTime() - new Date(a.actionDate).getTime())
-                      .map((historyEvent) => (
-                        <TableRow key={historyEvent.id}>
-                          <TableCell>{new Date(historyEvent.actionDate || historyEvent.createdAt).toLocaleDateString()}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{historyEvent.type}</Badge>
-                          </TableCell>
-                          <TableCell>{historyEvent.product?.productName}</TableCell>
-                          <TableCell>
-                            <Badge className={getStatusColor(historyEvent.status)} variant="secondary">
-                              {historyEvent.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {historyEvent.ticket ? (
-                              <Badge variant="outline" className="text-xs">
-                                #{historyEvent.ticket.id} {historyEvent.ticket.status}
-                              </Badge>
-                            ) : '-'}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0"
-                              onClick={() => setSelectedEvent(historyEvent)}
-                              title="View Details"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    {events.filter(e =>
-                      (selectedEvent?.customer?.id && e.customer?.id === selectedEvent.customer.id) ||
-                      (selectedEvent?.user?.id && e.customer?.id === selectedEvent.user.id)
-                    ).length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">
-                            No history found for this customer.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                  </TableBody>
-                </Table>
-              </div>
+                      ).length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center h-32 text-muted-foreground">
+                              No history found for this customer.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
 
-          <DialogFooter>
-            <Button onClick={() => setViewOpen(false)}>Close</Button>
+          <DialogFooter className="p-6 pt-4 border-t shrink-0 bg-background">
+            <Button onClick={() => setViewOpen(false)} size="lg" className="w-full md:w-auto">Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

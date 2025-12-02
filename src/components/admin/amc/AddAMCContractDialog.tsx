@@ -8,11 +8,13 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { Search, Check, X, User, Package, Wrench, Mail, Calendar as CalendarIcon } from 'lucide-react'
+import { Search, Check, X, User, Package, Wrench, Mail, Calendar as CalendarIcon, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { createAMCContract } from '@/actions/admin/serviceEvents'
+import { createCustomerUser } from '@/actions/common/customers'
+import { createAgentUser } from '@/actions/common/agents'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Calendar } from "@/components/ui/calendar"
 import { format } from "date-fns"
@@ -49,6 +51,38 @@ export const AddAMCContractDialog = ({
   const [customerSearch, setCustomerSearch] = useState('')
   const [agentSearch, setAgentSearch] = useState('')
 
+  // Creation States
+  const [showCreateCustomer, setShowCreateCustomer] = useState(false)
+  const [creatingCustomer, setCreatingCustomer] = useState(false)
+  const [newCustomerData, setNewCustomerData] = useState({
+    name: '',
+    email: '',
+    mobile: '',
+    address: '',
+    password: ''
+  })
+
+  const [showCreateAgent, setShowCreateAgent] = useState(false)
+  const [creatingAgent, setCreatingAgent] = useState(false)
+  const [newAgentData, setNewAgentData] = useState({
+    name: '',
+    email: '',
+    mobile: '',
+    password: ''
+  })
+
+  // Local Data States (initialized from props, updated on creation)
+  const [localCustomers, setLocalCustomers] = useState(customers)
+  const [localAgents, setLocalAgents] = useState(agents)
+
+  useEffect(() => {
+    setLocalCustomers(customers)
+  }, [customers])
+
+  useEffect(() => {
+    setLocalAgents(agents)
+  }, [agents])
+
   const [addForm, setAddForm] = useState({
     productId: '',
     customerId: '',
@@ -77,17 +111,17 @@ export const AddAMCContractDialog = ({
   }, [products, productSearch])
 
   const filteredCustomers = useMemo(() => {
-    return customers.filter(customer =>
+    return localCustomers.filter(customer =>
       customer.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
       (customer.email || '').toLowerCase().includes(customerSearch.toLowerCase())
     ).slice(0, 50)
-  }, [customers, customerSearch])
+  }, [localCustomers, customerSearch])
 
   const filteredAgents = useMemo(() => {
-    return agents.filter(agent =>
+    return localAgents.filter(agent =>
       agent.user.name.toLowerCase().includes(agentSearch.toLowerCase())
     ).slice(0, 50)
-  }, [agents, agentSearch])
+  }, [localAgents, agentSearch])
 
   const resetSearchStates = () => {
     setProductSearch('')
@@ -117,6 +151,10 @@ export const AddAMCContractDialog = ({
     })
     setFormStep(1)
     resetSearchStates()
+    setShowCreateCustomer(false)
+    setShowCreateAgent(false)
+    setNewCustomerData({ name: '', email: '', mobile: '', address: '', password: '' })
+    setNewAgentData({ name: '', email: '', mobile: '', password: '' })
   }
 
   // Calculate end date based on start date and duration
@@ -210,6 +248,71 @@ export const AddAMCContractDialog = ({
       }
     }
   }, [addForm.startDate, addForm.endDate, addForm.noOfServices, addForm.firstServiceDate])
+
+  const handleCreateCustomer = async () => {
+    if (!newCustomerData.name || !newCustomerData.mobile || !newCustomerData.email) {
+      toast.error('Please fill in all required customer fields')
+      return
+    }
+
+    setCreatingCustomer(true)
+    try {
+      const result = await createCustomerUser(newCustomerData)
+      if (result.success && result.data) {
+        toast.success('Customer created successfully')
+        // Update local list
+        const newCustomer = {
+          id: result.data.id,
+          name: result.data.name,
+          email: result.data.email
+        }
+        setLocalCustomers(prev => [newCustomer, ...prev])
+        // Auto select
+        setAddForm(prev => ({ ...prev, customerId: result.data.id.toString() }))
+        setShowCreateCustomer(false)
+        setNewCustomerData({ name: '', email: '', mobile: '', address: '', password: '' })
+      } else {
+        toast.error(result.error || 'Failed to create customer')
+      }
+    } catch (error) {
+      toast.error('Failed to create customer')
+    } finally {
+      setCreatingCustomer(false)
+    }
+  }
+
+  const handleCreateAgent = async () => {
+    if (!newAgentData.name || !newAgentData.email || !newAgentData.mobile) {
+      toast.error('Please fill in all required agent fields')
+      return
+    }
+
+    setCreatingAgent(true)
+    try {
+      const result = await createAgentUser(newAgentData)
+      if (result.success && result.data && 'agent' in result.data) {
+        toast.success('Agent created successfully')
+
+        const newAgent = {
+          id: result.data.agent.id,
+          user: {
+            name: result.data.name
+          }
+        }
+
+        setLocalAgents(prev => [newAgent, ...prev])
+        setAddForm(prev => ({ ...prev, agentId: result.data.agent.id.toString() }))
+        setShowCreateAgent(false)
+        setNewAgentData({ name: '', email: '', mobile: '', password: '' })
+      } else {
+        toast.error(result.error || 'Failed to create agent')
+      }
+    } catch (error) {
+      toast.error('Failed to create agent')
+    } finally {
+      setCreatingAgent(false)
+    }
+  }
 
   const handleAddAMC = async () => {
     if (!addForm.productId || !addForm.customerId) {
@@ -311,208 +414,403 @@ export const AddAMCContractDialog = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Customer Card */}
                 <Card className={`shadow-sm h-full transition-colors ${addForm.customerId
-                    ? 'border-green-200 dark:border-green-900 bg-green-50/30 dark:bg-green-900/10'
-                    : 'border-blue-200 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-900/10'
+                  ? 'border-green-200 dark:border-green-900 bg-green-50/30 dark:bg-green-900/10'
+                  : 'border-blue-200 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-900/10'
                   }`}>
                   <CardHeader className="pb-4">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <div className={`p-2 rounded-lg ${addForm.customerId
+                    <CardTitle className="text-lg flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className={`p-2 rounded-lg ${addForm.customerId
                           ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
                           : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                        }`}>
-                        <User className="h-5 w-5" />
+                          }`}>
+                          <User className="h-5 w-5" />
+                        </div>
+                        Customer Details
                       </div>
-                      Customer Details
+                      {!showCreateCustomer && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 text-xs"
+                          onClick={() => setShowCreateCustomer(true)}
+                        >
+                          <Plus className="mr-2 h-3 w-3" />
+                          New Customer
+                        </Button>
+                      )}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {/* Customer Selection */}
-                    <div className="space-y-2">
-                      <Label htmlFor="customer" className="text-base font-semibold">Customer</Label>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Search for an existing customer by name or email.
-                      </p>
-                      <div className="flex gap-2 w-full">
-                        <Popover open={customerOpen} onOpenChange={setCustomerOpen}>
-                          <PopoverTrigger asChild>
+                    {!showCreateCustomer ? (
+                      <div className="space-y-2">
+                        <Label htmlFor="customer" className="text-base font-semibold">Customer</Label>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Search for an existing customer by name or email.
+                        </p>
+                        <div className="flex gap-2 w-full">
+                          <Popover open={customerOpen} onOpenChange={setCustomerOpen}>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={customerOpen}
+                                className={`flex-1 justify-between h-12 text-base bg-background min-w-0 ${!addForm.customerId && 'border-blue-300 dark:border-blue-700 ring-1 ring-blue-100 dark:ring-blue-900'
+                                  }`}
+                                disabled={isCreating}
+                              >
+                                {addForm.customerId ? (
+                                  <div className="flex items-center gap-2 text-left overflow-hidden">
+                                    <User className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                    <span className="truncate">
+                                      {localCustomers.find((c) => c.id.toString() === addForm.customerId)?.name}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground">Select customer...</span>
+                                )}
+                                <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[500px] p-0" align="start">
+                              <Command shouldFilter={false}>
+                                <CommandInput
+                                  placeholder="Search customers..."
+                                  value={customerSearch}
+                                  onValueChange={setCustomerSearch}
+                                />
+                                <CommandList>
+                                  <CommandEmpty>No customer found.</CommandEmpty>
+                                  <CommandGroup heading="Customers">
+                                    {filteredCustomers.map((customer) => (
+                                      <CommandItem
+                                        key={customer.id}
+                                        value={`customer-${customer.id}`}
+                                        onSelect={() => {
+                                          setAddForm(prev => ({ ...prev, customerId: customer.id.toString() }))
+                                          setCustomerOpen(false)
+                                        }}
+                                        className="cursor-pointer py-3 data-[selected='true']:bg-blue-100 data-[selected='true']:text-black data-[selected='true']:font-bold dark:data-[selected='true']:bg-blue-900/20 dark:data-[selected='true']:text-white"
+                                      >
+                                        <Check
+                                          className={`mr-2 h-4 w-4 shrink-0 ${addForm.customerId === customer.id.toString() ? 'opacity-100 text-green-600' : 'opacity-0'
+                                            }`}
+                                        />
+                                        <div className="flex flex-col">
+                                          <span className="font-medium">{customer.name}</span>
+                                          {customer.email && (
+                                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                              <Mail className="h-3 w-3" /> {customer.email}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                          {addForm.customerId && (
                             <Button
-                              variant="outline"
-                              role="combobox"
-                              aria-expanded={customerOpen}
-                              className={`flex-1 justify-between h-12 text-base bg-background min-w-0 ${!addForm.customerId && 'border-blue-300 dark:border-blue-700 ring-1 ring-blue-100 dark:ring-blue-900'
-                                }`}
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setAddForm({ ...addForm, customerId: '' })}
                               disabled={isCreating}
+                              className="shrink-0 h-12 w-12 text-muted-foreground hover:text-destructive"
                             >
-                              {addForm.customerId ? (
-                                <div className="flex items-center gap-2 text-left overflow-hidden">
-                                  <User className="h-4 w-4 shrink-0 text-muted-foreground" />
-                                  <span className="truncate">
-                                    {customers.find((c) => c.id.toString() === addForm.customerId)?.name}
-                                  </span>
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground">Select customer...</span>
-                              )}
-                              <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              <X className="h-5 w-5" />
                             </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[500px] p-0" align="start">
-                            <Command shouldFilter={false}>
-                              <CommandInput
-                                placeholder="Search customers..."
-                                value={customerSearch}
-                                onValueChange={setCustomerSearch}
-                              />
-                              <CommandList>
-                                <CommandEmpty>No customer found.</CommandEmpty>
-                                <CommandGroup heading="Customers">
-                                  {filteredCustomers.map((customer) => (
-                                    <CommandItem
-                                      key={customer.id}
-                                      value={`customer-${customer.id}`}
-                                      onSelect={() => {
-                                        setAddForm(prev => ({ ...prev, customerId: customer.id.toString() }))
-                                        setCustomerOpen(false)
-                                      }}
-                                      className="cursor-pointer py-3 data-[selected='true']:bg-blue-100 data-[selected='true']:text-black data-[selected='true']:font-bold dark:data-[selected='true']:bg-blue-900/20 dark:data-[selected='true']:text-white"
-                                    >
-                                      <Check
-                                        className={`mr-2 h-4 w-4 shrink-0 ${addForm.customerId === customer.id.toString() ? 'opacity-100 text-green-600' : 'opacity-0'
-                                          }`}
-                                      />
-                                      <div className="flex flex-col">
-                                        <span className="font-medium">{customer.name}</span>
-                                        {customer.email && (
-                                          <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                            <Mail className="h-3 w-3" /> {customer.email}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
-                        {addForm.customerId && (
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium">New Customer Details</span>
                           <Button
+                            type="button"
                             variant="ghost"
                             size="icon"
-                            onClick={() => setAddForm({ ...addForm, customerId: '' })}
-                            disabled={isCreating}
-                            className="shrink-0 h-12 w-12 text-muted-foreground hover:text-destructive"
+                            className="h-6 w-6"
+                            onClick={() => setShowCreateCustomer(false)}
                           >
-                            <X className="h-5 w-5" />
+                            <X className="h-3 w-3" />
                           </Button>
-                        )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label htmlFor="newCustName" className="text-xs">Name *</Label>
+                            <Input
+                              id="newCustName"
+                              value={newCustomerData.name}
+                              onChange={(e) => setNewCustomerData(prev => ({ ...prev, name: e.target.value }))}
+                              placeholder="Name"
+                              className="h-8"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="newCustMobile" className="text-xs">Mobile *</Label>
+                            <Input
+                              id="newCustMobile"
+                              value={newCustomerData.mobile}
+                              onChange={(e) => setNewCustomerData(prev => ({ ...prev, mobile: e.target.value }))}
+                              placeholder="Mobile"
+                              className="h-8"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="newCustEmail" className="text-xs">Email *</Label>
+                            <Input
+                              id="newCustEmail"
+                              value={newCustomerData.email}
+                              onChange={(e) => setNewCustomerData(prev => ({ ...prev, email: e.target.value }))}
+                              placeholder="Email"
+                              className="h-8"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="newCustPass" className="text-xs">Password</Label>
+                            <Input
+                              id="newCustPass"
+                              type="password"
+                              value={newCustomerData.password}
+                              onChange={(e) => setNewCustomerData(prev => ({ ...prev, password: e.target.value }))}
+                              placeholder="Default: 123456"
+                              className="h-8"
+                            />
+                          </div>
+                          <div className="col-span-2 space-y-1">
+                            <Label htmlFor="newCustAddr" className="text-xs">Address</Label>
+                            <Input
+                              id="newCustAddr"
+                              value={newCustomerData.address}
+                              onChange={(e) => setNewCustomerData(prev => ({ ...prev, address: e.target.value }))}
+                              placeholder="Address (Optional)"
+                              className="h-8"
+                            />
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          onClick={handleCreateCustomer}
+                          disabled={creatingCustomer}
+                          className="w-full h-8 mt-2"
+                          size="sm"
+                        >
+                          {creatingCustomer ? (
+                            <div className="flex items-center">
+                              <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
+                              Creating...
+                            </div>
+                          ) : (
+                            <>
+                              <Plus className="mr-2 h-3 w-3" />
+                              Create & Auto-fill
+                            </>
+                          )}
+                        </Button>
                       </div>
-                    </div>
+                    )}
                   </CardContent>
                 </Card>
 
                 {/* Technician Card */}
                 <Card className={`shadow-sm h-full transition-colors ${addForm.agentId
-                    ? 'border-purple-200 dark:border-purple-900 bg-purple-50/30 dark:bg-purple-900/10'
-                    : 'border-purple-100 dark:border-purple-900'
+                  ? 'border-purple-200 dark:border-purple-900 bg-purple-50/30 dark:bg-purple-900/10'
+                  : 'border-purple-100 dark:border-purple-900'
                   }`}>
                   <CardHeader className="pb-4">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                        <Wrench className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                    <CardTitle className="text-lg flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                          <Wrench className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                        </div>
+                        Technician Assignment
                       </div>
-                      Technician Assignment
+                      {!showCreateAgent && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 text-xs"
+                          onClick={() => setShowCreateAgent(true)}
+                        >
+                          <Plus className="mr-2 h-3 w-3" />
+                          New Agent
+                        </Button>
+                      )}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-2">
-                      <Label htmlFor="agent" className="text-base font-semibold">Assign Technician</Label>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Optionally assign a technician to manage this contract.
-                      </p>
-                      <div className="flex gap-2 w-full">
-                        <Popover open={agentOpen} onOpenChange={setAgentOpen}>
-                          <PopoverTrigger asChild>
+                    {!showCreateAgent ? (
+                      <div className="space-y-2">
+                        <Label htmlFor="agent" className="text-base font-semibold">Assign Technician</Label>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Optionally assign a technician to manage this contract.
+                        </p>
+                        <div className="flex gap-2 w-full">
+                          <Popover open={agentOpen} onOpenChange={setAgentOpen}>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={agentOpen}
+                                className="flex-1 justify-between h-12 text-base bg-background min-w-0"
+                                disabled={isCreating}
+                              >
+                                {addForm.agentId ? (
+                                  <div className="flex items-center gap-2 text-left overflow-hidden">
+                                    <Wrench className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                    <span className="truncate">
+                                      {localAgents.find((a) => a.id.toString() === addForm.agentId)?.user.name}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground">Select technician...</span>
+                                )}
+                                <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[400px] p-0" align="start">
+                              <Command shouldFilter={false}>
+                                <CommandInput
+                                  placeholder="Search technicians..."
+                                  value={agentSearch}
+                                  onValueChange={setAgentSearch}
+                                />
+                                <CommandList>
+                                  <CommandEmpty>No technician found.</CommandEmpty>
+                                  <CommandGroup heading="Technicians">
+                                    {filteredAgents.map((agent) => (
+                                      <CommandItem
+                                        key={agent.id}
+                                        value={`agent-${agent.id}`}
+                                        onSelect={() => {
+                                          setAddForm(prev => ({ ...prev, agentId: agent.id.toString() }))
+                                          setAgentOpen(false)
+                                        }}
+                                        className="cursor-pointer py-3 data-[selected='true']:bg-blue-50 data-[selected='true']:text-black data-[selected='true']:font-bold dark:data-[selected='true']:bg-blue-900/20 dark:data-[selected='true']:text-white"
+                                      >
+                                        <Check
+                                          className={`mr-2 h-4 w-4 ${addForm.agentId === agent.id.toString() ? 'opacity-100 text-purple-600' : 'opacity-0'
+                                            }`}
+                                        />
+                                        <Wrench className="mr-2 h-4 w-4 text-muted-foreground" />
+                                        <span className="font-medium">{agent.user.name}</span>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                          {addForm.agentId && (
                             <Button
-                              variant="outline"
-                              role="combobox"
-                              aria-expanded={agentOpen}
-                              className="flex-1 justify-between h-12 text-base bg-background min-w-0"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setAddForm({ ...addForm, agentId: '' })}
                               disabled={isCreating}
+                              className="shrink-0 h-12 w-12 text-muted-foreground hover:text-destructive"
                             >
-                              {addForm.agentId ? (
-                                <div className="flex items-center gap-2 text-left overflow-hidden">
-                                  <Wrench className="h-4 w-4 shrink-0 text-muted-foreground" />
-                                  <span className="truncate">
-                                    {agents.find((a) => a.id.toString() === addForm.agentId)?.user.name}
-                                  </span>
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground">Select technician...</span>
-                              )}
-                              <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              <X className="h-5 w-5" />
                             </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[400px] p-0" align="start">
-                            <Command shouldFilter={false}>
-                              <CommandInput
-                                placeholder="Search technicians..."
-                                value={agentSearch}
-                                onValueChange={setAgentSearch}
-                              />
-                              <CommandList>
-                                <CommandEmpty>No technician found.</CommandEmpty>
-                                <CommandGroup heading="Technicians">
-                                  {filteredAgents.map((agent) => (
-                                    <CommandItem
-                                      key={agent.id}
-                                      value={`agent-${agent.id}`}
-                                      onSelect={() => {
-                                        setAddForm(prev => ({ ...prev, agentId: agent.id.toString() }))
-                                        setAgentOpen(false)
-                                      }}
-                                      className="cursor-pointer py-3 data-[selected='true']:bg-blue-50 data-[selected='true']:text-black data-[selected='true']:font-bold dark:data-[selected='true']:bg-blue-900/20 dark:data-[selected='true']:text-white"
-                                    >
-                                      <Check
-                                        className={`mr-2 h-4 w-4 ${addForm.agentId === agent.id.toString() ? 'opacity-100 text-purple-600' : 'opacity-0'
-                                          }`}
-                                      />
-                                      <Wrench className="mr-2 h-4 w-4 text-muted-foreground" />
-                                      <span className="font-medium">{agent.user.name}</span>
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
-                        {addForm.agentId && (
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium">New Agent Details</span>
                           <Button
+                            type="button"
                             variant="ghost"
                             size="icon"
-                            onClick={() => setAddForm({ ...addForm, agentId: '' })}
-                            disabled={isCreating}
-                            className="shrink-0 h-12 w-12 text-muted-foreground hover:text-destructive"
+                            className="h-6 w-6"
+                            onClick={() => setShowCreateAgent(false)}
                           >
-                            <X className="h-5 w-5" />
+                            <X className="h-3 w-3" />
                           </Button>
-                        )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label htmlFor="agentName" className="text-xs">Name *</Label>
+                            <Input
+                              id="agentName"
+                              value={newAgentData.name}
+                              onChange={(e) => setNewAgentData(prev => ({ ...prev, name: e.target.value }))}
+                              placeholder="Agent Name"
+                              className="h-8"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="agentMobile" className="text-xs">Mobile *</Label>
+                            <Input
+                              id="agentMobile"
+                              value={newAgentData.mobile}
+                              onChange={(e) => setNewAgentData(prev => ({ ...prev, mobile: e.target.value }))}
+                              placeholder="Mobile Number"
+                              className="h-8"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="agentEmail" className="text-xs">Email *</Label>
+                            <Input
+                              id="agentEmail"
+                              value={newAgentData.email}
+                              onChange={(e) => setNewAgentData(prev => ({ ...prev, email: e.target.value }))}
+                              placeholder="Email Address"
+                              className="h-8"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="agentPassword" className="text-xs">Password</Label>
+                            <Input
+                              id="agentPassword"
+                              type="password"
+                              value={newAgentData.password}
+                              onChange={(e) => setNewAgentData(prev => ({ ...prev, password: e.target.value }))}
+                              placeholder="Default: 123456"
+                              className="h-8"
+                            />
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          onClick={handleCreateAgent}
+                          disabled={creatingAgent}
+                          className="w-full h-8 mt-2"
+                          size="sm"
+                        >
+                          {creatingAgent ? (
+                            <div className="flex items-center">
+                              <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
+                              Creating...
+                            </div>
+                          ) : (
+                            <>
+                              <Plus className="mr-2 h-3 w-3" />
+                              Create & Select Agent
+                            </>
+                          )}
+                        </Button>
                       </div>
-                    </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
 
               {/* Product Card - Full Width */}
               <Card className={`shadow-sm w-full transition-colors ${addForm.productId
-                  ? 'border-green-200 dark:border-green-900 bg-green-50/30 dark:bg-green-900/10'
-                  : 'border-blue-200 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-900/10'
+                ? 'border-green-200 dark:border-green-900 bg-green-50/30 dark:bg-green-900/10'
+                : 'border-blue-200 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-900/10'
                 }`}>
                 <CardHeader className="pb-4">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <div className={`p-2 rounded-lg ${addForm.productId
-                        ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
-                        : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                      ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+                      : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
                       }`}>
                       <Package className="h-5 w-5" />
                     </div>

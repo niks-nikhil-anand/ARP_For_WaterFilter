@@ -108,14 +108,14 @@ export async function createAgentUser(data: {
     })
 
     // Create agent record
-    await prisma.agent.create({
+    const agent = await prisma.agent.create({
       data: {
         userId: user.id,
         shopId: data.shopId || null
       }
     })
 
-    return { success: true, data: user, message: 'Agent created successfully' }
+    return { success: true, data: { ...user, agent }, message: 'Agent created successfully' }
   } catch (error) {
     console.error('Failed to create agent:', error)
     return { success: false, error: 'Failed to create agent' }

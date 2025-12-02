@@ -53,11 +53,22 @@ type Warranty = {
     productName: string | null;
     company: string;
     type: string;
+    description: string | null;
+    color: string | null;
+    price: any; // Decimal
+    featuredImageUrl: string | null;
   };
   order: {
     customerName: string;
     customerPhone: string | null;
     customerEmail: string | null;
+    customerAltPhone: string | null;
+    apartmentNo: string | null;
+    locality: string | null;
+    landmark: string | null;
+    pincode: string | null;
+    state: string | null;
+    country: string | null;
     status: string;
   };
   warrantyType: string;
@@ -570,50 +581,122 @@ const WarrantyManagementPage = () => {
               Complete information about the warranty coverage
             </DialogDescription>
           </DialogHeader>
-          {selectedWarranty && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground">Status</h4>
-                  <div className="mt-1">
-                    {getStatusBadge(selectedWarranty.status, selectedWarranty.endDate)}
-                  </div>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground">Type</h4>
-                  <p className="font-medium mt-1">{selectedWarranty.warrantyType}</p>
+          {selectedWarranty && <div className="space-y-4">
+            {/* Status & Type */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground">Status</h4>
+                <div className="mt-1">
+                  {getStatusBadge(selectedWarranty.status, selectedWarranty.endDate)}
                 </div>
               </div>
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground">Warranty Type</h4>
+                <p className="font-medium mt-1">{selectedWarranty.warrantyType}</p>
+              </div>
+            </div>
 
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium text-muted-foreground">Product Information</h4>
-                <div className="bg-muted/50 p-3 rounded-md">
-                  <p className="font-medium">{selectedWarranty.product.productName}</p>
-                  <p className="text-sm text-muted-foreground">{selectedWarranty.product.company} • {selectedWarranty.product.type}</p>
+            {/* Dates */}
+            <div className="grid grid-cols-2 gap-4 bg-muted/30 p-3 rounded-md border">
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground">Start Date</h4>
+                <div className="flex items-center gap-2 mt-1">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">{formatDate(selectedWarranty.startDate)}</span>
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium text-muted-foreground">Customer Information</h4>
-                <div className="bg-muted/50 p-3 rounded-md">
-                  <p className="font-medium">{selectedWarranty.order.customerName}</p>
-                  <p className="text-sm text-muted-foreground">{selectedWarranty.order.customerPhone}</p>
-                  <p className="text-sm text-muted-foreground">{selectedWarranty.order.customerEmail}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground">Start Date</h4>
-                  <p className="font-medium mt-1">{formatDate(selectedWarranty.startDate)}</p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground">End Date</h4>
-                  <p className="font-medium mt-1">{formatDate(selectedWarranty.endDate)}</p>
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground">End Date</h4>
+                <div className="flex items-center gap-2 mt-1">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">{formatDate(selectedWarranty.endDate)}</span>
                 </div>
               </div>
             </div>
-          )}
+
+            {/* Product Information */}
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Package className="h-4 w-4" />
+                Product Information
+              </h4>
+              <div className="bg-muted/50 p-3 rounded-md space-y-2">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-medium">{selectedWarranty.product.productName || 'Unknown Product'}</p>
+                    <p className="text-sm text-muted-foreground">{selectedWarranty.product.company} • {selectedWarranty.product.type}</p>
+                  </div>
+                  {selectedWarranty.product.price && (
+                    <Badge variant="secondary">₹{Number(selectedWarranty.product.price).toLocaleString()}</Badge>
+                  )}
+                </div>
+
+                {selectedWarranty.product.color && (
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Color: </span>
+                    {selectedWarranty.product.color}
+                  </div>
+                )}
+
+                {selectedWarranty.product.description && (
+                  <div className="text-sm border-t pt-2 mt-2">
+                    <span className="text-muted-foreground block mb-1">Description:</span>
+                    <p className="text-muted-foreground/80 line-clamp-2">{selectedWarranty.product.description}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Customer Information */}
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4" />
+                Customer Details
+              </h4>
+              <div className="bg-muted/50 p-3 rounded-md space-y-3">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                  <div>
+                    <span className="text-xs text-muted-foreground block">Name</span>
+                    <span className="text-sm font-medium">{selectedWarranty.order.customerName}</span>
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground block">Phone</span>
+                    <span className="text-sm">{selectedWarranty.order.customerPhone}</span>
+                  </div>
+                  {selectedWarranty.order.customerEmail && (
+                    <div className="col-span-2">
+                      <span className="text-xs text-muted-foreground block">Email</span>
+                      <span className="text-sm">{selectedWarranty.order.customerEmail}</span>
+                    </div>
+                  )}
+                  {selectedWarranty.order.customerAltPhone && (
+                    <div>
+                      <span className="text-xs text-muted-foreground block">Alt Phone</span>
+                      <span className="text-sm">{selectedWarranty.order.customerAltPhone}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Address Section */}
+                {(selectedWarranty.order.apartmentNo || selectedWarranty.order.locality || selectedWarranty.order.pincode) && (
+                  <div className="border-t pt-2 mt-2">
+                    <span className="text-xs text-muted-foreground block mb-1">Address</span>
+                    <p className="text-sm text-muted-foreground/90">
+                      {[
+                        selectedWarranty.order.apartmentNo,
+                        selectedWarranty.order.landmark,
+                        selectedWarranty.order.locality,
+                        selectedWarranty.order.state,
+                        selectedWarranty.order.country,
+                        selectedWarranty.order.pincode ? `Pin: ${selectedWarranty.order.pincode}` : null
+                      ].filter(Boolean).join(', ')}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          }
           <DialogFooter>
             <Button onClick={() => setViewDialogOpen(false)}>Close</Button>
           </DialogFooter>

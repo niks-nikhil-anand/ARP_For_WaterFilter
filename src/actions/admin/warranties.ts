@@ -11,6 +11,10 @@ export async function getAllWarranties() {
             productName: true,
             company: true,
             type: true,
+            description: true,
+            color: true,
+            price: true,
+            featuredImageUrl: true,
           }
         },
         order: {
@@ -18,6 +22,13 @@ export async function getAllWarranties() {
             customerName: true,
             customerPhone: true,
             customerEmail: true,
+            customerAltPhone: true,
+            apartmentNo: true,
+            locality: true,
+            landmark: true,
+            pincode: true,
+            state: true,
+            country: true,
             status: true,
           }
         }
@@ -29,7 +40,11 @@ export async function getAllWarranties() {
 
     const serializedWarranties = warranties.map(w => ({
       ...w,
-      warrantyAmount: w.warrantyAmount ? Number(w.warrantyAmount) : 0
+      warrantyAmount: w.warrantyAmount ? Number(w.warrantyAmount) : 0,
+      product: {
+        ...w.product,
+        price: w.product.price ? Number(w.product.price) : 0
+      }
     }))
 
     return { success: true, data: serializedWarranties }

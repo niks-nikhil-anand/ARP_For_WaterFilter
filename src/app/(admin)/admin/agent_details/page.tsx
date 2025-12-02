@@ -43,12 +43,15 @@ import {
   UserX,
   Pencil,
   Plus,
+  ArrowUpDown,
+  X
 } from 'lucide-react'
 
 import { getAgents, createAgent, updateAgent, deleteAgent } from '@/app/actions/agent'
 import { getShops } from '@/app/actions/shop'
 import { toast } from 'sonner'
 import { Skeleton } from '@/components/ui/skeleton'
+import { PaginationControls } from '@/components/ui/pagination-controls'
 
 type AgentData = {
   id: number
@@ -95,6 +98,16 @@ const AgentUsersPage = () => {
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [selectedAgent, setSelectedAgent] = useState<AgentData | null>(null)
 
+  // Pagination & Filter State
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(10)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
+  const [sortBy, setSortBy] = useState('createdAt')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [filterShopId, setFilterShopId] = useState<string>('ALL')
+  const [filterStatus, setFilterStatus] = useState<string>('ALL')
+
   const [editForm, setEditForm] = useState({
     name: '',
     email: '',
@@ -127,9 +140,12 @@ const AgentUsersPage = () => {
   })
 
   useEffect(() => {
-    loadAgents()
     loadShops()
   }, [])
+
+  useEffect(() => {
+    loadAgents()
+  }, [currentPage, searchTerm, sortBy, sortOrder, filterShopId, filterStatus])
 
   const loadShops = async () => {
     setShopsLoading(true)
@@ -152,14 +168,52 @@ const AgentUsersPage = () => {
 
   const loadAgents = async () => {
     setLoading(true)
-    const result = await getAgents()
-    if (result.success && result.data) {
-      setAgents(result.data as unknown as AgentData[])
-    } else {
-      console.error('Failed to load agents')
-      toast.error('Failed to load agents')
+    try {
+      const filters: any = {
+        page: currentPage,
+        limit: itemsPerPage,
+        search: searchTerm,
+        sortBy,
+        sortOrder,
+        shopId: filterShopId !== 'ALL' ? parseInt(filterShopId) : undefined,
+        status: filterStatus !== 'ALL' ? filterStatus : undefined,
+      }
+
+      const result = await getAgents(filters)
+      if (result.success && result.data) {
+        setAgents(result.data as unknown as AgentData[])
+        if (result.meta) {
+          setTotalPages(result.meta.totalPages)
+          setTotalItems(result.meta.total)
+        }
+      } else {
+        console.error('Failed to load agents')
+        toast.error('Failed to load agents')
+      }
+    } catch (error) {
+      console.error('Error loading agents:', error)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
+  }
+
+  const handleSort = (column: string) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(column)
+      setSortOrder('asc')
+    }
+    setCurrentPage(1)
+  }
+
+  const clearFilters = () => {
+    setSearchTerm('')
+    setFilterShopId('ALL')
+    setFilterStatus('ALL')
+    setSortBy('createdAt')
+    setSortOrder('desc')
+    setCurrentPage(1)
   }
 
   // Enforce phone input: always show '+91 ' prefix, accept only digits after it, max 10 digits
@@ -421,12 +475,7 @@ const AgentUsersPage = () => {
     }
   }
 
-  // Filter users based on search term
-  const filteredAgents = agents.filter((agent) =>
-    agent.user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    agent.user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    agent.user.mobile?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, string> = {
@@ -475,7 +524,7 @@ const AgentUsersPage = () => {
                 <Users className="h-4 w-4" />
                 <span className="text-sm font-medium">Total Agents</span>
               </div>
-              <p className="text-2xl font-bold">{agents.length}</p>
+              <p className="text-2xl font-bold">{totalItems}</p>
             </div>
             <div className="border rounded-lg p-4">
               <div className="flex items-center gap-2 text-muted-foreground mb-2">
@@ -497,15 +546,70 @@ const AgentUsersPage = () => {
             </div>
           </div>
 
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by name, email, or mobile..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+          {/* Filters & Search */}
+          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+            <div className="flex flex-1 gap-4 w-full md:w-auto">
+              {/* Search */}
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name, email, or mobile..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value)
+                    setCurrentPage(1)
+                  }}
+                  className="pl-10"
+                />
+              </div>
+
+              {/* Shop Filter */}
+              <Select
+                value={filterShopId}
+                onValueChange={(val) => {
+                  setFilterShopId(val)
+                  setCurrentPage(1)
+                }}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filter by Shop" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Shops</SelectItem>
+                  {shops.map((shop) => (
+                    <SelectItem key={shop.id} value={shop.id.toString()}>
+                      {shop.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Status Filter */}
+              <Select
+                value={filterStatus}
+                onValueChange={(val) => {
+                  setFilterStatus(val)
+                  setCurrentPage(1)
+                }}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filter by Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Status</SelectItem>
+                  <SelectItem value="ACTIVE">Active</SelectItem>
+                  <SelectItem value="BLOCKED">Blocked</SelectItem>
+                  <SelectItem value="PENDING">Pending</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {(searchTerm || filterShopId !== 'ALL' || filterStatus !== 'ALL') && (
+              <Button variant="ghost" onClick={clearFilters} className="h-8 px-2 lg:px-3">
+                Reset
+                <X className="ml-2 h-4 w-4" />
+              </Button>
+            )}
           </div>
 
 
@@ -515,12 +619,28 @@ const AgentUsersPage = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
+                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('user.name')}>
+                    <div className="flex items-center gap-1">
+                      Name <ArrowUpDown className="h-3 w-3" />
+                    </div>
+                  </TableHead>
                   <TableHead>Contact Detail</TableHead>
-                  <TableHead>Shop</TableHead>
-                  <TableHead>Area Cover</TableHead>
+                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('shop.name')}>
+                    <div className="flex items-center gap-1">
+                      Shop <ArrowUpDown className="h-3 w-3" />
+                    </div>
+                  </TableHead>
+                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('areaCover')}>
+                    <div className="flex items-center gap-1">
+                      Area Cover <ArrowUpDown className="h-3 w-3" />
+                    </div>
+                  </TableHead>
                   <TableHead>Address Details</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('user.status')}>
+                    <div className="flex items-center gap-1">
+                      Status <ArrowUpDown className="h-3 w-3" />
+                    </div>
+                  </TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -547,7 +667,7 @@ const AgentUsersPage = () => {
                       <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto rounded-md" /></TableCell>
                     </TableRow>
                   ))
-                ) : filteredAgents.length === 0 ? (
+                ) : agents.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-10">
                       <div className="flex flex-col items-center gap-2">
@@ -559,7 +679,7 @@ const AgentUsersPage = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredAgents.map((agent) => {
+                  agents.map((agent) => {
                     const address = agent.user.addresses[0]
                     return (
                       <TableRow key={agent.id}>
@@ -639,6 +759,15 @@ const AgentUsersPage = () => {
                 )}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Pagination */}
+          <div className="mt-4">
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
           </div>
         </div>
       </div>

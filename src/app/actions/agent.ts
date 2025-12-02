@@ -16,22 +16,81 @@ export type AgentWithDetails = Prisma.AgentGetPayload<{
   }
 }>
 
-export async function getAgents() {
+export async function getAgents(filters?: {
+  page?: number
+  limit?: number
+  search?: string
+  sortBy?: string
+  sortOrder?: 'asc' | 'desc'
+  shopId?: number
+  status?: string
+}) {
   try {
-    const agents = await prisma.agent.findMany({
-      include: {
-        user: {
-          include: {
-            addresses: true
-          }
+    const page = filters?.page || 1
+    const limit = filters?.limit || 10
+    const skip = (page - 1) * limit
+
+    const where: any = {}
+
+    if (filters?.search) {
+      where.OR = [
+        { user: { name: { contains: filters.search, mode: 'insensitive' } } },
+        { user: { email: { contains: filters.search, mode: 'insensitive' } } },
+        { user: { mobile: { contains: filters.search, mode: 'insensitive' } } },
+      ]
+    }
+
+    if (filters?.shopId) {
+      where.shopId = filters.shopId
+    }
+
+    if (filters?.status && filters.status !== 'ALL') {
+      where.user = { ...where.user, status: filters.status }
+    }
+
+    const orderBy: any = {}
+    if (filters?.sortBy) {
+      if (filters.sortBy === 'user.name') {
+        orderBy.user = { name: filters.sortOrder || 'asc' }
+      } else if (filters.sortBy === 'shop.name') {
+        orderBy.shop = { name: filters.sortOrder || 'asc' }
+      } else if (filters.sortBy === 'user.status') {
+        orderBy.user = { status: filters.sortOrder || 'asc' }
+      } else {
+        orderBy[filters.sortBy] = filters.sortOrder || 'desc'
+      }
+    } else {
+      orderBy.createdAt = 'desc'
+    }
+
+    const [total, agents] = await Promise.all([
+      prisma.agent.count({ where }),
+      prisma.agent.findMany({
+        where,
+        include: {
+          user: {
+            include: {
+              addresses: true
+            }
+          },
+          shop: true
         },
-        shop: true
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    })
-    return { success: true, data: agents }
+        orderBy,
+        skip,
+        take: limit,
+      })
+    ])
+
+    return {
+      success: true,
+      data: agents,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    }
   } catch (error) {
     console.error('Failed to fetch agents:', error)
     return { success: false, error: 'Failed to fetch agents' }

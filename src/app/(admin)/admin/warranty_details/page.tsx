@@ -88,6 +88,9 @@ const WarrantyManagementPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(8);
 
+  const [expirationValue, setExpirationValue] = useState<string>("");
+  const [expirationUnit, setExpirationUnit] = useState<"days" | "months" | "years">("days");
+
   // Modal states
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedWarranty, setSelectedWarranty] = useState<Warranty | null>(null);
@@ -140,7 +143,27 @@ const WarrantyManagementPage = () => {
       const matchesStatus =
         statusFilter === "ALL" || warranty.status === statusFilter;
 
-      return matchesSearch && matchesStatus;
+      let matchesExpiration = true;
+      if (expirationValue && !isNaN(Number(expirationValue))) {
+        const today = new Date();
+        const value = Number(expirationValue);
+        let targetDate = new Date();
+
+        if (expirationUnit === "days") {
+          targetDate.setDate(today.getDate() + value);
+        } else if (expirationUnit === "months") {
+          targetDate.setMonth(today.getMonth() + value);
+        } else if (expirationUnit === "years") {
+          targetDate.setFullYear(today.getFullYear() + value);
+        }
+
+        const endDate = new Date(warranty.endDate);
+        // Check if warranty expires between now and target date
+        // Also ensure it hasn't already expired if we're looking for "about to expire"
+        matchesExpiration = endDate >= today && endDate <= targetDate;
+      }
+
+      return matchesSearch && matchesStatus && matchesExpiration;
     });
 
     if (sortField) {
@@ -158,7 +181,7 @@ const WarrantyManagementPage = () => {
     }
 
     return filtered;
-  }, [warranties, searchTerm, statusFilter, sortField, sortOrder]);
+  }, [warranties, searchTerm, statusFilter, sortField, sortOrder, expirationValue, expirationUnit]);
 
   // Pagination logic
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -314,8 +337,8 @@ const WarrantyManagementPage = () => {
           </div>
 
           {/* Filters and Search */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="relative">
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
+            <div className="relative sm:col-span-4">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search by product or customer name..."
@@ -327,25 +350,72 @@ const WarrantyManagementPage = () => {
                 className="pl-10"
               />
             </div>
-            <Select
-              value={statusFilter}
-              onValueChange={(value) => {
-                setStatusFilter(value);
-                setCurrentPage(1);
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Statuses</SelectItem>
-                {warrantyStatuses.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {status}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="sm:col-span-3">
+              <Select
+                value={statusFilter}
+                onValueChange={(value) => {
+                  setStatusFilter(value);
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Statuses</SelectItem>
+                  {warrantyStatuses.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Expiration Filter */}
+            <div className="sm:col-span-5 flex gap-2 items-center">
+              <span className="text-sm text-muted-foreground whitespace-nowrap">Expires in:</span>
+              <Input
+                type="number"
+                placeholder="Value"
+                value={expirationValue}
+                onChange={(e) => {
+                  setExpirationValue(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-24"
+                min="0"
+              />
+              <Select
+                value={expirationUnit}
+                onValueChange={(value: "days" | "months" | "years") => {
+                  setExpirationUnit(value);
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="w-28">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="days">Days</SelectItem>
+                  <SelectItem value="months">Months</SelectItem>
+                  <SelectItem value="years">Years</SelectItem>
+                </SelectContent>
+              </Select>
+              {expirationValue && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setExpirationValue("");
+                    setCurrentPage(1);
+                  }}
+                  title="Clear expiration filter"
+                >
+                  <XCircle className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Table */}

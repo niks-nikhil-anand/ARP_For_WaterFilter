@@ -356,6 +356,9 @@ export function AddWarrantyDialog() {
                                                     disabled={(date) =>
                                                         date > new Date() || date < new Date("1900-01-01")
                                                     }
+                                                    formatters={{
+                                                        formatWeekdayName: (date) => format(date, "EEEEE"),
+                                                    }}
                                                     initialFocus
                                                 />
                                             </PopoverContent>

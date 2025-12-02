@@ -8,12 +8,15 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { Search, Check, X, User, Package, Wrench, Mail, Calendar } from 'lucide-react'
+import { Search, Check, X, User, Package, Wrench, Mail, Calendar as CalendarIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { createAMCContract } from '@/actions/admin/serviceEvents'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Calendar } from "@/components/ui/calendar"
+import { format } from "date-fns"
+import { cn } from "@/lib/utils"
 
 interface AddAMCContractDialogProps {
   open: boolean
@@ -136,11 +139,11 @@ export const AddAMCContractDialog = ({
         }
       }
 
-      setAddForm(prev => ({ 
-        ...prev, 
+      setAddForm(prev => ({
+        ...prev,
         endDate: endDate.toISOString().split('T')[0],
         // Default first service date to start date if not set
-        firstServiceDate: prev.firstServiceDate || prev.startDate 
+        firstServiceDate: prev.firstServiceDate || prev.startDate
       }))
     }
   }, [addForm.startDate, addForm.duration])
@@ -180,7 +183,7 @@ export const AddAMCContractDialog = ({
       const endDate = new Date(addForm.endDate)
       const count = parseInt(addForm.noOfServices)
       const firstService = addForm.firstServiceDate ? new Date(addForm.firstServiceDate) : startDate
-      
+
       if (count > 0) {
         const totalDurationMs = endDate.getTime() - startDate.getTime()
         const intervalMs = totalDurationMs / count
@@ -192,14 +195,14 @@ export const AddAMCContractDialog = ({
           // Or interval from start date? 
           // Usually intervals are spaced out.
           // Let's assume first service is the first one, and others follow by interval.
-          
+
           let serviceDate: Date
           if (i === 0) {
             serviceDate = firstService
           } else {
             serviceDate = new Date(firstService.getTime() + intervalMs * i)
           }
-          
+
           // Ensure we don't go past end date? Or just let it be.
           dates.push(serviceDate.toISOString().split('T')[0])
         }
@@ -307,18 +310,16 @@ export const AddAMCContractDialog = ({
             <div className="space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Customer Card */}
-                <Card className={`shadow-sm h-full transition-colors ${
-                  addForm.customerId 
-                    ? 'border-green-200 dark:border-green-900 bg-green-50/30 dark:bg-green-900/10' 
+                <Card className={`shadow-sm h-full transition-colors ${addForm.customerId
+                    ? 'border-green-200 dark:border-green-900 bg-green-50/30 dark:bg-green-900/10'
                     : 'border-blue-200 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-900/10'
-                }`}>
+                  }`}>
                   <CardHeader className="pb-4">
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <div className={`p-2 rounded-lg ${
-                        addForm.customerId 
-                          ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' 
+                      <div className={`p-2 rounded-lg ${addForm.customerId
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
                           : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                      }`}>
+                        }`}>
                         <User className="h-5 w-5" />
                       </div>
                       Customer Details
@@ -338,9 +339,8 @@ export const AddAMCContractDialog = ({
                               variant="outline"
                               role="combobox"
                               aria-expanded={customerOpen}
-                              className={`flex-1 justify-between h-12 text-base bg-background min-w-0 ${
-                                !addForm.customerId && 'border-blue-300 dark:border-blue-700 ring-1 ring-blue-100 dark:ring-blue-900'
-                              }`}
+                              className={`flex-1 justify-between h-12 text-base bg-background min-w-0 ${!addForm.customerId && 'border-blue-300 dark:border-blue-700 ring-1 ring-blue-100 dark:ring-blue-900'
+                                }`}
                               disabled={isCreating}
                             >
                               {addForm.customerId ? (
@@ -377,9 +377,8 @@ export const AddAMCContractDialog = ({
                                       className="cursor-pointer py-3 data-[selected='true']:bg-blue-100 data-[selected='true']:text-black data-[selected='true']:font-bold dark:data-[selected='true']:bg-blue-900/20 dark:data-[selected='true']:text-white"
                                     >
                                       <Check
-                                        className={`mr-2 h-4 w-4 shrink-0 ${
-                                          addForm.customerId === customer.id.toString() ? 'opacity-100 text-green-600' : 'opacity-0'
-                                        }`}
+                                        className={`mr-2 h-4 w-4 shrink-0 ${addForm.customerId === customer.id.toString() ? 'opacity-100 text-green-600' : 'opacity-0'
+                                          }`}
                                       />
                                       <div className="flex flex-col">
                                         <span className="font-medium">{customer.name}</span>
@@ -413,11 +412,10 @@ export const AddAMCContractDialog = ({
                 </Card>
 
                 {/* Technician Card */}
-                <Card className={`shadow-sm h-full transition-colors ${
-                  addForm.agentId 
-                    ? 'border-purple-200 dark:border-purple-900 bg-purple-50/30 dark:bg-purple-900/10' 
+                <Card className={`shadow-sm h-full transition-colors ${addForm.agentId
+                    ? 'border-purple-200 dark:border-purple-900 bg-purple-50/30 dark:bg-purple-900/10'
                     : 'border-purple-100 dark:border-purple-900'
-                }`}>
+                  }`}>
                   <CardHeader className="pb-4">
                     <CardTitle className="text-lg flex items-center gap-2">
                       <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
@@ -476,9 +474,8 @@ export const AddAMCContractDialog = ({
                                       className="cursor-pointer py-3 data-[selected='true']:bg-blue-50 data-[selected='true']:text-black data-[selected='true']:font-bold dark:data-[selected='true']:bg-blue-900/20 dark:data-[selected='true']:text-white"
                                     >
                                       <Check
-                                        className={`mr-2 h-4 w-4 ${
-                                          addForm.agentId === agent.id.toString() ? 'opacity-100 text-purple-600' : 'opacity-0'
-                                        }`}
+                                        className={`mr-2 h-4 w-4 ${addForm.agentId === agent.id.toString() ? 'opacity-100 text-purple-600' : 'opacity-0'
+                                          }`}
                                       />
                                       <Wrench className="mr-2 h-4 w-4 text-muted-foreground" />
                                       <span className="font-medium">{agent.user.name}</span>
@@ -507,18 +504,16 @@ export const AddAMCContractDialog = ({
               </div>
 
               {/* Product Card - Full Width */}
-              <Card className={`shadow-sm w-full transition-colors ${
-                addForm.productId 
-                  ? 'border-green-200 dark:border-green-900 bg-green-50/30 dark:bg-green-900/10' 
+              <Card className={`shadow-sm w-full transition-colors ${addForm.productId
+                  ? 'border-green-200 dark:border-green-900 bg-green-50/30 dark:bg-green-900/10'
                   : 'border-blue-200 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-900/10'
-              }`}>
+                }`}>
                 <CardHeader className="pb-4">
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <div className={`p-2 rounded-lg ${
-                      addForm.productId 
-                        ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' 
+                    <div className={`p-2 rounded-lg ${addForm.productId
+                        ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
                         : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                    }`}>
+                      }`}>
                       <Package className="h-5 w-5" />
                     </div>
                     Product Details
@@ -538,9 +533,8 @@ export const AddAMCContractDialog = ({
                             variant="outline"
                             role="combobox"
                             aria-expanded={productOpen}
-                            className={`flex-1 justify-between h-12 text-base bg-background min-w-0 ${
-                              !addForm.productId && 'border-blue-300 dark:border-blue-700 ring-1 ring-blue-100 dark:ring-blue-900'
-                            }`}
+                            className={`flex-1 justify-between h-12 text-base bg-background min-w-0 ${!addForm.productId && 'border-blue-300 dark:border-blue-700 ring-1 ring-blue-100 dark:ring-blue-900'
+                              }`}
                             disabled={isCreating}
                           >
                             {addForm.productId ? (
@@ -577,9 +571,8 @@ export const AddAMCContractDialog = ({
                                     className="cursor-pointer py-3 data-[selected='true']:bg-blue-50 data-[selected='true']:text-black data-[selected='true']:font-bold dark:data-[selected='true']:bg-blue-900/20 dark:data-[selected='true']:text-white"
                                   >
                                     <Check
-                                      className={`mr-2 h-4 w-4 ${
-                                        addForm.productId === product.id.toString() ? 'opacity-100 text-blue-600' : 'opacity-0'
-                                      }`}
+                                      className={`mr-2 h-4 w-4 ${addForm.productId === product.id.toString() ? 'opacity-100 text-blue-600' : 'opacity-0'
+                                        }`}
                                     />
                                     <Package className="mr-2 h-4 w-4 text-muted-foreground" />
                                     <span className="font-medium">{product.productName || `Product #${product.id}`}</span>
@@ -754,16 +747,41 @@ export const AddAMCContractDialog = ({
                   <CardTitle className="text-lg">Contract Duration</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
+                  <div className="space-y-2 flex flex-col">
                     <Label htmlFor="startDate">Start Date *</Label>
-                    <Input
-                      id="startDate"
-                      type="date"
-                      value={addForm.startDate}
-                      onChange={(e) => setAddForm({ ...addForm, startDate: e.target.value })}
-                      disabled={isCreating}
-                      className="h-11"
-                    />
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full pl-3 text-left font-normal h-11",
+                            !addForm.startDate && "text-muted-foreground"
+                          )}
+                          disabled={isCreating}
+                        >
+                          {addForm.startDate ? (
+                            format(new Date(addForm.startDate), "PPP")
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={addForm.startDate ? new Date(addForm.startDate) : undefined}
+                          onSelect={(date) => setAddForm({ ...addForm, startDate: date ? date.toISOString().split('T')[0] : '' })}
+                          disabled={(date) =>
+                            date < new Date("1900-01-01")
+                          }
+                          formatters={{
+                            formatWeekdayName: (date) => format(date, "EEEEE"),
+                          }}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="duration">Duration *</Label>
@@ -783,16 +801,41 @@ export const AddAMCContractDialog = ({
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-2 flex flex-col">
                     <Label htmlFor="firstServiceDate">First Service Date</Label>
-                    <Input
-                      id="firstServiceDate"
-                      type="date"
-                      value={addForm.firstServiceDate}
-                      onChange={(e) => setAddForm({ ...addForm, firstServiceDate: e.target.value })}
-                      disabled={isCreating}
-                      className="h-11"
-                    />
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full pl-3 text-left font-normal h-11",
+                            !addForm.firstServiceDate && "text-muted-foreground"
+                          )}
+                          disabled={isCreating}
+                        >
+                          {addForm.firstServiceDate ? (
+                            format(new Date(addForm.firstServiceDate), "PPP")
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={addForm.firstServiceDate ? new Date(addForm.firstServiceDate) : undefined}
+                          onSelect={(date) => setAddForm({ ...addForm, firstServiceDate: date ? date.toISOString().split('T')[0] : '' })}
+                          disabled={(date) =>
+                            date < new Date("1900-01-01")
+                          }
+                          formatters={{
+                            formatWeekdayName: (date) => format(date, "EEEEE"),
+                          }}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="endDate">End Date (Auto)</Label>
@@ -876,15 +919,15 @@ export const AddAMCContractDialog = ({
           >
             {formStep === 1 ? 'Cancel' : 'Back'}
           </Button>
-          
+
           <div className="flex gap-2">
             {formStep < 3 ? (
               <Button onClick={() => setFormStep(formStep + 1)}>
                 Next Step
               </Button>
             ) : (
-              <Button 
-                onClick={handleAddAMC} 
+              <Button
+                onClick={handleAddAMC}
                 disabled={isCreating}
                 className="bg-green-600 hover:bg-green-700 text-white min-w-[120px]"
               >
@@ -905,9 +948,8 @@ export const AddAMCContractDialog = ({
                 <div className="space-y-4">
                   {/* Step 1: Validation */}
                   <div className="flex items-center gap-3">
-                    <div className={`h-8 w-8 rounded-full flex items-center justify-center transition-colors duration-500 ${
-                      processingStep > 1 ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600 animate-pulse'
-                    }`}>
+                    <div className={`h-8 w-8 rounded-full flex items-center justify-center transition-colors duration-500 ${processingStep > 1 ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600 animate-pulse'
+                      }`}>
                       {processingStep > 1 ? <Check className="h-5 w-5" /> : <Search className="h-4 w-4" />}
                     </div>
                     <div className="flex-1">
@@ -920,9 +962,8 @@ export const AddAMCContractDialog = ({
 
                   {/* Step 2: AMC Record */}
                   <div className={`flex items-center gap-3 transition-opacity duration-500 ${processingStep >= 2 ? 'opacity-100' : 'opacity-40'}`}>
-                    <div className={`h-8 w-8 rounded-full flex items-center justify-center transition-colors duration-500 ${
-                      processingStep > 2 ? 'bg-green-100 text-green-600' : (processingStep === 2 ? 'bg-blue-100 text-blue-600 animate-pulse' : 'bg-muted text-muted-foreground')
-                    }`}>
+                    <div className={`h-8 w-8 rounded-full flex items-center justify-center transition-colors duration-500 ${processingStep > 2 ? 'bg-green-100 text-green-600' : (processingStep === 2 ? 'bg-blue-100 text-blue-600 animate-pulse' : 'bg-muted text-muted-foreground')
+                      }`}>
                       {processingStep > 2 ? <Check className="h-5 w-5" /> : <Package className="h-4 w-4" />}
                     </div>
                     <div className="flex-1">
@@ -935,9 +976,8 @@ export const AddAMCContractDialog = ({
 
                   {/* Step 3: Contract Creation */}
                   <div className={`flex items-center gap-3 transition-opacity duration-500 ${processingStep >= 3 ? 'opacity-100' : 'opacity-40'}`}>
-                    <div className={`h-8 w-8 rounded-full flex items-center justify-center transition-colors duration-500 ${
-                      processingStep > 3 ? 'bg-green-100 text-green-600' : (processingStep === 3 ? 'bg-blue-100 text-blue-600 animate-pulse' : 'bg-muted text-muted-foreground')
-                    }`}>
+                    <div className={`h-8 w-8 rounded-full flex items-center justify-center transition-colors duration-500 ${processingStep > 3 ? 'bg-green-100 text-green-600' : (processingStep === 3 ? 'bg-blue-100 text-blue-600 animate-pulse' : 'bg-muted text-muted-foreground')
+                      }`}>
                       {processingStep > 3 ? <Check className="h-5 w-5" /> : <User className="h-4 w-4" />}
                     </div>
                     <div className="flex-1">
@@ -950,9 +990,8 @@ export const AddAMCContractDialog = ({
 
                   {/* Step 4: Service Events */}
                   <div className={`flex items-center gap-3 transition-opacity duration-500 ${processingStep >= 4 ? 'opacity-100' : 'opacity-40'}`}>
-                    <div className={`h-8 w-8 rounded-full flex items-center justify-center transition-colors duration-500 ${
-                      processingStep > 4 ? 'bg-green-100 text-green-600' : (processingStep === 4 ? 'bg-blue-100 text-blue-600 animate-pulse' : 'bg-muted text-muted-foreground')
-                    }`}>
+                    <div className={`h-8 w-8 rounded-full flex items-center justify-center transition-colors duration-500 ${processingStep > 4 ? 'bg-green-100 text-green-600' : (processingStep === 4 ? 'bg-blue-100 text-blue-600 animate-pulse' : 'bg-muted text-muted-foreground')
+                      }`}>
                       {processingStep > 4 ? <Check className="h-5 w-5" /> : <Calendar className="h-4 w-4" />}
                     </div>
                     <div className="flex-1">

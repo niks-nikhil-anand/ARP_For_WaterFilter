@@ -43,9 +43,16 @@ export default function AMCRepairsPage() {
   const [search, setSearch] = useState('')
   const [addAMCOpen, setAddAMCOpen] = useState(false)
 
-  // Pagination State (Client-side)
+  // Filter & Sort State
+  const [statusFilter, setStatusFilter] = useState<string>('ALL')
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>('ALL')
+  const [sortBy, setSortBy] = useState<string>('createdAt')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+
+  // Pagination State
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
+  const [totalItems, setTotalItems] = useState(0)
 
   // Ticket Dialog State
   const [ticketOpen, setTicketOpen] = useState(false)
@@ -68,8 +75,8 @@ export default function AMCRepairsPage() {
   const fetchData = async () => {
     setLoading(true)
     const [eventsResult, amcsResult, agentsResult, productsResult, customersResult] = await Promise.all([
-      getServiceEvents('all'), // Fetch all for client-side filtering/pagination
-      getAllAMCs(),
+      getServiceEvents('all'), // Keep this for history tab
+      getAllAMCs(search, statusFilter, sortBy, sortOrder, currentPage, itemsPerPage, paymentStatusFilter),
       getAgents(),
       getAdminProducts(),
       getUsersByRole('USER')
@@ -83,6 +90,7 @@ export default function AMCRepairsPage() {
 
     if (amcsResult.success) {
       setAmcs(amcsResult.data || [])
+      setTotalItems(amcsResult.meta?.total || 0)
     } else {
       toast.error('Failed to fetch AMCs')
     }
@@ -104,7 +112,16 @@ export default function AMCRepairsPage() {
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [currentPage, search, statusFilter, paymentStatusFilter, sortBy, sortOrder])
+
+  const handleSort = (column: string) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(column)
+      setSortOrder('asc')
+    }
+  }
 
   const handleTicketClick = (event: any) => {
     setSelectedEvent(event)
@@ -175,27 +192,11 @@ export default function AMCRepairsPage() {
     fetchData()
   }
 
-  // Merge and Filter Data
-  const mergedData = [
-    // Only show AMCs in the main list
-    ...amcs.map(a => ({ ...a, dataType: 'AMC', actionDate: a.createdAt, status: 'ACTIVE' }))
-  ].sort((a, b) => new Date(b.actionDate).getTime() - new Date(a.actionDate).getTime())
-
-  const filteredData = mergedData.filter(item => {
-    const matchesSearch =
-      (item.customer?.name || item.user?.name || '').toLowerCase().includes(search.toLowerCase()) ||
-      (item.product?.productName || '').toLowerCase().includes(search.toLowerCase()) ||
-      item.id.toString().includes(search)
-
-    return matchesSearch
-  })
-
-  // Pagination Logic
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage)
-  const paginatedData = filteredData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  )
+  // Helper to render sort icon
+  const renderSortIcon = (column: string) => {
+    if (sortBy !== column) return null
+    return sortOrder === 'asc' ? <span className="ml-1">↑</span> : <span className="ml-1">↓</span>
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -226,14 +227,37 @@ export default function AMCRepairsPage() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-col md:flex-row justify-between gap-4">
-            <div className="relative w-full md:w-64">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search..."
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-                className="pl-8"
-              />
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              <div className="relative w-full md:w-64">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search..."
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+                  className="pl-8"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setCurrentPage(1); }}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filter by Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Status</SelectItem>
+                  <SelectItem value="ACTIVE">Active</SelectItem>
+                  <SelectItem value="EXPIRED">Expired</SelectItem>
+                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={paymentStatusFilter} onValueChange={(val) => { setPaymentStatusFilter(val); setCurrentPage(1); }}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Payment Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Payments</SelectItem>
+                  <SelectItem value="PENDING">Pending</SelectItem>
+                  <SelectItem value="COMPLETED">Completed</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardHeader>
@@ -242,15 +266,23 @@ export default function AMCRepairsPage() {
             <Table>
               <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
                 <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Product</TableHead>
+                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('amcUniqueId')}>
+                    ID {renderSortIcon('amcUniqueId')}
+                  </TableHead>
+                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('customer')}>
+                    Customer {renderSortIcon('customer')}
+                  </TableHead>
+                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('product')}>
+                    Product {renderSortIcon('product')}
+                  </TableHead>
                   <TableHead>Start Date</TableHead>
                   <TableHead>End Date</TableHead>
                   <TableHead>Payment Status</TableHead>
                   <TableHead>Paid</TableHead>
                   <TableHead>Due</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('status')}>
+                    Status {renderSortIcon('status')}
+                  </TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -263,17 +295,17 @@ export default function AMCRepairsPage() {
                       </TableCell>
                     </TableRow>
                   ))
-                ) : paginatedData.length === 0 ? (
+                ) : amcs.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={10} className="h-24 text-center">
                       No records found.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginatedData.map((item) => {
+                  amcs.map((item) => {
                     const latestContract = item.contracts && item.contracts.length > 0 ? item.contracts[0] : null
                     return (
-                      <TableRow key={`${item.dataType}-${item.id}`}>
+                      <TableRow key={`${item.id}`}>
                         <TableCell className="font-medium">#{item.amcUniqueId || item.id}</TableCell>
                         <TableCell>
                           <div className="flex flex-col">
@@ -317,17 +349,15 @@ export default function AMCRepairsPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            {item.dataType === 'AMC' && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-8 w-8 p-0"
-                                onClick={() => handleViewClick(item)}
-                                title="View Contract"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0"
+                              onClick={() => handleViewClick({ ...item, dataType: 'AMC' })}
+                              title="View Contract"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -342,7 +372,7 @@ export default function AMCRepairsPage() {
           <div className="mt-4">
             <PaginationControls
               currentPage={currentPage}
-              totalPages={totalPages}
+              totalPages={Math.ceil(totalItems / itemsPerPage)}
               onPageChange={setCurrentPage}
             />
           </div>

@@ -490,56 +490,109 @@ export async function getAMCContracts() {
   }
 }
 
-export async function getAllAMCs() {
+export async function getAllAMCs(
+  search?: string,
+  status?: string,
+  sortBy?: string,
+  sortOrder?: 'asc' | 'desc',
+  page?: number,
+  limit?: number,
+  paymentStatus?: string
+) {
   try {
-    const amcs = await prisma.aMC.findMany({
-      include: {
-        product: {
-          select: {
-            id: true,
-            productName: true,
-            company: true,
-            type: true,
-          }
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          }
-        },
-        contracts: {
-          include: {
-            agent: {
-              include: {
-                user: {
-                  select: {
-                    name: true
+    // 1. Build Where Clause
+    const where: any = {}
+
+    if (search) {
+      where.OR = [
+        { amcUniqueId: { contains: search, mode: 'insensitive' } },
+        { user: { name: { contains: search, mode: 'insensitive' } } },
+        { user: { email: { contains: search, mode: 'insensitive' } } },
+        { product: { productName: { contains: search, mode: 'insensitive' } } }
+      ]
+    }
+
+    if (status && status !== 'ALL') {
+      where.status = status
+    }
+
+    if (paymentStatus && paymentStatus !== 'ALL') {
+      where.contracts = {
+        some: {
+          paymentStatus: paymentStatus
+        }
+      }
+    }
+
+    // 2. Pagination
+    const pageNum = page || 1
+    const take = limit || 10
+    const skip = (pageNum - 1) * take
+
+    // 3. Sorting
+    let orderBy: any = { createdAt: 'desc' } // Default
+    if (sortBy) {
+      if (sortBy === 'customer') {
+        orderBy = { user: { name: sortOrder || 'asc' } }
+      } else if (sortBy === 'product') {
+        orderBy = { product: { productName: sortOrder || 'asc' } }
+      } else {
+        orderBy = { [sortBy]: sortOrder || 'asc' }
+      }
+    }
+
+    const [total, amcs] = await Promise.all([
+      prisma.aMC.count({ where }),
+      prisma.aMC.findMany({
+        where,
+        include: {
+          product: {
+            select: {
+              id: true,
+              productName: true,
+              company: true,
+              type: true,
+            }
+          },
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            }
+          },
+          contracts: {
+            include: {
+              agent: {
+                include: {
+                  user: {
+                    select: {
+                      name: true
+                    }
                   }
+                }
+              },
+              order: {
+                select: {
+                  id: true,
+                  customerName: true,
+                  customerEmail: true,
+                  customerPhone: true,
+                  amountPaid: true,
+                  discount: true,
                 }
               }
             },
-            order: {
-              select: {
-                id: true,
-                customerName: true,
-                customerEmail: true,
-                customerPhone: true,
-                amountPaid: true,
-                discount: true,
-              }
+            orderBy: {
+              createdAt: 'desc'
             }
-          },
-          orderBy: {
-            createdAt: 'desc'
           }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    })
+        },
+        orderBy,
+        skip,
+        take
+      })
+    ])
 
     const serializedAMCs = amcs.map(amc => ({
       ...amc,
@@ -558,7 +611,16 @@ export async function getAllAMCs() {
       }))
     }))
 
-    return { success: true, data: serializedAMCs }
+    return { 
+      success: true, 
+      data: serializedAMCs,
+      meta: {
+        total,
+        page: pageNum,
+        limit: take,
+        totalPages: Math.ceil(total / take)
+      }
+    }
   } catch (error: any) {
     console.error('Get all AMCs error:', error)
     return { success: false, error: error.message }

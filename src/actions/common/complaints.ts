@@ -7,9 +7,7 @@ import { hashPassword } from '@/lib/password'
 import { createNotification } from '../admin/notifications'
 
 export async function createComplaint(data: {
-  name: string
-  email: string
-  phone: string
+  customerId: number
   address: string
   serviceType: string
   productType?: string
@@ -18,27 +16,16 @@ export async function createComplaint(data: {
   additionalInfo?: string
 }) {
   try {
-    // 1. Check if user exists
-    let user = await prisma.user.findUnique({
-      where: { email: data.email }
+    // 1. Verify user exists
+    const user = await prisma.user.findUnique({
+      where: { id: data.customerId }
     })
 
-    // 2. If user doesn't exist, create new user
     if (!user) {
-      const hashedPassword = await hashPassword('Welcome@123') // Default password
-      user = await prisma.user.create({
-        data: {
-          name: data.name,
-          email: data.email,
-          mobile: data.phone,
-          password: hashedPassword,
-          role: UserRole.USER,
-          status: UserStatus.PENDING,
-        }
-      })
+        return { success: false, error: 'Customer not found' }
     }
 
-    // 3. Create Complaint
+    // 2. Create Complaint
     const complaint = await prisma.complaint.create({
       data: {
         userId: user.id,
@@ -61,7 +48,7 @@ export async function createComplaint(data: {
     if (admin) {
       await createNotification({
         title: `New Complaint Received`,
-        message: `New complaint from ${data.name} regarding ${data.serviceType}.`,
+        message: `New complaint from ${user.name} regarding ${data.serviceType}.`,
         category: 'SERVICE',
         priority: 'HIGH',
         recipientId: admin.id,

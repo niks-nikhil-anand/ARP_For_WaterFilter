@@ -49,6 +49,7 @@ import {
 import { getAllWarranties, updateWarranty } from "@/actions/admin/warranties";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
+import { AddWarrantyDialog } from "@/components/admin/AddWarrantyDialog";
 
 type Warranty = {
   id: number;
@@ -573,6 +574,7 @@ const WarrantyManagementPage = () => {
     <div className="h-[90vh] max-h-[92vh] overflow-y-auto">
       <div className="container mx-auto py-10 px-4 pb-20">
         <div className="space-y-6">
+
           {/* Header */}
           <div className="flex justify-between items-center">
             <div>
@@ -583,6 +585,7 @@ const WarrantyManagementPage = () => {
                 Track and manage product warranties and expiration dates
               </p>
             </div>
+            <AddWarrantyDialog />
           </div>
 
           {/* Stats Cards */}

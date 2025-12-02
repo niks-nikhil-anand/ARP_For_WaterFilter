@@ -85,6 +85,7 @@ import {
   deleteTicket,
 } from '@/actions/common/tickets'
 import { ResolveTicketDialog } from '@/components/tickets/ResolveTicketDialog'
+import { AddTicketDialog } from '@/components/tickets/AddTicketDialog'
 import { getActiveAgents } from '@/actions/common/agents'
 import { TicketStatus, TicketPriority } from '@/generated/prisma'
 import { toast } from 'sonner'
@@ -147,6 +148,7 @@ const TicketManagementPage = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [resolveDialogOpen, setResolveDialogOpen] = useState(false)
+  const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [selectedTicket, setSelectedTicket] = useState<TicketType | null>(null)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -428,6 +430,10 @@ const TicketManagementPage = () => {
                 Manage service booking tickets and customer requests
               </p>
             </div>
+            <Button onClick={() => setAddDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Ticket
+            </Button>
           </div>
 
           {/* Date Filters */}
@@ -724,6 +730,12 @@ const TicketManagementPage = () => {
             />
           </div>
         </div>
+
+        <AddTicketDialog
+          open={addDialogOpen}
+          onOpenChange={setAddDialogOpen}
+          onTicketCreated={loadTickets}
+        />
 
         {/* View Dialog */}
         <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>

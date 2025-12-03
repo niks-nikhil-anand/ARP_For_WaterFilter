@@ -6,13 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { signup } from '@/actions/auth'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+
 import {
   Card,
   CardContent,
@@ -21,11 +15,10 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, AlertCircle, CheckCircle2, Crown, Store, Eye, EyeOff, UserPlus } from 'lucide-react'
+import { Loader2, AlertCircle, CheckCircle2, Crown, Eye, EyeOff, UserPlus } from 'lucide-react'
 
 const AdminSignup = () => {
   const router = useRouter()
-  const [role, setRole] = useState('')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [mobile, setMobile] = useState('+91 ')
@@ -59,12 +52,6 @@ const AdminSignup = () => {
     setIsSubmitting(true)
 
     try {
-      // Validate inputs
-      if (!role) {
-        setError('Please select your role')
-        return
-      }
-
       if (!name || !email || !password || !confirmPassword) {
         setError('Please fill in all required fields')
         return
@@ -104,19 +91,13 @@ const AdminSignup = () => {
         return
       }
 
-      // Map role to backend format
-      const roleMap: { [key: string]: 'SUPERADMIN' | 'ADMIN' } = {
-        'superadmin': 'SUPERADMIN',
-        'admin': 'ADMIN'
-      }
-
       // Call signup server action
       const result = await signup({
         name: name.trim(),
         email: email.trim(),
         password: password,
         mobile: localDigits.length === 10 ? `+91${localDigits}` : undefined,
-        role: roleMap[role],
+        role: 'SUPERADMIN',
       })
 
       if (result.success) {
@@ -145,10 +126,10 @@ const AdminSignup = () => {
             <UserPlus className="h-8 w-8 text-white" />
           </div>
           <CardTitle className="text-2xl font-bold">
-            Create Admin Account
+            Create Super Admin Account
           </CardTitle>
           <CardDescription>
-            Register as an admin or super admin to manage the system
+            Register as a super admin to manage the system
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -166,34 +147,6 @@ const AdminSignup = () => {
                 <AlertDescription>{success}</AlertDescription>
               </Alert>
             )}
-
-            {/* Role Selection */}
-            <div className="space-y-2">
-              <Label htmlFor="role">Select Role *</Label>
-              <Select value={role} onValueChange={setRole} disabled={isSubmitting}>
-                <SelectTrigger id="role" className="h-11">
-                  <SelectValue placeholder="Choose your role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="superadmin">
-                    <div className="flex items-center gap-2">
-                      <Crown className="h-4 w-4 text-purple-600" />
-                      <span>Super Admin</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="admin">
-                    <div className="flex items-center gap-2">
-                      <Store className="h-4 w-4 text-blue-600" />
-                      <span>Admin (Shop Owner)</span>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                {role === 'superadmin' && '→ Full system access to manage all shops and users'}
-                {role === 'admin' && '→ Manage your shop, products, orders, and agents'}
-              </p>
-            </div>
 
             {/* Name */}
             <div className="space-y-2">
@@ -255,11 +208,10 @@ const AdminSignup = () => {
                   disabled={isSubmitting}
                   autoComplete="new-password"
                   required
-                  className={`h-11 pr-10 ${
-                    password && password.length < 6
-                      ? 'border-red-500 focus-visible:ring-red-500'
-                      : ''
-                  }`}
+                  className={`h-11 pr-10 ${password && password.length < 6
+                    ? 'border-red-500 focus-visible:ring-red-500'
+                    : ''
+                    }`}
                 />
                 <button
                   type="button"
@@ -300,13 +252,12 @@ const AdminSignup = () => {
                   disabled={isSubmitting}
                   autoComplete="new-password"
                   required
-                  className={`h-11 pr-10 ${
-                    confirmPassword && password !== confirmPassword
-                      ? 'border-red-500 focus-visible:ring-red-500'
-                      : confirmPassword && password === confirmPassword && password.length >= 6
+                  className={`h-11 pr-10 ${confirmPassword && password !== confirmPassword
+                    ? 'border-red-500 focus-visible:ring-red-500'
+                    : confirmPassword && password === confirmPassword && password.length >= 6
                       ? 'border-green-500 focus-visible:ring-green-500'
                       : ''
-                  }`}
+                    }`}
                 />
                 <button
                   type="button"
@@ -349,7 +300,7 @@ const AdminSignup = () => {
               ) : (
                 <>
                   <UserPlus className="mr-2 h-4 w-4" />
-                  Create Account
+                  Create Super Admin
                 </>
               )}
             </Button>
@@ -368,19 +319,14 @@ const AdminSignup = () => {
           {/* Additional Info */}
           <div className="mt-4 space-y-2">
             <div className="p-3 bg-muted rounded-lg">
-              <p className="text-xs font-medium mb-2">Role Descriptions:</p>
+              <p className="text-xs font-medium mb-2">Role Description:</p>
               <ul className="text-xs text-muted-foreground space-y-1">
                 <li className="flex items-start gap-2">
                   <Crown className="h-3 w-3 mt-0.5 text-purple-600 flex-shrink-0" />
                   <span><strong>Super Admin:</strong> Full system access, manage all shops, users, and settings</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <Store className="h-3 w-3 mt-0.5 text-blue-600 flex-shrink-0" />
-                  <span><strong>Admin:</strong> Manage your shop, products, orders, and agents</span>
-                </li>
               </ul>
-            </div>
-            <p className="text-xs text-center text-muted-foreground">
+            </div>            <p className="text-xs text-center text-muted-foreground">
               By creating an account, you agree to our terms and conditions
             </p>
           </div>

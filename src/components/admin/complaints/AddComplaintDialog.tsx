@@ -315,13 +315,22 @@ export function AddComplaintDialog({ onComplaintAdded }: AddComplaintDialogProps
                                             </div>
                                             <div className="space-y-1">
                                                 <Label htmlFor="newCustMobile" className="text-xs">Mobile *</Label>
-                                                <Input
-                                                    id="newCustMobile"
-                                                    value={newCustomerData.mobile}
-                                                    onChange={(e) => setNewCustomerData(prev => ({ ...prev, mobile: e.target.value }))}
-                                                    placeholder="Mobile"
-                                                    className="h-8"
-                                                />
+                                                <div className="flex items-center">
+                                                    <div className="flex items-center justify-center px-2 border border-r-0 rounded-l-md bg-muted text-muted-foreground text-xs h-8">
+                                                        +91
+                                                    </div>
+                                                    <Input
+                                                        id="newCustMobile"
+                                                        value={newCustomerData.mobile}
+                                                        onChange={(e) => {
+                                                            const value = e.target.value.replace(/\D/g, '').slice(0, 10)
+                                                            setNewCustomerData(prev => ({ ...prev, mobile: value }))
+                                                        }}
+                                                        placeholder="98765 43210"
+                                                        className="h-8 rounded-l-none"
+                                                        maxLength={10}
+                                                    />
+                                                </div>
                                             </div>
                                             <div className="space-y-1">
                                                 <Label htmlFor="newCustEmail" className="text-xs">Email *</Label>

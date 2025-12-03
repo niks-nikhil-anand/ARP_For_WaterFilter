@@ -84,7 +84,6 @@ export async function createUser(data: {
         addresses: true,
       },
     })
-    revalidatePath('/admin/user_details')
     revalidatePath('/admin/customer_details')
     return { success: true, data: user }
   } catch (error: any) {
@@ -111,7 +110,6 @@ export async function updateUser(
         addresses: true,
       },
     })
-    revalidatePath('/admin/user_details')
     revalidatePath('/admin/customer_details')
     return { success: true, data: user }
   } catch (error) {
@@ -125,7 +123,7 @@ export async function deleteUser(id: number) {
     await prisma.user.delete({
       where: { id },
     })
-    revalidatePath('/admin/user_details')
+    revalidatePath('/admin/customer_details')
     return { success: true }
   } catch (error) {
     console.error('Failed to delete user:', error)

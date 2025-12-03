@@ -66,8 +66,10 @@ import {
 import { getUsers, createUser, updateUser, deleteUser } from '@/app/actions/user'
 import { UserRole, UserStatus } from '@/generated/prisma'
 import type { User } from '@/app/actions/user'
+import { useRouter } from 'next/navigation'
 
 const RoleManagementPage = () => {
+  const router = useRouter()
   const [users, setUsers] = useState<User[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [roleFilter, setRoleFilter] = useState('ALL')
@@ -99,7 +101,6 @@ const RoleManagementPage = () => {
   }
 
   // Modal states
-  const [viewDialogOpen, setViewDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
@@ -214,8 +215,7 @@ const RoleManagementPage = () => {
 
   // CRUD handlers
   const handleView = (user: User) => {
-    setSelectedUser(user)
-    setViewDialogOpen(true)
+    router.push(`/admin/customer_details/${user.id}`)
   }
 
   const handleEdit = (user: User) => {
@@ -931,82 +931,6 @@ const RoleManagementPage = () => {
           </DialogContent>
         </Dialog>
 
-        {/* View Dialog */}
-        <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-          <DialogContent className="sm:max-w-[700px]">
-            <DialogHeader>
-              <DialogTitle>User Details</DialogTitle>
-              <DialogDescription>Complete information about the user</DialogDescription>
-            </DialogHeader>
-            {selectedUser && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <UserIcon className="h-4 w-4" />
-                      <span className="font-medium">User ID</span>
-                    </div>
-                    <p className="text-lg font-semibold">#{selectedUser.id}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Shield className="h-4 w-4" />
-                      <span className="font-medium">Role</span>
-                    </div>
-                    <div>{getRoleBadge(selectedUser.role)}</div>
-                  </div>
-                  <div className="col-span-2 space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <UserIcon className="h-4 w-4" />
-                      <span className="font-medium">Full Name</span>
-                    </div>
-                    <p className="text-lg font-semibold">{selectedUser.name}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Mail className="h-4 w-4" />
-                      <span className="font-medium">Email</span>
-                    </div>
-                    <p className="text-sm">{selectedUser.email}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Phone className="h-4 w-4" />
-                      <span className="font-medium">Mobile</span>
-                    </div>
-                    <p className="text-sm">{selectedUser.mobile || 'Not provided'}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Settings className="h-4 w-4" />
-                      <span className="font-medium">Status</span>
-                    </div>
-                    <div>{getStatusBadge(selectedUser.status)}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="h-4 w-4" />
-                      <span className="font-medium">Joined Date</span>
-                    </div>
-                    <p className="text-sm">{formatDate(selectedUser.createdAt)}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="h-4 w-4" />
-                      <span className="font-medium">Last Updated</span>
-                    </div>
-                    <p className="text-sm">{formatDate(selectedUser.updatedAt)}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setViewDialogOpen(false)}>
-                Close
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
 
         {/* Edit Dialog */}
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>

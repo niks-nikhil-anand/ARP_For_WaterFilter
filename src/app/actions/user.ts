@@ -130,3 +130,99 @@ export async function deleteUser(id: number) {
     return { success: false, error: 'Failed to delete user' }
   }
 }
+
+export async function getUserDetails(id: number) {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: {
+        addresses: true,
+        tickets: {
+          include: {
+            assignedToAgent: {
+              include: {
+                user: true,
+              },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+        warranties: {
+          include: {
+            product: true,
+            order: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+        ordersCreated: {
+          include: {
+            product: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+        serviceEvents: {
+          include: {
+            product: true,
+            assignedTo: {
+              include: {
+                user: true,
+              },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+        complaints: {
+          orderBy: { createdAt: 'desc' },
+        },
+        amcs: {
+          include: {
+            product: true,
+            contracts: {
+              orderBy: { createdAt: 'desc' },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    })
+
+    if (!user) {
+      return { success: false, error: 'User not found' }
+    }
+
+    // Helper to serialize Decimal to number
+    const serializeDecimal = (obj: any): any => {
+      if (obj === null || obj === undefined) return obj
+      
+      // Handle Date objects
+      if (obj instanceof Date) return obj
+
+      if (typeof obj === 'object') {
+        // Check for Decimal-like object (has toNumber method)
+        if (typeof obj.toNumber === 'function') {
+          return obj.toNumber()
+        }
+        
+        if (Array.isArray(obj)) {
+          return obj.map(serializeDecimal)
+        }
+        
+        const newObj: any = {}
+        for (const key in obj) {
+          if (Object.prototype.hasOwnProperty.call(obj, key)) {
+            newObj[key] = serializeDecimal(obj[key])
+          }
+        }
+        return newObj
+      }
+      return obj
+    }
+
+    const serializedUser = serializeDecimal(user)
+
+    return { success: true, data: serializedUser }
+  } catch (error: any) {
+    console.error('Failed to fetch user details:', error)
+    return { success: false, error: `Failed to fetch user details: ${error.message}` }
+  }
+}

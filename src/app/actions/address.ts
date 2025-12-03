@@ -20,13 +20,13 @@ export async function createAddress(data: {
     const address = await prisma.address.create({
       data: {
         type: data.type,
-        pincode: data.pincode,
+        pincode: data.pincode || '',
         landmark: data.landmark,
         apartmentNo: data.apartmentNo,
         state: data.state,
         country: data.country,
-        locality: data.locality,
-        phone: data.phone,
+        locality: data.locality || '',
+        phone: data.phone || '',
         altPhone: data.altPhone,
         user: {
           connect: { id: data.userId }

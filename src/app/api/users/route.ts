@@ -84,8 +84,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { name, email, password, mobile, role, status } = body;
 
+    console.log('Creating user:', { name, email, role });
+
     // Validation
     if (!name || !email || !password) {
+      console.log('Missing required fields');
       return errorResponse('Name, email, and password are required');
     }
 
@@ -95,13 +98,17 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingUser) {
+      console.log('User already exists');
       return errorResponse('User with this email already exists', 409);
     }
 
     // Hash password
+    console.log('Hashing password...');
     const hashedPassword = await hashPassword(password);
+    console.log('Password hashed');
 
     // Create user
+    console.log('Creating user in DB...');
     const user = await prisma.user.create({
       data: {
         name,
@@ -122,10 +129,12 @@ export async function POST(request: NextRequest) {
         updatedAt: true,
       },
     });
+    console.log('User created:', user.id);
 
     return successResponse(user, 'User created successfully', 201);
   } catch (error: any) {
-    console.error('Create user error:', error);
+    console.error('Create user error stack:', error.stack);
+    console.error('Create user error message:', error.message);
     return serverErrorResponse(error.message || 'Failed to create user');
   }
 }

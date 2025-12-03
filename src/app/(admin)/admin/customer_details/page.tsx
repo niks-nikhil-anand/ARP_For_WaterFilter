@@ -771,14 +771,24 @@ const RoleManagementPage = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="add-mobile">Mobile Number *</Label>
-                    <Input
-                      id="add-mobile"
-                      value={addForm.mobile}
-                      onChange={(e) => setAddForm({ ...addForm, mobile: e.target.value })}
-                      placeholder="+91 98765 43210"
-                      required
-                      disabled={isAddingUser}
-                    />
+                    <div className="flex items-center">
+                      <div className="flex items-center justify-center px-3 py-2 border border-r-0 rounded-l-md bg-muted text-muted-foreground text-sm h-10">
+                        +91
+                      </div>
+                      <Input
+                        id="add-mobile"
+                        value={addForm.mobile}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, '').slice(0, 10)
+                          setAddForm({ ...addForm, mobile: value })
+                        }}
+                        placeholder="98765 43210"
+                        required
+                        disabled={isAddingUser}
+                        className="rounded-l-none"
+                        maxLength={10}
+                      />
+                    </div>
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="add-email">Email Address (Optional)</Label>
@@ -832,10 +842,14 @@ const RoleManagementPage = () => {
                     <Input
                       id="add-pincode"
                       value={addForm.pincode}
-                      onChange={(e) => setAddForm({ ...addForm, pincode: e.target.value })}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 6)
+                        setAddForm({ ...addForm, pincode: value })
+                      }}
                       placeholder="Enter pincode"
                       required
                       disabled={isAddingUser}
+                      maxLength={6}
                     />
                   </div>
                   <div className="space-y-2 md:col-span-2">

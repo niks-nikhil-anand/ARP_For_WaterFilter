@@ -20,7 +20,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog'
-import { Calendar, Clock, User, Phone, Mail, MapPin, Plus, Loader2, Check, ChevronsUpDown, X } from 'lucide-react'
+import { Calendar, Clock, User, MapPin, Plus, Loader2, Check, ChevronsUpDown, X } from 'lucide-react'
 import { createComplaint } from '@/actions/common/complaints'
 import { getActiveCustomers, createCustomerUser } from '@/actions/common/customers'
 import { toast } from "sonner"
@@ -63,9 +63,6 @@ export function AddComplaintDialog({ onComplaintAdded }: AddComplaintDialogProps
     })
 
     const [formData, setFormData] = useState({
-        name: '',
-        email: '',
-        phone: '+91 ',
         address: '',
         serviceType: '',
         productType: '',
@@ -89,16 +86,6 @@ export function AddComplaintDialog({ onComplaintAdded }: AddComplaintDialogProps
 
     const handleCustomerSelect = (customerId: number) => {
         setSelectedCustomer(customerId)
-        const customer = customers.find(c => c.id === customerId)
-        if (customer) {
-            setFormData(prev => ({
-                ...prev,
-                name: customer.name,
-                email: customer.email,
-                phone: customer.mobile || '',
-                // address: customer.address || '' // Address might not be on user object directly
-            }))
-        }
         setOpenCustomerSelect(false)
     }
 
@@ -142,19 +129,6 @@ export function AddComplaintDialog({ onComplaintAdded }: AddComplaintDialogProps
         })
     }
 
-    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const prefix = '+91 '
-        const raw = e.target.value || ''
-        let digits = raw.replace(/\D/g, '')
-        if (digits.startsWith('91')) {
-            digits = digits.replace(/^91/, '')
-        }
-        digits = digits.slice(0, 10)
-        setFormData({
-            ...formData,
-            phone: prefix + digits,
-        })
-    }
 
     const handleSelectChange = (name: string, value: string) => {
         setFormData({
@@ -167,15 +141,6 @@ export function AddComplaintDialog({ onComplaintAdded }: AddComplaintDialogProps
         e.preventDefault()
         setIsSubmitting(true)
 
-        const allDigits = formData.phone.replace(/\D/g, '')
-        const localDigits = allDigits.replace(/^91/, '')
-        if (localDigits.length !== 10) {
-            toast.error('Invalid Phone Number', {
-                description: 'Please enter a valid 10-digit phone number.',
-            })
-            setIsSubmitting(false)
-            return
-        }
 
         if (!selectedCustomer) {
             toast.error('Please select a customer')
@@ -199,9 +164,6 @@ export function AddComplaintDialog({ onComplaintAdded }: AddComplaintDialogProps
                     description: 'Complaint added successfully.',
                 })
                 setFormData({
-                    name: '',
-                    email: '',
-                    phone: '+91 ',
                     address: '',
                     serviceType: '',
                     productType: '',
@@ -325,58 +287,6 @@ export function AddComplaintDialog({ onComplaintAdded }: AddComplaintDialogProps
                                             </Popover>
                                         </div>
 
-                                        {/* Read-only fields when customer selected */}
-                                        <div className="space-y-4 pt-2 border-t">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="name">Full Name *</Label>
-                                                <div className="relative">
-                                                    <User className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                                                    <Input
-                                                        id="name"
-                                                        name="name"
-                                                        placeholder="John Doe"
-                                                        required
-                                                        value={formData.name}
-                                                        onChange={handleChange}
-                                                        className="pl-8"
-                                                        disabled={!!selectedCustomer}
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="phone">Phone Number *</Label>
-                                                <div className="relative">
-                                                    <Phone className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                                                    <Input
-                                                        id="phone"
-                                                        name="phone"
-                                                        placeholder="+91 XXXXX XXXXX"
-                                                        required
-                                                        value={formData.phone}
-                                                        onChange={handlePhoneChange}
-                                                        className="pl-8"
-                                                        disabled={!!selectedCustomer}
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="email">Email Address *</Label>
-                                                <div className="relative">
-                                                    <Mail className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                                                    <Input
-                                                        id="email"
-                                                        name="email"
-                                                        type="email"
-                                                        placeholder="john@example.com"
-                                                        required
-                                                        value={formData.email}
-                                                        onChange={handleChange}
-                                                        className="pl-8"
-                                                        disabled={!!selectedCustomer}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
                                     </div>
                                 ) : (
                                     <div className="space-y-3 animate-in fade-in slide-in-from-top-2">

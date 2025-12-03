@@ -94,10 +94,17 @@ import { SkeletonTable } from '@/components/common/SkeletonTable'
 
 interface TicketType {
   id: number
-  customerName: string
-  customerEmail: string
-  customerPhone: string
-  customerAddress?: string | null
+  user: {
+    name: string
+    email: string
+    mobile: string | null
+    address?: {
+      street: string
+      city: string
+      state: string
+      zipCode: string
+    }[]
+  }
   serviceType: string
   productType?: string | null
   description?: string | null
@@ -137,7 +144,7 @@ const TicketManagementPage = () => {
   const [priorityFilter, setPriorityFilter] = useState('ALL')
   const [date, setDate] = useState<DateRange | undefined>()
   const [filterType, setFilterType] = useState<'ALL' | 'TODAY' | 'YESTERDAY' | 'UPCOMING' | 'BACKLOG' | 'CUSTOM'>('ALL')
-  const [sortField, setSortField] = useState<keyof TicketType | null>(null)
+  const [sortField, setSortField] = useState<keyof TicketType | 'user.name' | null>(null)
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(8)
@@ -171,6 +178,7 @@ const TicketManagementPage = () => {
   useEffect(() => {
     loadTickets()
     loadAgents()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, statusFilter, priorityFilter, date, filterType])
 
   const loadAgents = async () => {
@@ -183,13 +191,21 @@ const TicketManagementPage = () => {
   const loadTickets = async () => {
     setLoading(true)
     try {
-      const filters: any = {
+      const filters: {
+        page: number
+        limit: number
+        status?: TicketStatus
+        priority?: TicketPriority
+        startDate?: Date
+        endDate?: Date
+        isBacklog?: boolean
+      } = {
         page: currentPage,
         limit: itemsPerPage
       }
 
-      if (statusFilter !== 'ALL') filters.status = statusFilter
-      if (priorityFilter !== 'ALL') filters.priority = priorityFilter
+      if (statusFilter !== 'ALL') filters.status = statusFilter as TicketStatus
+      if (priorityFilter !== 'ALL') filters.priority = priorityFilter as TicketPriority
 
       // Handle Date Filters
       if (filterType === 'CUSTOM' && date?.from) {
@@ -237,9 +253,9 @@ const TicketManagementPage = () => {
   const filteredAndSortedTickets = useMemo(() => {
     const filtered = tickets.filter((ticket) => {
       const matchesSearch =
-        ticket.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ticket.customerEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ticket.customerPhone.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        ticket.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        ticket.user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (ticket.user.mobile && ticket.user.mobile.includes(searchTerm)) ||
         ticket.serviceType.toLowerCase().includes(searchTerm.toLowerCase()) ||
         ticket.productType?.toLowerCase().includes(searchTerm.toLowerCase())
 
@@ -248,8 +264,13 @@ const TicketManagementPage = () => {
 
     if (sortField) {
       filtered.sort((a, b) => {
-        const aValue = a[sortField]
-        const bValue = b[sortField]
+        let aValue: string | number | null | undefined = a[sortField as keyof TicketType] as string | number | null | undefined
+        let bValue: string | number | null | undefined = b[sortField as keyof TicketType] as string | number | null | undefined
+
+        if (sortField === 'user.name') {
+          aValue = a.user.name
+          bValue = b.user.name
+        }
 
         if (aValue === null || aValue === undefined) return 1
         if (bValue === null || bValue === undefined) return -1
@@ -269,7 +290,7 @@ const TicketManagementPage = () => {
   // Keeping it simple for now
 
   // Sort handler
-  const handleSort = (field: keyof TicketType) => {
+  const handleSort = (field: keyof TicketType | 'user.name') => {
     if (sortField === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
     } else {
@@ -316,7 +337,13 @@ const TicketManagementPage = () => {
     if (selectedTicket) {
       setIsSaving(true)
       try {
-        const updates: any = {
+        const updates: {
+          status: TicketStatus
+          priority: TicketPriority
+          internalNotes: string
+          resolutionNotes: string
+          assignToUserId: number | null
+        } = {
           status: editForm.status,
           priority: editForm.priority,
           internalNotes: editForm.internalNotes,
@@ -333,8 +360,8 @@ const TicketManagementPage = () => {
         } else {
           toast.error(result.error || 'Failed to update ticket')
         }
-      } catch (error: any) {
-        toast.error(error.message || 'An error occurred while updating the ticket')
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'An error occurred while updating the ticket')
       } finally {
         setIsSaving(false)
       }
@@ -346,7 +373,7 @@ const TicketManagementPage = () => {
     setResolveDialogOpen(true)
   }
 
-  const handleResolveComplete = (ticketId: any, resolveData: any) => {
+  const handleResolveComplete = (ticketId: number, resolveData: { resolutionNotes: string }) => {
     setTickets(tickets.map(ticket =>
       ticket.id === ticketId
         ? { ...ticket, status: TicketStatus.RESOLVED, resolutionNotes: resolveData.resolutionNotes }
@@ -354,7 +381,7 @@ const TicketManagementPage = () => {
     ))
   }
 
-  const getSortIcon = (field: keyof TicketType) => {
+  const getSortIcon = (field: keyof TicketType | 'user.name') => {
     if (sortField !== field) {
       return <ArrowUpDown className="h-4 w-4 ml-2" />
     }
@@ -438,7 +465,7 @@ const TicketManagementPage = () => {
 
           {/* Date Filters */}
           <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
-            <Tabs defaultValue="ALL" value={filterType} onValueChange={(v: any) => setFilterType(v)} className="w-full md:w-auto">
+            <Tabs defaultValue="ALL" value={filterType} onValueChange={(v) => setFilterType(v as 'ALL' | 'TODAY' | 'YESTERDAY' | 'UPCOMING' | 'BACKLOG' | 'CUSTOM')} className="w-full md:w-auto">
               <TabsList>
                 <TabsTrigger value="ALL">All</TabsTrigger>
                 <TabsTrigger value="TODAY">Today</TabsTrigger>
@@ -560,11 +587,11 @@ const TicketManagementPage = () => {
                   </TableHead>
                   <TableHead
                     className="cursor-pointer select-none"
-                    onClick={() => handleSort('customerName')}
+                    onClick={() => handleSort('user.name')}
                   >
                     <div className="flex items-center">
                       Customer
-                      {getSortIcon('customerName')}
+                      {getSortIcon('user.name')}
                     </div>
                   </TableHead>
                   <TableHead>Service Type</TableHead>
@@ -626,9 +653,9 @@ const TicketManagementPage = () => {
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-muted-foreground" />
                           <div>
-                            <div className="font-medium text-sm">{ticket.customerName}</div>
+                            <div className="font-medium text-sm">{ticket.user.name}</div>
                             <div className="text-xs text-muted-foreground">
-                              {ticket.customerEmail}
+                              {ticket.user.email}
                             </div>
                           </div>
                         </div>
@@ -766,29 +793,31 @@ const TicketManagementPage = () => {
                       <User className="h-4 w-4" />
                       <span className="font-medium">Customer Name</span>
                     </div>
-                    <p className="text-lg font-semibold">{selectedTicket.customerName}</p>
+                    <p className="text-lg font-semibold">{selectedTicket.user.name}</p>
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Mail className="h-4 w-4" />
                       <span className="font-medium">Email</span>
                     </div>
-                    <p className="text-sm">{selectedTicket.customerEmail}</p>
+                    <p className="text-sm">{selectedTicket.user.email}</p>
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Phone className="h-4 w-4" />
                       <span className="font-medium">Phone</span>
                     </div>
-                    <p className="text-sm">{selectedTicket.customerPhone}</p>
+                    <p className="text-sm">{selectedTicket.user.mobile || 'N/A'}</p>
                   </div>
-                  {selectedTicket.customerAddress && (
+                  {selectedTicket.user.address && selectedTicket.user.address.length > 0 && (
                     <div className="col-span-2 space-y-2">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <MapPin className="h-4 w-4" />
                         <span className="font-medium">Address</span>
                       </div>
-                      <p className="text-sm">{selectedTicket.customerAddress}</p>
+                      <p className="text-sm">
+                        {`${selectedTicket.user.address[0].street}, ${selectedTicket.user.address[0].city}`}
+                      </p>
                     </div>
                   )}
                   <div className="space-y-2">

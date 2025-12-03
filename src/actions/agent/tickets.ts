@@ -3,7 +3,7 @@
 import { cookies } from 'next/headers'
 import { verifyToken } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { TicketStatus, TicketPriority } from '@/generated/prisma'
+import { TicketStatus, TicketPriority, PaymentMethod } from '@/generated/prisma'
 import { createNotification } from '../admin/notifications'
 
 export async function getAgentTickets() {
@@ -36,10 +36,20 @@ export async function getAgentTickets() {
       },
       select: {
         id: true,
-        customerName: true,
-        customerEmail: true,
-        customerPhone: true,
-        customerAddress: true,
+        user: {
+          select: {
+            name: true,
+            email: true,
+            mobile: true,
+            addresses: {
+              select: {
+                locality: true,
+                pincode: true,
+                state: true
+              }
+            }
+          }
+        },
         serviceType: true,
         productType: true,
         description: true,
@@ -67,10 +77,12 @@ export async function getAgentTickets() {
       data: {
         tickets: tickets.map(ticket => ({
           id: `TKT-${ticket.id}`,
-          customerName: ticket.customerName,
-          phone: ticket.customerPhone || 'N/A',
-          email: ticket.customerEmail || 'N/A',
-          address: ticket.customerAddress || 'N/A',
+          customerName: ticket.user.name,
+          phone: ticket.user.mobile || 'N/A',
+          email: ticket.user.email || 'N/A',
+          address: ticket.user.addresses.length > 0 
+            ? ticket.user.addresses.map(a => `${a.locality}, ${a.state} ${a.pincode}`).join('; ')
+            : 'N/A',
           issueType: ticket.serviceType,
           productType: ticket.productType || '',
           reason: ticket.description,
@@ -102,6 +114,7 @@ export async function resolveTicket(data: {
   partsReplaced: string
   workDescription: string
   resolutionNotes?: string
+  paymentMethod?: PaymentMethod
 }) {
   try {
     const cookieStore = await cookies()
@@ -151,7 +164,8 @@ export async function resolveTicket(data: {
         amountCollected: data.amountCollected,
         partsReplaced: data.partsReplaced,
         workDescription: data.workDescription,
-        resolutionNotes: data.resolutionNotes
+        resolutionNotes: data.resolutionNotes,
+        paymentMethod: data.paymentMethod
       }
     })
 
@@ -167,7 +181,7 @@ export async function resolveTicket(data: {
       if (shop) {
         await createNotification({
           title: `Ticket Resolved: #${ticket.id}`,
-          message: `${decoded.role === 'AGENT' ? 'Agent' : 'Admin'} ${decoded.name} resolved ticket #${ticket.id} for ${ticket.customerName}.`,
+          message: `${decoded.role === 'AGENT' ? 'Agent' : 'Admin'} ${decoded.name} resolved ticket #${ticket.id}.`,
           category: 'SERVICE',
           priority: 'MEDIUM',
           recipientId: shop.userId,

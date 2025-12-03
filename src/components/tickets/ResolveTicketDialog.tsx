@@ -7,7 +7,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Separator } from '@/components/ui/separator'
-import { CheckCircle2, Clock, IndianRupee, Wrench, FileText } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { CheckCircle2, Clock, IndianRupee, Wrench, FileText, CreditCard } from 'lucide-react'
+import { PaymentMethod } from '@/generated/prisma'
 import { toast } from 'sonner'
 import { resolveTicket } from '@/actions/agent/tickets'
 
@@ -25,7 +27,8 @@ export function ResolveTicketDialog({ open, onOpenChange, ticket, onResolve }: R
         amountCollected: '',
         partsReplaced: '',
         workDescription: '',
-        resolutionNotes: ''
+        resolutionNotes: '',
+        paymentMethod: ''
     })
 
     useEffect(() => {
@@ -35,7 +38,8 @@ export function ResolveTicketDialog({ open, onOpenChange, ticket, onResolve }: R
                 amountCollected: '',
                 partsReplaced: '',
                 workDescription: '',
-                resolutionNotes: ''
+                resolutionNotes: '',
+                paymentMethod: ''
             })
         }
     }, [open])
@@ -64,7 +68,8 @@ export function ResolveTicketDialog({ open, onOpenChange, ticket, onResolve }: R
                 amountCollected: parseFloat(resolveData.amountCollected),
                 partsReplaced: resolveData.partsReplaced,
                 workDescription: resolveData.workDescription,
-                resolutionNotes: resolveData.resolutionNotes
+                resolutionNotes: resolveData.resolutionNotes,
+                paymentMethod: resolveData.paymentMethod as PaymentMethod || undefined
             })
 
             if (result.success) {
@@ -133,6 +138,29 @@ export function ResolveTicketDialog({ open, onOpenChange, ticket, onResolve }: R
                                 placeholder="e.g., 1500"
                             />
                         </div>
+                    </div>
+
+                    {/* Payment Method */}
+                    <div>
+                        <Label htmlFor="paymentMethod" className="dark:text-white flex items-center gap-2">
+                            <CreditCard className="h-4 w-4" />
+                            Payment Method *
+                        </Label>
+                        <Select
+                            value={resolveData.paymentMethod}
+                            onValueChange={(value) => setResolveData({ ...resolveData, paymentMethod: value })}
+                        >
+                            <SelectTrigger className="mt-2 dark:bg-gray-800 dark:border-gray-700 dark:text-white">
+                                <SelectValue placeholder="Select payment method" />
+                            </SelectTrigger>
+                            <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
+                                {Object.values(PaymentMethod).map((method) => (
+                                    <SelectItem key={method} value={method}>
+                                        {method}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     {/* Parts Replaced */}

@@ -120,6 +120,7 @@ model User {
   amcs                  AMC[]
   complaints            Complaint[]
   warranties            Warranty[]
+  tickets               Ticket[]
 }
 
 model Address {
@@ -302,9 +303,6 @@ model AMC {
   id          Int    @id @default(autoincrement())
   amcUniqueId String @unique
 
- 
-
-
   product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
   productId Int
 
@@ -339,8 +337,8 @@ model AMCContract {
   product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
   productId Int
   // Parent AMC
-  amc   AMC @relation(fields: [amcId], references: [id], onDelete: Cascade)
-  amcId Int
+  amc       AMC     @relation(fields: [amcId], references: [id], onDelete: Cascade)
+  amcId     Int
 
   // Order that paid for this contract
   order   Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -410,13 +408,10 @@ model Notification {
 
 // Service Booking Ticket Model
 model Ticket {
-  id Int @id @default(autoincrement())
-
+  id     Int  @id @default(autoincrement())
   // Customer Information
-  customerName    String
-  customerEmail   String
-  customerPhone   String
-  customerAddress String?
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId Int
 
   // Service Details
   serviceType   String // e.g., "Installation", "Repair", "AMC", "Maintenance"
@@ -438,7 +433,7 @@ model Ticket {
   // Internal Notes
   internalNotes   String? // Notes for internal team
   resolutionNotes String? // Notes about how it was resolved
-  
+
   // Resolution Details
   timeSpent       Decimal?
   amountCollected Decimal?
@@ -446,8 +441,9 @@ model Ticket {
   workDescription String?
 
   // Metadata
-  source   String? @default("WEBSITE") // WEBSITE, PHONE, EMAIL, etc.
-  metadata Json? // Additional flexible data
+  source        String?        @default("WEBSITE") // WEBSITE, PHONE, EMAIL, etc.
+  paymentMethod PaymentMethod? // CASH, ONLINE, UPI, etc.
+  metadata      Json? // Additional flexible data
 
   // Linked Service Event
   serviceEvent ServiceEvent?
@@ -483,31 +479,30 @@ model ServiceEvent {
   order      Order?  @relation(fields: [orderId], references: [id], onDelete: Cascade)
   orderId    Int?
 
-  
   amcContract   AMCContract? @relation(fields: [amcContractId], references: [id], onDelete: SetNull)
   amcContractId Int?
 
   // Repair/Service Details
   status           ServiceEventStatus @default(PENDING)
-  actionDate       DateTime?          // Date when the action is performed/scheduled
-  scheduledDates   DateTime[]         // History/List of scheduled dates
-  scheduledRemarks String?            // Remarks about scheduling
-  amcEventType     String?            // Specific type for AMC events
-  repairEventType  String?            // Specific type for Repair events
+  actionDate       DateTime? // Date when the action is performed/scheduled
+  scheduledDates   DateTime[] // History/List of scheduled dates
+  scheduledRemarks String? // Remarks about scheduling
+  amcEventType     String? // Specific type for AMC events
+  repairEventType  String? // Specific type for Repair events
   remarks          String?
   description      String?
-  feedback        String?
-  
+  feedback         String?
+
   // Relations
-  assignedTo  Agent?             @relation(fields: [agentId], references: [id], onDelete: SetNull)
-  agentId     Int?
-  shop        Shop?              @relation(fields: [shopId], references: [id], onDelete: SetNull)
-  shopId      Int?
-  
+  assignedTo Agent? @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  agentId    Int?
+  shop       Shop?  @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  shopId     Int?
+
   // Linked Entities
-  ticket      Ticket?            @relation(fields: [ticketId], references: [id], onDelete: SetNull)
-  ticketId    Int?               @unique
-  complaint   Complaint?         @relation(fields: [complaintId], references: [id], onDelete: SetNull)
+  ticket      Ticket?    @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+  ticketId    Int?       @unique
+  complaint   Complaint? @relation(fields: [complaintId], references: [id], onDelete: SetNull)
   complaintId Int?
 
   // Self-relation for linked events (e.g., follow-up repairs)
@@ -532,21 +527,17 @@ model ServiceEvent {
 }
 
 model Complaint {
-  id Int @id @default(autoincrement())
-
-  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId Int
-
-  serviceType    String
-  preferredDate  DateTime?
-  preferredTime  String?
-  address        String
-  description    String?
-  
-  serviceEvents  ServiceEvent[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            Int            @id @default(autoincrement())
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        Int
+  serviceType   String
+  preferredDate DateTime?
+  preferredTime String?
+  address       String
+  description   String?
+  serviceEvents ServiceEvent[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   @@index([userId])
 }
@@ -559,21 +550,21 @@ enum RemarkType {
 }
 
 model Remark {
-  id        Int        @id @default(autoincrement())
-  content   String
-  type      RemarkType @default(GENERAL)
-  
+  id      Int        @id @default(autoincrement())
+  content String
+  type    RemarkType @default(GENERAL)
+
   // Relations (polymorphic-like but explicit)
-  shop      Shop?      @relation(fields: [shopId], references: [id], onDelete: SetNull)
-  shopId    Int?
-  agent     Agent?     @relation(fields: [agentId], references: [id], onDelete: SetNull)
-  agentId   Int?
-  
+  shop    Shop?  @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  shopId  Int?
+  agent   Agent? @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  agentId Int?
+
   serviceEvent   ServiceEvent? @relation(fields: [serviceEventId], references: [id], onDelete: Cascade)
   serviceEventId Int?
-  
-  ticket    Ticket?    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  ticketId  Int?
+
+  ticket   Ticket? @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId Int?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

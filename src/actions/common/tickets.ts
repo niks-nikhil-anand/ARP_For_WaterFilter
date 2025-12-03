@@ -2,7 +2,7 @@
 
 import prisma from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
-import { Prisma, TicketStatus, TicketPriority } from '@/generated/prisma'
+import { Prisma, TicketStatus, TicketPriority, PaymentMethod } from '@/generated/prisma'
 
 export type TicketWithDetails = Prisma.TicketGetPayload<{
   include: {
@@ -12,6 +12,7 @@ export type TicketWithDetails = Prisma.TicketGetPayload<{
       }
     }
     shop: true
+    user: true
   }
 }>
 
@@ -113,7 +114,8 @@ export async function getAllTickets(filters?: {
             }
           },
           shop: true,
-          serviceEvent: true
+          serviceEvent: true,
+          user: true
         },
         orderBy: {
           createdAt: 'desc',
@@ -151,7 +153,8 @@ export async function getTicketById(id: number) {
             user: true
           }
         },
-        shop: true
+        shop: true,
+        user: true
       },
     })
     
@@ -167,10 +170,7 @@ export async function getTicketById(id: number) {
 }
 
 export async function createTicket(data: {
-  customerName: string
-  customerEmail: string
-  customerPhone: string
-  customerAddress?: string
+  customerId: number
   serviceType: string
   productType?: string
   description?: string
@@ -181,6 +181,7 @@ export async function createTicket(data: {
   agentId?: number
   source?: string
   assignToUserId?: number
+  paymentMethod?: PaymentMethod
 }) {
   try {
     let agentId = data.agentId
@@ -207,10 +208,7 @@ export async function createTicket(data: {
 
     const ticket = await prisma.ticket.create({
       data: {
-        customerName: data.customerName,
-        customerEmail: data.customerEmail,
-        customerPhone: data.customerPhone,
-        customerAddress: data.customerAddress,
+        userId: data.customerId,
         serviceType: data.serviceType,
         productType: data.productType,
         description: data.description,
@@ -221,6 +219,7 @@ export async function createTicket(data: {
         source: data.source || 'WEBSITE',
         shopId: data.shopId,
         agentId: agentId,
+        paymentMethod: data.paymentMethod,
       },
       include: {
         assignedToAgent: {
@@ -228,7 +227,8 @@ export async function createTicket(data: {
             user: true
           }
         },
-        shop: true
+        shop: true,
+        user: true
       },
     })
     
@@ -252,6 +252,7 @@ export async function updateTicket(
     preferredDate: Date | string
     preferredTime: string
     assignToUserId: number | null
+    paymentMethod: PaymentMethod
   }>
 ) {
   try {
@@ -262,6 +263,7 @@ export async function updateTicket(
     if (updates.internalNotes !== undefined) updateData.internalNotes = updates.internalNotes
     if (updates.resolutionNotes !== undefined) updateData.resolutionNotes = updates.resolutionNotes
     if (updates.preferredTime !== undefined) updateData.preferredTime = updates.preferredTime
+    if (updates.paymentMethod !== undefined) updateData.paymentMethod = updates.paymentMethod
     
     if (updates.preferredDate !== undefined) {
       updateData.preferredDate = updates.preferredDate ? new Date(updates.preferredDate) : null
@@ -312,7 +314,8 @@ export async function updateTicket(
             user: true
           }
         },
-        shop: true
+        shop: true,
+        user: true
       },
     })
     

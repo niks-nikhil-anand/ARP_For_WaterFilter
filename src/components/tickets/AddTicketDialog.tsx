@@ -20,7 +20,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select'
-import { TicketPriority } from '@/generated/prisma'
+import { TicketPriority, PaymentMethod } from '@/generated/prisma'
 import { createTicket } from '@/actions/common/tickets'
 import { getActiveAgents, createAgentUser } from '@/actions/common/agents'
 import { getActiveCustomers, createCustomerUser } from '@/actions/common/customers'
@@ -45,10 +45,7 @@ interface AddTicketDialogProps {
 export function AddTicketDialog({ open, onOpenChange, onTicketCreated }: AddTicketDialogProps) {
     const [loading, setLoading] = useState(false)
     const [formData, setFormData] = useState({
-        customerName: '',
-        customerEmail: '',
-        customerPhone: '',
-        customerAddress: '',
+        customerId: '',
         serviceType: '',
         productType: '',
         description: '',
@@ -56,11 +53,12 @@ export function AddTicketDialog({ open, onOpenChange, onTicketCreated }: AddTick
         preferredTime: '',
         priority: TicketPriority.MEDIUM,
         source: 'PHONE',
-        assignToUserId: 'unassigned'
+        assignToUserId: 'unassigned',
+        paymentMethod: ''
     })
 
-    const [agents, setAgents] = useState<any[]>([])
-    const [customers, setCustomers] = useState<any[]>([])
+    const [agents, setAgents] = useState<{ userId: number; name: string }[]>([])
+    const [customers, setCustomers] = useState<{ id: number; name: string; email: string; mobile: string | null }[]>([])
 
     // Agent creation states
     const [showCreateAgent, setShowCreateAgent] = useState(false)
@@ -116,7 +114,7 @@ export function AddTicketDialog({ open, onOpenChange, onTicketCreated }: AddTick
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
-        if (!formData.customerName || !formData.customerPhone) {
+        if (!formData.customerId) {
             toast.error('Please select a customer or create a new one')
             return
         }
@@ -126,8 +124,10 @@ export function AddTicketDialog({ open, onOpenChange, onTicketCreated }: AddTick
         try {
             const result = await createTicket({
                 ...formData,
+                customerId: parseInt(formData.customerId),
                 preferredDate: formData.preferredDate,
-                assignToUserId: formData.assignToUserId === 'unassigned' ? undefined : parseInt(formData.assignToUserId)
+                assignToUserId: formData.assignToUserId === 'unassigned' ? undefined : parseInt(formData.assignToUserId),
+                paymentMethod: formData.paymentMethod as PaymentMethod || undefined
             })
 
             if (result.success) {
@@ -136,10 +136,7 @@ export function AddTicketDialog({ open, onOpenChange, onTicketCreated }: AddTick
                 onOpenChange(false)
                 // Reset form
                 setFormData({
-                    customerName: '',
-                    customerEmail: '',
-                    customerPhone: '',
-                    customerAddress: '',
+                    customerId: '',
                     serviceType: '',
                     productType: '',
                     description: '',
@@ -147,7 +144,8 @@ export function AddTicketDialog({ open, onOpenChange, onTicketCreated }: AddTick
                     preferredTime: '',
                     priority: TicketPriority.MEDIUM,
                     source: 'PHONE',
-                    assignToUserId: 'unassigned'
+                    assignToUserId: 'unassigned',
+                    paymentMethod: ''
                 })
                 setShowCreateAgent(false)
                 setNewAgentData({ name: '', email: '', mobile: '', password: '' })
@@ -156,7 +154,7 @@ export function AddTicketDialog({ open, onOpenChange, onTicketCreated }: AddTick
             } else {
                 toast.error(result.error || 'Failed to create ticket')
             }
-        } catch (error) {
+        } catch {
             toast.error('An unexpected error occurred')
         } finally {
             setLoading(false)
@@ -179,10 +177,7 @@ export function AddTicketDialog({ open, onOpenChange, onTicketCreated }: AddTick
                 // Auto-fill form with new customer data
                 setFormData(prev => ({
                     ...prev,
-                    customerName: result.data.name,
-                    customerEmail: result.data.email,
-                    customerPhone: result.data.mobile || '',
-                    customerAddress: newCustomerData.address || ''
+                    customerId: result.data.id.toString(),
                 }))
 
                 setShowCreateCustomer(false)
@@ -190,7 +185,7 @@ export function AddTicketDialog({ open, onOpenChange, onTicketCreated }: AddTick
             } else {
                 toast.error(result.error || 'Failed to create customer')
             }
-        } catch (error) {
+        } catch {
             toast.error('Failed to create customer')
         } finally {
             setCreatingCustomer(false)
@@ -207,10 +202,7 @@ export function AddTicketDialog({ open, onOpenChange, onTicketCreated }: AddTick
         if (customer) {
             setFormData(prev => ({
                 ...prev,
-                customerName: customer.name,
-                customerEmail: customer.email,
-                customerPhone: customer.mobile || '',
-                // If we stored address on user, we'd populate it here too
+                customerId: customerId,
             }))
         }
     }
@@ -233,7 +225,7 @@ export function AddTicketDialog({ open, onOpenChange, onTicketCreated }: AddTick
             } else {
                 toast.error(result.error || 'Failed to create agent')
             }
-        } catch (error) {
+        } catch {
             toast.error('Failed to create agent')
         } finally {
             setCreatingAgent(false)
@@ -551,6 +543,24 @@ export function AddTicketDialog({ open, onOpenChange, onTicketCreated }: AddTick
                                         </SelectContent>
                                     </Select>
                                 </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="paymentMethod">Payment Method</Label>
+                                    <Select
+                                        value={formData.paymentMethod}
+                                        onValueChange={(value) => handleSelectChange('paymentMethod', value)}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select payment method" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {Object.values(PaymentMethod).map((method) => (
+                                                <SelectItem key={method} value={method}>
+                                                    {method}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
@@ -604,17 +614,6 @@ export function AddTicketDialog({ open, onOpenChange, onTicketCreated }: AddTick
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="customerAddress">Address</Label>
-                                <Textarea
-                                    id="customerAddress"
-                                    name="customerAddress"
-                                    value={formData.customerAddress}
-                                    onChange={handleInputChange}
-                                    placeholder="Full address"
-                                    rows={2}
-                                />
-                            </div>
 
                             <div className="space-y-2">
                                 <Label htmlFor="description">Description</Label>

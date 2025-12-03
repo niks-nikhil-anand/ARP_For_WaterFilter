@@ -29,8 +29,6 @@ export async function GET(request: NextRequest) {
           },
           _count: {
             select: {
-              products: true,
-              orders: true,
               agents: true,
             },
           },
@@ -56,8 +54,6 @@ export async function GET(request: NextRequest) {
           },
           _count: {
             select: {
-              products: true,
-              orders: true,
               agents: true,
             },
           },
@@ -113,8 +109,16 @@ export async function POST(request: NextRequest) {
     const shop = await prisma.shop.create({
       data: {
         name,
-        address,
         userId: shopUserId,
+        ...(address && {
+            addresses: {
+                create: {
+                    locality: address,
+                    pincode: '000000', // Default or require from input
+                    phone: '0000000000', // Default or require from input
+                }
+            }
+        })
       },
       include: {
         user: {

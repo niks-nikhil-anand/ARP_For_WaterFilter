@@ -216,18 +216,12 @@ const ShopDetailsPage = () => {
   const handleCreateShop = async (data: ShopFormData) => {
     setIsSubmitting(true)
     try {
-      if (data.password !== data.confirmPassword) {
-        toast.error('Passwords do not match')
-        setIsSubmitting(false)
-        return
-      }
-
       // Create user with ADMIN role
       const userResult = await createUser({
         name: data.name,
         email: data.email,
         mobile: data.mobile,
-        password: data.password!,
+        password: 'defaultPassword123', // Default password since field was removed
         role: 'ADMIN' as any,
         status: 'ACTIVE' as any,
       })

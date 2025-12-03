@@ -273,16 +273,15 @@ export async function createServiceEvent(data: {
       // Fetch customer details to populate ticket
       const customer = await prisma.user.findUnique({
         where: { id: data.customerId },
-        select: { name: true, email: true, mobile: true, addresses: { take: 1 } }
+        select: { id: true, name: true, email: true, mobile: true, addresses: { take: 1 } }
       })
 
       if (customer) {
         await prisma.ticket.create({
           data: {
-            customerName: customer.name,
-            customerEmail: customer.email,
-            customerPhone: customer.mobile || '',
-            customerAddress: customer.addresses[0]?.locality || '',
+            user: {
+              connect: { id: customer.id }
+            },
             serviceType: 'Repair',
             description: data.description || 'Repair Request',
             status: 'OPEN',
@@ -373,16 +372,17 @@ export async function createTicketForEvent(eventId: number, agentId?: number) {
 
     const ticket = await prisma.ticket.create({
       data: {
-        customerName: event.customer.name,
-        customerEmail: event.customer.email,
-        customerPhone: event.customer.mobile || '',
-        customerAddress: event.customer.addresses[0]?.locality || '',
+        user: {
+          connect: { id: event.customer.id }
+        },
         serviceType: event.type,
         productType: event.product.type,
         description: event.description || `${event.type} Service Request`,
         status: 'OPEN',
         priority: 'MEDIUM',
-        agentId: agentId || event.agentId, // Use provided agentId or fallback to event's agent
+        assignedToAgent: (agentId || event.agentId) ? {
+          connect: { id: (agentId || event.agentId) as number }
+        } : undefined,
         serviceEvent: {
           connect: { id: event.id }
         }
@@ -951,7 +951,7 @@ export async function updateAMCContract(id: number, data: {
     if (data.status) {
       await prisma.aMC.update({
         where: { id: existingContract.amcId },
-        data: { status: data.status }
+        data: { status: data.status as any }
       })
     }
 

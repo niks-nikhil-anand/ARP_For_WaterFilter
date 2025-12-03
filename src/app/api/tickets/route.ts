@@ -154,12 +154,41 @@ export async function POST(request: NextRequest) {
     }
 
     // Create ticket
+    // Find or create user
+    let user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: customerEmail },
+          { mobile: customerPhone }
+        ]
+      }
+    });
+
+    if (!user) {
+      // Create new user if not exists
+      user = await prisma.user.create({
+        data: {
+          name: customerName,
+          email: customerEmail,
+          mobile: customerPhone,
+          role: 'USER',
+          status: 'ACTIVE',
+          password: 'defaultPassword123', // Or generate random
+          addresses: {
+            create: {
+              locality: customerAddress,
+              pincode: '000000', // Default
+              phone: customerPhone,
+            }
+          }
+        }
+      });
+    }
+
+    // Create ticket
     const ticket = await prisma.ticket.create({
       data: {
-        customerName,
-        customerEmail,
-        customerPhone,
-        customerAddress,
+        userId: user.id,
         serviceType,
         productType,
         description,

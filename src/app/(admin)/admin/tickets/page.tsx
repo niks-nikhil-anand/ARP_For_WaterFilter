@@ -87,7 +87,7 @@ import {
 import { ResolveTicketDialog } from '@/components/tickets/ResolveTicketDialog'
 import { AddTicketDialog } from '@/components/tickets/AddTicketDialog'
 import { getActiveAgents } from '@/actions/common/agents'
-import { TicketStatus, TicketPriority } from '@/generated/prisma'
+import { TicketStatus, TicketPriority, PaymentMethod } from '@/generated/prisma'
 import { toast } from 'sonner'
 import { PaginationControls } from '@/components/ui/pagination-controls'
 import { SkeletonTable } from '@/components/common/SkeletonTable'
@@ -126,6 +126,7 @@ interface TicketType {
   resolutionNotes?: string | null
   timeSpent?: number | any | null
   amountCollected?: number | any | null
+  paymentMethod?: PaymentMethod | null
   partsReplaced?: string | null
   workDescription?: string | null
   source?: string | null
@@ -476,46 +477,7 @@ const TicketManagementPage = () => {
               </TabsList>
             </Tabs>
 
-            {filterType === 'CUSTOM' && (
-              <div className="grid gap-2 animate-in fade-in slide-in-from-left-5 duration-300">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      id="date"
-                      variant={"outline"}
-                      className={cn(
-                        "w-[300px] justify-start text-left font-normal",
-                        !date && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {date?.from ? (
-                        date.to ? (
-                          <>
-                            {format(date.from, "LLL dd, y")} -{" "}
-                            {format(date.to, "LLL dd, y")}
-                          </>
-                        ) : (
-                          format(date.from, "LLL dd, y")
-                        )
-                      ) : (
-                        <span>Pick a date</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      initialFocus
-                      mode="range"
-                      defaultMonth={date?.from}
-                      selected={date}
-                      onSelect={setDate}
-                      numberOfMonths={2}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            )}
+
           </div>
 
           {/* Filters and Search */}
@@ -868,6 +830,28 @@ const TicketManagementPage = () => {
                       <p className="text-sm">{selectedTicket.assignedToAgent.user.name}</p>
                     </div>
                   )}
+                  {selectedTicket.shopId && (
+                    <div className="col-span-2 space-y-2">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <MapPin className="h-4 w-4" />
+                        <span className="font-medium">Shop ID</span>
+                      </div>
+                      <p className="text-sm">#{selectedTicket.shopId}</p>
+                    </div>
+                  )}
+                  {(selectedTicket.preferredDate || selectedTicket.preferredTime) && (
+                    <div className="col-span-2 space-y-2">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <CalendarIcon className="h-4 w-4" />
+                        <span className="font-medium">Preferred Schedule</span>
+                      </div>
+                      <p className="text-sm">
+                        {selectedTicket.preferredDate ? formatDate(selectedTicket.preferredDate) : ''}
+                        {selectedTicket.preferredDate && selectedTicket.preferredTime ? ' at ' : ''}
+                        {selectedTicket.preferredTime || ''}
+                      </p>
+                    </div>
+                  )}
                   {selectedTicket.internalNotes && (
                     <div className="col-span-2 space-y-2">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -914,6 +898,16 @@ const TicketManagementPage = () => {
                         </div>
                       )}
 
+                      {selectedTicket.paymentMethod && (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <FileText className="h-4 w-4" />
+                            <span className="font-medium">Payment Method</span>
+                          </div>
+                          <p className="text-sm">{selectedTicket.paymentMethod}</p>
+                        </div>
+                      )}
+
                       {selectedTicket.partsReplaced && (
                         <div className="col-span-2 space-y-2">
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -935,21 +929,6 @@ const TicketManagementPage = () => {
                       )}
                     </>
                   )}
-
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="h-4 w-4" />
-                      <span className="font-medium">Created Date</span>
-                    </div>
-                    <p className="text-sm">{formatDate(selectedTicket.createdAt)}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="h-4 w-4" />
-                      <span className="font-medium">Last Updated</span>
-                    </div>
-                    <p className="text-sm">{formatDate(selectedTicket.updatedAt)}</p>
-                  </div>
                 </div>
               </div>
             )}

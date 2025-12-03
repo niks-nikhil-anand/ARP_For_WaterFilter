@@ -151,6 +151,23 @@ const CustomerDetailsPage = () => {
         (sum: number, order: any) => sum + (Number(order.amountPaid) || 0),
         0
     )
+
+    // Calculate AMC Pending Amount
+    const amcPendingAmount = user.amcs.reduce((sum: number, amc: any) => {
+        const contractSum = amc.contracts?.reduce((cSum: number, contract: any) => {
+            return cSum + (Number(contract.paymentDue) || 0)
+        }, 0) || 0
+        return sum + contractSum
+    }, 0)
+
+    // Calculate Warranty Pending Amount (based on linked order payment status)
+    const warrantyPendingAmount = user.warranties.reduce((sum: number, warranty: any) => {
+        if (warranty.warrantyType === 'EXTENDED' && warranty.order?.paymentStatus === 'PENDING') {
+            return sum + (Number(warranty.warrantyAmount) || 0)
+        }
+        return sum
+    }, 0)
+
     const openTickets = user.tickets.filter(
         (t: any) => t.status === 'OPEN' || t.status === 'IN_PROGRESS'
     ).length
@@ -202,7 +219,7 @@ const CustomerDetailsPage = () => {
     }
 
     return (
-        <div className="container mx-auto py-8 px-4 space-y-8 max-w-7xl">
+        <div className="container mx-auto py-6 px-2 space-y-6 max-w-[98%]">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center gap-4 justify-between">
                 <div className="flex items-center gap-4">
@@ -227,7 +244,7 @@ const CustomerDetailsPage = () => {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 <Card className="hover:shadow-md transition-shadow">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
@@ -240,12 +257,22 @@ const CustomerDetailsPage = () => {
                 </Card>
                 <Card className="hover:shadow-md transition-shadow">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Pending Amount</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">AMC Pending</CardTitle>
                         <AlertCircle className="h-4 w-4 text-orange-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">--</div>
-                        <p className="text-xs text-muted-foreground mt-1">Calculated from unpaid orders</p>
+                        <div className="text-2xl font-bold">₹{amcPendingAmount.toLocaleString()}</div>
+                        <p className="text-xs text-muted-foreground mt-1">Due from contracts</p>
+                    </CardContent>
+                </Card>
+                <Card className="hover:shadow-md transition-shadow">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Warranty Pending</CardTitle>
+                        <Shield className="h-4 w-4 text-purple-500" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">₹{warrantyPendingAmount.toLocaleString()}</div>
+                        <p className="text-xs text-muted-foreground mt-1">Unpaid extended warranties</p>
                     </CardContent>
                 </Card>
                 <Card className="hover:shadow-md transition-shadow">
@@ -631,26 +658,48 @@ const CustomerDetailsPage = () => {
                                         <TableHead>AMC ID</TableHead>
                                         <TableHead>Product</TableHead>
                                         <TableHead>Status</TableHead>
-                                        <TableHead>Contracts</TableHead>
+                                        <TableHead>Start Date</TableHead>
+                                        <TableHead>End Date</TableHead>
+                                        <TableHead>Price</TableHead>
+                                        <TableHead>Due Amount</TableHead>
+                                        <TableHead>Services</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {user.amcs.length > 0 ? (
-                                        user.amcs.map((amc: any) => (
-                                            <TableRow key={amc.id} className="hover:bg-muted/50">
-                                                <TableCell className="font-medium">{amc.amcUniqueId}</TableCell>
-                                                <TableCell>{amc.product?.productName || 'Unknown Product'}</TableCell>
-                                                <TableCell>{getStatusBadge(amc.status)}</TableCell>
-                                                <TableCell>
-                                                    <Badge variant="outline" className="bg-muted">
-                                                        {amc.contracts?.length || 0} Contracts
-                                                    </Badge>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
+                                        user.amcs.flatMap((amc: any) =>
+                                            amc.contracts && amc.contracts.length > 0
+                                                ? amc.contracts.map((contract: any) => ({ ...contract, amcUniqueId: amc.amcUniqueId, productName: amc.product?.productName, amcStatus: amc.status }))
+                                                : [{ ...amc, isPlaceholder: true }]
+                                        ).map((item: any, index: number) => {
+                                            if (item.isPlaceholder) {
+                                                return (
+                                                    <TableRow key={`placeholder-${item.id}`} className="hover:bg-muted/50">
+                                                        <TableCell className="font-medium">{item.amcUniqueId}</TableCell>
+                                                        <TableCell>{item.product?.productName || 'Unknown Product'}</TableCell>
+                                                        <TableCell>{getStatusBadge(item.status)}</TableCell>
+                                                        <TableCell colSpan={5} className="text-center text-muted-foreground italic">No contracts found</TableCell>
+                                                    </TableRow>
+                                                )
+                                            }
+                                            return (
+                                                <TableRow key={item.id} className="hover:bg-muted/50">
+                                                    <TableCell className="font-medium">{item.amcUniqueId}</TableCell>
+                                                    <TableCell>{item.productName || 'Unknown Product'}</TableCell>
+                                                    <TableCell>{getStatusBadge(item.status)}</TableCell>
+                                                    <TableCell>{formatDate(item.startDate)}</TableCell>
+                                                    <TableCell>{formatDate(item.endDate)}</TableCell>
+                                                    <TableCell>₹{item.finalPrice || item.price || 0}</TableCell>
+                                                    <TableCell className={item.paymentDue > 0 ? "text-red-500 font-medium" : "text-green-600"}>
+                                                        ₹{item.paymentDue || 0}
+                                                    </TableCell>
+                                                    <TableCell>{item.noOfServices} Services</TableCell>
+                                                </TableRow>
+                                            )
+                                        })
                                     ) : (
                                         <TableRow>
-                                            <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                                            <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                                                 No AMCs found
                                             </TableCell>
                                         </TableRow>

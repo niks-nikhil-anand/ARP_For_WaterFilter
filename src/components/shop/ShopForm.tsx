@@ -149,34 +149,7 @@ export const ShopForm: React.FC<ShopFormProps> = ({
             />
           </div>
 
-          {mode === 'add' && (
-            <>
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="password">Password *</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => handleChange('password', e.target.value)}
-                  placeholder="Enter password"
-                  required
-                  disabled={isSubmitting}
-                />
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="confirmPassword">Confirm Password *</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={formData.confirmPassword}
-                  onChange={(e) => handleChange('confirmPassword', e.target.value)}
-                  placeholder="Confirm password"
-                  required
-                  disabled={isSubmitting}
-                />
-              </div>
-            </>
-          )}
+          {/* Password fields removed as per request */}
 
           {mode === 'edit' && (
             <div className="space-y-2 md:col-span-2">
